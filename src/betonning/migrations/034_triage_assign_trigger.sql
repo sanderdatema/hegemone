@@ -1,0 +1,19 @@
+-- BETON-287: triage moet ook reageren als een item aan hém wordt toegewezen.
+--
+-- `triaged_at` (migratie 008) is een globale "ooit getrieerd"-vlag: zodra die
+-- staat is het item permanent uit `find_untriaged`, dus een látere toewijzing aan
+-- triage triggerde niets. Die vlag mag hier NIET hergebruikt worden — dat zou de
+-- eerste-triage-flow slopen.
+--
+-- Deze marker hangt daarom aan DE TOEWIJZING, niet aan het item als geheel: hij
+-- draagt het id van het laatste assignment-event (`item.updated` met
+-- `assignee.to = 'triage'`) dat triage al heeft afgehandeld. Reageren = er is een
+-- nieuwer assignment-event dan deze marker. Zo triggert een NIEUWE toewijzing wél
+-- opnieuw (weg-en-terug toewijzen), en een herhaalde worker-ronde niet — geen lus
+-- die BETON-282 voedt.
+--
+-- Analoog aan `comments.evaluated_at`: de marker wordt gezet ongeacht de uitkomst
+-- (ook bij een noop), zodat een stille beoordeling niet elke ronde terugkomt.
+--
+-- ADD COLUMN (geen table-recreate): draait zo ook op een gevulde prod-db.
+ALTER TABLE items ADD COLUMN triage_assign_event_id INTEGER;

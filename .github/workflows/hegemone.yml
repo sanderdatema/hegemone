@@ -1,0 +1,62 @@
+name: Hegemone verification
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.10.9"
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - run: uv sync --locked --extra mcp
+      - name: Lint backend, tests and release tools
+        run: uv run ruff check src tests tools
+      - name: Check public source and commit messages
+        run: uv run python tools/check_public_boundary.py --history
+      - name: Typecheck all backend modules
+        run: uv run mypy
+      - name: Audit locked Python runtime dependencies
+        run: |
+          uv export --locked --no-dev --extra mcp --no-emit-project --format requirements-txt --output-file /tmp/hegemone-runtime.txt
+          uv run pip-audit --requirement /tmp/hegemone-runtime.txt --no-deps --disable-pip
+      - run: npm ci --no-audit --no-fund
+        working-directory: ui
+      - name: Audit frontend dependencies
+        run: uv run python tools/audit_frontend_dependencies.py
+      - name: Check translations and remaining fixed Dutch template text
+        run: node tools/audit_translations.mjs
+      - run: npm test
+        working-directory: ui
+      - run: npm run build
+        working-directory: ui
+      - name: Verify checked-in frontend notices match the build
+        run: cmp docs/hegemone/FRONTEND_LICENSES.txt src/betonning/static/third-party-licenses.txt
+      - run: uv run pytest
+      - name: Validate Compose without exposing configuration
+        run: docker compose config --quiet
+        env:
+          HEGEMONE_MEDIA_SECRET: synthetic-ci-media-token-not-a-real-secret
+          HEGEMONE_SETUP_TOKEN: synthetic-ci-setup-token-not-a-real-secret
+      - name: Verify exact Docker build context
+        run: uv run python tools/audit_build_context.py
+      - name: Build local container without publishing
+        run: docker build -t hegemone:ci .
+      - name: Verify container setup, MCP, persistence, restore and upgrade
+        run: uv run python tools/smoke_container.py --image hegemone:ci

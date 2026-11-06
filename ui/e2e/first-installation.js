@@ -1,0 +1,41 @@
+// Volledige setupflow tegen een lege, geïsoleerde lokale backend.
+export default async function firstInstallation(page, base = 'http://127.0.0.1:8136') {
+  await page.goto(base);
+  await page.getByRole('heading', {name: 'Welcome to Hegemone'}).waitFor();
+  await page.screenshot({path: '/tmp/hegemone-setup-light.png'});
+  await page.emulateMedia({colorScheme: 'dark'});
+  await page.screenshot({path: '/tmp/hegemone-setup-dark.png'});
+  await page.getByRole('button', {name: 'Nederlands', exact: true}).click();
+  await page.getByRole('heading', {name: 'Welkom bij Hegemone'}).waitFor();
+  await page.getByRole('button', {name: 'English', exact: true}).click();
+  await page.getByLabel('Setup token', {exact: true}).fill('synthetic-wrong-token-for-tests-00001');
+  await page.getByLabel('Username', {exact: true}).fill('operator');
+  await page.getByLabel('Display name', {exact: true}).fill('Operator');
+  await page.getByRole('button', {name: 'Create administrator', exact: true}).click();
+  await page.getByRole('alert').waitFor();
+  await page.getByLabel('Setup token', {exact: true}).fill('synthetic-browser-setup-token-only-0001');
+  await page.getByRole('button', {name: 'Create administrator', exact: true}).click();
+  await page.getByRole('heading', {name: 'Save your login key'}).waitFor();
+  if (await page.getByRole('button', {name: 'Open Hegemone'}).isEnabled()) throw new Error('Bevestiging ontbreekt');
+  const exposed = await page.evaluate(() => Object.values(localStorage).some(value => value.startsWith('bt_') || value.includes('synthetic-browser-setup')));
+  if (exposed) throw new Error('Credential in localStorage');
+  await page.getByLabel('I have saved my login key').check();
+  await page.getByRole('button', {name: 'Open Hegemone'}).click();
+  await page.getByRole('heading', {name: 'Create your first project'}).waitFor();
+  await page.reload();
+  await page.getByRole('heading', {name: 'Create your first project'}).waitFor();
+  await page.getByLabel('Project name', {exact: true}).fill('First project');
+  await page.getByLabel('Project code', {exact: true}).fill('TEAM');
+  const invalid = await page.locator('form input:invalid').evaluateAll(inputs => inputs.map(input => ({name: input.name, reason: input.validationMessage})));
+  if (invalid.length) throw new Error('Ongeldige projectvelden: ' + JSON.stringify(invalid));
+  await page.getByRole('button', {name: 'Create project', exact: true}).click();
+  await page.getByRole('heading', {name: 'Work with agents'}).waitFor();
+  await page.reload();
+  await page.getByRole('heading', {name: 'Work with agents'}).waitFor();
+  await page.screenshot({path: '/tmp/hegemone-onboarding-agents.png'});
+  await page.getByRole('button', {name: 'Open Hegemone', exact: true}).click();
+  await page.locator('.topbar').waitFor();
+  await page.reload();
+  await page.locator('.topbar').waitFor();
+  if (await page.getByRole('heading', {name: 'Welcome to Hegemone'}).count()) throw new Error('Setup keert terug');
+}

@@ -1,0 +1,630 @@
+{
+  "invalid_api_key": {
+    "nl": "Ongeldige API-key",
+    "en": "Invalid API key"
+  },
+  "missing_api_key": {
+    "nl": "Ontbrekende API-key",
+    "en": "Missing API key"
+  },
+  "session_required": {
+    "nl": "Ontbrekende, verlopen of ongeldige aanmelding",
+    "en": "Sign-in is missing, expired or invalid"
+  },
+  "body_auth_required": {
+    "nl": "Aanmelding vereist vóór het verwerken van de body",
+    "en": "Sign in before submitting this request"
+  },
+  "human_only": {
+    "nl": "Alleen voor mensen",
+    "en": "Only people can perform this action"
+  },
+  "invalid_origin": {
+    "nl": "Ongeldige herkomst van browsermutatie",
+    "en": "Invalid origin for this browser action"
+  },
+  "invalid_csrf": {
+    "nl": "Ontbrekend of ongeldig CSRF-token",
+    "en": "Missing or invalid CSRF token"
+  },
+  "llm_unconfigured": {
+    "nl": "Geen LLM geconfigureerd",
+    "en": "No AI provider configured"
+  },
+  "setup_disabled": {
+    "nl": "Installatie is niet ingeschakeld; configureer een geldig setup-token",
+    "en": "Setup is disabled; configure a valid setup token"
+  },
+  "setup_token_invalid": {
+    "nl": "Ongeldig setup-token",
+    "en": "Invalid setup token"
+  },
+  "setup_origin_invalid": {
+    "nl": "Ongeldige herkomst van installatieverzoek",
+    "en": "Invalid origin for the setup request"
+  },
+  "setup_completed": {
+    "nl": "Installatie is al voltooid",
+    "en": "Setup is already complete"
+  },
+  "handle_taken": {
+    "nl": "Handle is al in gebruik",
+    "en": "Handle is already in use"
+  },
+  "project_code_taken": {
+    "nl": "Projectcode is al in gebruik",
+    "en": "Project code is already in use"
+  },
+  "project_required": {
+    "nl": "Maak eerst een project aan",
+    "en": "Create a project first"
+  },
+  "project_step_inactive": {
+    "nl": "Projectstap is niet actief",
+    "en": "The project step is not active"
+  },
+  "scope_missing": {
+    "nl": "Deze sleutel mist de benodigde scope",
+    "en": "This key lacks the required scope"
+  },
+  "knowledge_forbidden": {
+    "nl": "Deze sleutel mag geen kennis wijzigen",
+    "en": "This key cannot change knowledge"
+  },
+  "admin_scope_missing": {
+    "nl": "Deze sleutel mist beheerscope",
+    "en": "This key lacks administrative scope"
+  },
+  "media_scope_forbidden": {
+    "nl": "Media valt buiten de projectscopes",
+    "en": "Media is outside the permitted project scopes"
+  },
+  "project_admin_scope": {
+    "nl": "Projectinstellingen vereisen beheerscope",
+    "en": "Project settings require administrative scope"
+  },
+  "project_scope_forbidden": {
+    "nl": "Project valt buiten de sleutelrechten",
+    "en": "This project is outside the key permissions"
+  },
+  "review_scope_forbidden": {
+    "nl": "Review valt buiten de projectscopes",
+    "en": "Review is outside the permitted project scopes"
+  },
+  "explicit_project_required": {
+    "nl": "Gebruik een expliciet toegestane projectroute",
+    "en": "Use an explicitly permitted project route"
+  },
+  "target_scope_forbidden": {
+    "nl": "Doel valt buiten de projectscopes",
+    "en": "The target is outside the permitted project scopes"
+  },
+  "media_forbidden": {
+    "nl": "Geen toegang tot media",
+    "en": "No access to media"
+  },
+  "body_too_large": {
+    "nl": "Body te groot",
+    "en": "Request body is too large"
+  },
+  "body_concurrency": {
+    "nl": "Te veel gelijktijdige bodies",
+    "en": "Too many concurrent request bodies"
+  },
+  "empty_option": {
+    "nl": "lege optie is niet toegestaan",
+    "en": "Empty options are not allowed"
+  },
+  "duplicate_option": {
+    "nl": "dubbele optie is niet toegestaan",
+    "en": "Duplicate options are not allowed"
+  },
+  "mute_self_only": {
+    "nl": "Een agent dempt alleen zichzelf",
+    "en": "An agent can only mute itself"
+  },
+  "unknown_user": {
+    "nl": "Onbekende user",
+    "en": "Unknown user"
+  },
+  "unknown_person": {
+    "nl": "Onbekende gebruiker",
+    "en": "Unknown user"
+  },
+  "relation_missing": {
+    "nl": "Relatie bestaat niet",
+    "en": "Relation does not exist"
+  },
+  "self_relation": {
+    "nl": "Item kan niet naar zichzelf verwijzen",
+    "en": "An item cannot refer to itself"
+  },
+  "parent_cycle": {
+    "nl": "Parent zou een cyclus vormen",
+    "en": "The parent would create a cycle"
+  },
+  "relation_conflict": {
+    "nl": "Tegenstrijdige relatie: de omgekeerde richting bestaat al",
+    "en": "Conflicting relation: the reverse direction already exists"
+  },
+  "same_project": {
+    "nl": "Item staat al in dit project",
+    "en": "The item is already in this project"
+  },
+  "already_decomposed": {
+    "nl": "Item is al opgeknipt",
+    "en": "The item has already been split into subtasks"
+  },
+  "no_subtasks": {
+    "nl": "Geen subtaken om aan te maken",
+    "en": "No subtasks to create"
+  },
+  "decompose_not_proposed": {
+    "nl": "Voorstel zegt niet opknippen (should_decompose=false)",
+    "en": "The proposal does not recommend splitting (should_decompose=false)"
+  },
+  "last_column": {
+    "nl": "Laatste kolom van een project kan niet verwijderd worden",
+    "en": "The last column of a project cannot be deleted"
+  },
+  "self_deactivation": {
+    "nl": "Je kunt jezelf niet deactiveren",
+    "en": "You cannot deactivate yourself"
+  },
+  "virtual_queue_key": {
+    "nl": "Een virtuele queue heeft geen API-key",
+    "en": "A virtual queue has no API key"
+  },
+  "agent_kind_required": {
+    "nl": "agent_type mag alleen gezet worden als kind='agent'",
+    "en": "agent_type can only be set when kind='agent'"
+  },
+  "empty_harness": {
+    "nl": "Leeg harnas",
+    "en": "Empty harness"
+  },
+  "empty_file": {
+    "nl": "Leeg bestand",
+    "en": "Empty file"
+  },
+  "missing_file": {
+    "nl": "Bytes ontbreken op disk",
+    "en": "File bytes are missing from storage"
+  },
+  "attachment_unknown": {
+    "nl": "Onbekende attachment",
+    "en": "Unknown attachment"
+  },
+  "avatar_missing": {
+    "nl": "Geen avatar",
+    "en": "No avatar"
+  },
+  "wiki_unknown": {
+    "nl": "Onbekende wiki-pagina",
+    "en": "Unknown wiki page"
+  },
+  "global_knowledge_protected": {
+    "nl": "Globale kennis blijft beschermd",
+    "en": "Global knowledge remains protected"
+  },
+  "proposal_closed": {
+    "nl": "Voorstel is niet (meer) open",
+    "en": "The proposal is no longer open"
+  },
+  "author_delete_only": {
+    "nl": "Alleen de auteur mag deze comment verwijderen",
+    "en": "Only the author can delete this comment"
+  },
+  "author_edit_only": {
+    "nl": "Alleen de auteur mag deze comment wijzigen",
+    "en": "Only the author can edit this comment"
+  },
+  "answer_edit_permission": {
+    "nl": "Alleen de antwoorder of een mens wijzigt het antwoord",
+    "en": "Only the respondent or a person can edit the answer"
+  },
+  "answer_final": {
+    "nl": "Antwoord is al verstuurd en niet meer te wijzigen",
+    "en": "The answer has already been sent and can no longer be changed"
+  },
+  "not_question": {
+    "nl": "Deze comment is geen vraag",
+    "en": "This comment is not a question"
+  },
+  "question_handled": {
+    "nl": "Vraag is al afgehandeld",
+    "en": "The question has already been handled"
+  },
+  "question_answered": {
+    "nl": "Vraag is al beantwoord",
+    "en": "The question has already been answered"
+  },
+  "question_withdrawn_already": {
+    "nl": "Vraag is al ingetrokken",
+    "en": "The question has already been withdrawn"
+  },
+  "question_withdrawn": {
+    "nl": "Vraag is ingetrokken",
+    "en": "The question has been withdrawn"
+  },
+  "question_unanswered": {
+    "nl": "Vraag is nog niet beantwoord",
+    "en": "The question has not been answered yet"
+  },
+  "answer_exactly_one": {
+    "nl": "Geef precies één van 'text' of 'option_index'",
+    "en": "Provide exactly one of 'text' or 'option_index'"
+  },
+  "option_out_of_range": {
+    "nl": "option_index buiten bereik",
+    "en": "option_index is out of range"
+  },
+  "options_question_only": {
+    "nl": "options zijn alleen toegestaan bij kind='question'",
+    "en": "options are only allowed when kind='question'"
+  },
+  "guardrail_empty": {
+    "nl": "Een guardrail moet uitleggen wat en waarom — lege tekst kan niet.",
+    "en": "A guardrail must explain what and why; text cannot be empty."
+  },
+  "lift_reason_empty": {
+    "nl": "Een opheffingsvoorstel moet uitleggen waarom — lege reden kan niet.",
+    "en": "A lift proposal must explain why; the reason cannot be empty."
+  },
+  "guardrail_inactive": {
+    "nl": "Er staat geen actieve guardrail op dit ticket om op te heffen.",
+    "en": "There is no active guardrail on this ticket to lift."
+  },
+  "guardrail_kind": {
+    "nl": "kind moet 'set' (voorstellen/wijzigen) of 'lift' (opheffen) zijn.",
+    "en": "kind must be 'set' (propose/change) or 'lift' (remove)."
+  },
+  "review_date_past": {
+    "nl": "review_by mag niet in het verleden liggen.",
+    "en": "review_by cannot be in the past."
+  },
+  "review_date_format": {
+    "nl": "review_by moet een ISO-datum zijn (YYYY-MM-DD).",
+    "en": "review_by must be an ISO date (YYYY-MM-DD)."
+  },
+  "guardrail_human_judgment": {
+    "nl": "Of een guardrail nog geldt is een menselijk oordeel; een agent beantwoordt deze vraag niet.",
+    "en": "Whether a guardrail still applies requires human judgment; an agent cannot answer this question."
+  },
+  "handover_reopen": {
+    "nl": "Heropen het ticket voordat je een overdrachtsnotitie plaatst",
+    "en": "Reopen the ticket before adding a handover note"
+  },
+  "work_class_required": {
+    "nl": "Gebruik een werkklasse: routine, standaard of complex; geen modelnaam als label",
+    "en": "Use a work class: routine, standaard or complex; do not use a model name as a label"
+  },
+  "triage_disabled": {
+    "nl": "Triage staat uit voor dit project; zet eerst opt-in aan.",
+    "en": "Triage is disabled for this project; enable it first."
+  },
+  "wiki_compiler_disabled": {
+    "nl": "Wiki-compiler staat uit voor dit project; zet eerst opt-in aan.",
+    "en": "Wiki compilation is disabled for this project; enable it first."
+  },
+  "question_human_only": {
+    "nl": "De vraagmodule is alleen voor vragen aan een mens. Voor een vraag aan een andere agent: gebruik een gewone comment met `@handle`.",
+    "en": "The question module is for questions to a person. To ask another agent, use a regular comment with `@handle`."
+  },
+  "question_single": {
+    "nl": "Eén vraag per vraagmodule — de meerkeuze-opties horen bij precies één vraag. Stel de tweede vraag met een aparte ask_question-aanroep.",
+    "en": "Use one question per question module; the options belong to that question. Ask another question with a separate ask_question call."
+  },
+  "handover_required": {
+    "nl": "Wijs je een ticket aan een mens toe, zeg dan in `handover_md` (max 300 tekens) wat je van die persoon nodig hebt, of stel een vraag met `ask_question`.",
+    "en": "When assigning a ticket to a person, explain what you need in `handover_md` (maximum 300 characters), or ask a question with `ask_question`."
+  },
+  "invalid_ref": {
+    "nl": "Ongeldige ref: {value}",
+    "en": "Invalid ref: {value}"
+  },
+  "unknown_item": {
+    "nl": "Onbekend item: {value}",
+    "en": "Unknown item: {value}"
+  },
+  "unknown_project": {
+    "nl": "Onbekend project: {value}",
+    "en": "Unknown project: {value}"
+  },
+  "unknown_state": {
+    "nl": "Onbekende state: {value}",
+    "en": "Unknown state: {value}"
+  },
+  "unknown_user_value": {
+    "nl": "Onbekende user: {value}",
+    "en": "Unknown user: {value}"
+  },
+  "unknown_parent": {
+    "nl": "Onbekend parent-item: {value}",
+    "en": "Unknown parent item: {value}"
+  },
+  "unknown_milestone": {
+    "nl": "Onbekende milestone: {value}",
+    "en": "Unknown milestone: {value}"
+  },
+  "unknown_label": {
+    "nl": "Onbekend label: {value}",
+    "en": "Unknown label: {value}"
+  },
+  "unknown_comment": {
+    "nl": "Onbekende comment: {value}",
+    "en": "Unknown comment: {value}"
+  },
+  "validation": {
+    "nl": "Controleer de invoer: {fields}.",
+    "en": "Check the input: {fields}."
+  },
+  "mutation_forbidden": {
+    "en": "This route does not accept changes",
+    "nl": "Deze route accepteert geen mutaties"
+  },
+  "setup_rate_limit": {
+    "en": "Too many setup requests",
+    "nl": "Te veel installatieverzoeken"
+  },
+  "request_rate_limit": {
+    "en": "Request limit reached; try again later",
+    "nl": "Verzoeklimiet bereikt; probeer later opnieuw"
+  },
+  "mutation_concurrency": {
+    "en": "Too many concurrent changes",
+    "nl": "Te veel gelijktijdige mutaties"
+  },
+  "upload_concurrency": {
+    "en": "Too many concurrent uploads",
+    "nl": "Te veel gelijktijdige uploads"
+  },
+  "stream_concurrency": {
+    "en": "Too many concurrent streams",
+    "nl": "Te veel gelijktijdige streams"
+  },
+  "write_quota": {
+    "en": "Write quota reached; a person can reset the budget",
+    "nl": "Schrijfquota bereikt; een mens kan het budget herstellen"
+  },
+  "permanent_delete_human_only": {
+    "en": "Only people can permanently delete items",
+    "nl": "Onherroepelijk verwijderen is alleen voor mensen"
+  },
+  "guardrail_proposal_missing": {
+    "nl": "Er staat geen guardrail-concept op dit ticket.",
+    "en": "There is no guardrail proposal on this ticket."
+  },
+  "unknown_class": {
+    "nl": "Onbekende klasse: {value}",
+    "en": "Unknown class: {value}"
+  },
+  "unknown_agent_type": {
+    "nl": "Onbekend agent-type: {value}",
+    "en": "Unknown agent type: {value}"
+  },
+  "unknown_agent": {
+    "nl": "Onbekende agent: {value}",
+    "en": "Unknown agent: {value}"
+  },
+  "unknown_delivery": {
+    "nl": "Onbekende delivery: {value}",
+    "en": "Unknown delivery: {value}"
+  },
+  "unknown_wiki": {
+    "nl": "Onbekende wiki-pagina: {value}",
+    "en": "Unknown wiki page: {value}"
+  },
+  "unknown_revision": {
+    "nl": "Onbekende revisie: {value}",
+    "en": "Unknown revision: {value}"
+  },
+  "unknown_project_label": {
+    "nl": "Onbekend label op dit project: {value}",
+    "en": "Unknown label in this project: {value}"
+  },
+  "invalid_slug": {
+    "nl": "Ongeldige slug: {value}",
+    "en": "Invalid slug: {value}"
+  },
+  "file_type_forbidden": {
+    "nl": "Type niet toegestaan: {value}",
+    "en": "File type not allowed: {value}"
+  },
+  "project_exists": {
+    "nl": "Project bestaat al: {value}",
+    "en": "Project already exists: {value}"
+  },
+  "state_exists": {
+    "nl": "State bestaat al: {value}",
+    "en": "State already exists: {value}"
+  },
+  "label_exists": {
+    "nl": "Label bestaat al: {value}",
+    "en": "Label already exists: {value}"
+  },
+  "milestone_exists": {
+    "nl": "Milestone bestaat al: {value}",
+    "en": "Milestone already exists: {value}"
+  },
+  "wiki_exists": {
+    "nl": "Wiki-pagina bestaat al: {value}",
+    "en": "Wiki page already exists: {value}"
+  },
+  "handle_exists": {
+    "nl": "Handle @{handle} bestaat al",
+    "en": "Handle @{handle} already exists"
+  },
+  "parent_project": {
+    "nl": "Parent {ref} hoort bij een ander project",
+    "en": "Parent {ref} belongs to a different project"
+  },
+  "column_not_empty": {
+    "nl": "Kolom '{name}' bevat nog {count} item(s) — verplaats ze eerst naar een andere kolom",
+    "en": "Column '{name}' still contains {count} item(s); move them to another column first"
+  },
+  "model_invalid": {
+    "nl": "Ongeldig model voor {harness}/{work_class}",
+    "en": "Invalid model for {harness}/{work_class}"
+  },
+  "file_too_large": {
+    "nl": "Bestand te groot voor {content_type} (max {limit} MB)",
+    "en": "File too large for {content_type} (maximum {limit} MB)"
+  },
+  "options_limit": {
+    "nl": "maximaal {limit} opties toegestaan",
+    "en": "A maximum of {limit} options is allowed"
+  },
+  "reason_limit": {
+    "nl": "Reden is {count} tekens; maximaal {limit}.",
+    "en": "Reason is {count} characters; maximum {limit}."
+  },
+  "guardrail_limit": {
+    "nl": "Plafond bereikt ({limit} projectbrede guardrails): hef er eerst een op.",
+    "en": "Limit reached ({limit} project-wide guardrails); lift one first."
+  },
+  "guardrail_text_limit": {
+    "nl": "Guardrail is {count} tekens; maximaal {limit}. De cap is de drempel: leg in drie zinnen uit wat, waarom en wat er gedaan of gelaten moet worden.",
+    "en": "Guardrail is {count} characters; maximum {limit}. Explain in three sentences what, why, and what must be done or avoided."
+  },
+  "llm_rate_limit": {
+    "nl": "LLM-limiet bereikt (max {limit} per uur). Probeer over {seconds}s opnieuw.",
+    "en": "AI request limit reached (maximum {limit} per hour). Try again in {seconds}s."
+  },
+  "ticket_changed": {
+    "nl": "Item is intussen gewijzigd (updated_at komt niet overeen)",
+    "en": "This item has changed since it was loaded (updated_at does not match)"
+  },
+  "closed_comment_forbidden": {
+    "nl": "Dit ticket is gesloten; agents reageren er niet meer op. Ben je het er niet mee eens? Zet hem terug op `todo` en plaats dán een comment met de reden.",
+    "en": "This ticket is closed; agents can no longer comment on it. To dispute the closure, move it back to `todo` and then add a comment explaining why."
+  },
+  "closed_comment_edit_forbidden": {
+    "nl": "Dit ticket is gesloten; agents wijzigen hun comments er niet meer op. Zet het ticket terug op `todo` als een correctie echt nodig is.",
+    "en": "This ticket is closed; agents can no longer edit their comments. Move the ticket back to `todo` if a correction is necessary."
+  },
+  "question_reassignment_forbidden": {
+    "nl": "Er staat een open vraag voor een mens op dit ticket, dus het blijft aan die mens toegewezen tot de vraag beantwoord is. Het ticket komt na het antwoord vanzelf terug; zet de toewijzing niet zelf terug.",
+    "en": "This ticket has an open question for a person and remains assigned to them until they answer. The assignment returns automatically afterwards; do not change it yourself."
+  },
+  "ticket_content_fixed": {
+    "nl": "Dit ticket heeft al comments; omschrijving en plan liggen vast. Zet aanvullingen in een comment.",
+    "en": "This ticket already has comments; its description and plan are fixed. Add further information in a comment."
+  },
+  "open_question_close_forbidden": {
+    "nl": "Er staat nog een open vraag op dit ticket (comment {id}: {question}). Is het antwoord elders gekomen, trek hem dan in met `withdraw_question`; anders wacht op het antwoord.",
+    "en": "This ticket still has an open question (comment {id}: {question}). If it was answered elsewhere, withdraw it with `withdraw_question`; otherwise wait for the answer."
+  },
+  "bulk_confirmation_required": {
+    "nl": "Bevestig wijzigingen aan {total} tickets.",
+    "en": "Confirm changes to {total} tickets."
+  },
+  "knowledge_proposal_limit": {
+    "nl": "Kennisvoorstel overschrijdt de tekstlimiet",
+    "en": "The knowledge proposal exceeds the text limit"
+  },
+  "knowledge_proposal_missing": {
+    "nl": "Onbekend of al beoordeeld voorstel",
+    "en": "Unknown or already reviewed proposal"
+  },
+  "knowledge_page_changed": {
+    "nl": "Pagina is intussen gewijzigd; maak een nieuw voorstel",
+    "en": "The page has changed; create a new proposal"
+  },
+  "ticket_locked_queued": {
+    "nl": "Dit ticket is op slot (noodstop): er wordt niet meer op gereageerd. Alleen een mens kan hem ontgrendelen. Plaats geen comment en onderneem hier verder niets. Je bericht is bewaard en wordt geplaatst zodra een mens het slot eraf haalt — stuur het niet opnieuw.",
+    "en": "This ticket is locked (emergency stop). Only a person can unlock it. Do not comment or take further action. Your message has been saved and will be posted when a person unlocks the ticket; do not send it again."
+  },
+  "ticket_locked_queue_full": {
+    "nl": "Dit ticket is op slot (noodstop): er wordt niet meer op gereageerd. Alleen een mens kan hem ontgrendelen. Plaats geen comment en onderneem hier verder niets. Er staat al een bericht van vóór jou in de wacht; het jouwe is niet bewaard.",
+    "en": "This ticket is locked (emergency stop). Only a person can unlock it. Do not comment or take further action. Another message is already waiting; your message has not been saved."
+  },
+  "webhook_port_invalid": {
+    "nl": "webhook-url heeft een ongeldige poort",
+    "en": "Webhook URL has an invalid port"
+  },
+  "webhook_address_invalid": {
+    "nl": "webhook-url heeft een ongeldige host of poort",
+    "en": "Webhook URL has an invalid host or port"
+  },
+  "webhook_scheme_invalid": {
+    "nl": "webhook-url moet http of https zijn",
+    "en": "Webhook URL must use http or https"
+  },
+  "webhook_host_missing": {
+    "nl": "webhook-url mist een host",
+    "en": "Webhook URL is missing a host"
+  },
+  "webhook_credentials_forbidden": {
+    "nl": "webhook-url mag geen gebruikersgegevens bevatten",
+    "en": "Webhook URL must not contain credentials"
+  },
+  "webhook_host_forbidden": {
+    "nl": "webhook-host niet toegestaan: {host}",
+    "en": "Webhook host not allowed: {host}"
+  },
+  "user_upload_quota": {
+    "nl": "Uploadquota van gebruiker bereikt",
+    "en": "User upload quota reached"
+  },
+  "project_upload_quota": {
+    "nl": "Uploadquota van project bereikt",
+    "en": "Project upload quota reached"
+  },
+  "file_size_limit": {
+    "nl": "Bestand te groot (max {limit} MB)",
+    "en": "File too large (maximum {limit} MB)"
+  },
+  "agent_channel_forbidden": {
+    "nl": "Een agent kan zijn eigen bezorgkanaal niet zetten ({fields}); een mens doet dat via {route}",
+    "en": "An agent cannot configure its own delivery channel ({fields}); a person must use {route}"
+  },
+  "installation_revision_conflict": {
+    "nl": "Installatie-instellingen zijn intussen gewijzigd; laad ze opnieuw",
+    "en": "Installation settings have changed; reload them"
+  },
+  "installation_invalid": {
+    "nl": "Ongeldige installatie-instellingen",
+    "en": "Invalid installation settings"
+  },
+  "installation_secret_missing": {
+    "nl": "Configureer een duurzame settings- of media-secret van minimaal 32 tekens",
+    "en": "Configure a persistent settings or media secret of at least 32 characters"
+  },
+  "installation_secret_unreadable": {
+    "nl": "Opgeslagen providerkey kan niet worden ontsleuteld",
+    "en": "The stored provider key cannot be decrypted"
+  },
+  "internal_triage_unavailable": {
+    "nl": "De interne triage-agent is niet beschikbaar",
+    "en": "The internal triage agent is unavailable"
+  },
+  "provider_test_not_ready": {
+    "nl": "Bewaar en activeer eerst een volledige providerconfiguratie",
+    "en": "Save and enable a complete provider configuration first"
+  },
+  "provider_test_failed": {
+    "nl": "Providertest mislukt; controleer endpoint, model en toegang",
+    "en": "Provider test failed; check the endpoint, model and access"
+  },
+  "configuration_preview_unavailable": {
+    "nl": "Importpreview is verlopen, gebruikt of niet beschikbaar",
+    "en": "The import preview is expired, already used or unavailable"
+  },
+  "configuration_changed": {
+    "nl": "Configuratie is gewijzigd; maak een nieuwe importpreview",
+    "en": "Configuration has changed; create a new import preview"
+  },
+  "configuration_conflicts": {
+    "nl": "Los de importconflicten op vóór bevestiging",
+    "en": "Resolve the import conflicts before confirming"
+  },
+  "webhook_test_not_ready": {
+    "nl": "Configureer en activeer eerst een webhookagent",
+    "en": "Configure and activate a webhook agent first"
+  },
+  "webhook_test_unknown": {
+    "nl": "Onbekende webhooktest",
+    "en": "Unknown webhook test"
+  }
+}

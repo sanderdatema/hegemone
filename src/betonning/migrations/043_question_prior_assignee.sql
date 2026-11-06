@@ -1,0 +1,11 @@
+-- BETON-431: een open vraag aan een mens hoort op een ticket te staan dat aan
+-- die mens is toegewezen. Bij het plaatsen van de vraag verhuist de toewijzing
+-- naar de aangesproken mens; `prior_assignee_id` onthoudt wie het ticket vóór
+-- die verhuizing had, zodat de BETON-285-teruggave na het antwoord daar
+-- naartoe kan — en niet naar `triage`, die de vraag alleen plaatste.
+--
+-- Nullable INTEGER, geen FK en geen default: NULL = "niet onthouden" (gewone
+-- comments, vragen van vóór deze migratie, vragen waarbij de toewijzing niet
+-- veranderde). Historische vragen houden daarmee het oude teruggave-gedrag.
+-- ADD COLUMN, dus geen table-recreate op de gevulde prod-db.
+ALTER TABLE comments ADD COLUMN prior_assignee_id INTEGER;

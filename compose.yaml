@@ -1,0 +1,39 @@
+name: hegemone
+services:
+  hegemone:
+    build: .
+    image: hegemone:local
+    ports:
+      - "127.0.0.1:${HEGEMONE_PORT:-8000}:8000"
+    environment:
+      HEGEMONE_SETTINGS_SECRET:
+      HEGEMONE_SETUP_TOKEN: ${HEGEMONE_SETUP_TOKEN:-}
+      HEGEMONE_MEDIA_SECRET: ${HEGEMONE_MEDIA_SECRET:?Set HEGEMONE_MEDIA_SECRET to a long random value}
+      HEGEMONE_PUBLIC_URL:
+      HEGEMONE_LANGUAGE:
+      HEGEMONE_AI_LANGUAGE:
+      HEGEMONE_LLM_BASE_URL:
+      HEGEMONE_LLM_API_KEY:
+      HEGEMONE_LLM_ENABLED:
+      HEGEMONE_LLM_TIMEOUT:
+      HEGEMONE_LLM_MODEL:
+      HEGEMONE_EMBED_BASE_URL:
+      HEGEMONE_EMBED_API_KEY:
+      HEGEMONE_EMBED_ENABLED:
+      HEGEMONE_EMBED_TIMEOUT:
+      HEGEMONE_EMBED_MODEL:
+      HEGEMONE_TRIAGE_ENABLED:
+      HEGEMONE_WIKI_COMPILE_ENABLED:
+    volumes:
+      - hegemone-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    stop_grace_period: 15s
+volumes:
+  hegemone-data:

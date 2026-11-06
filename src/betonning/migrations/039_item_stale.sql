@@ -1,0 +1,17 @@
+-- BETON-375: stale-detectie. Een item dat in een `started`-state staat maar al
+-- dagen geen activiteit heeft, hangt — triage vraagt de toegewezene dan via de
+-- vraagmodule wat de bedoeling is.
+--
+-- `stale_asked_at` is de idempotentie-marker: het moment waarop die vraag voor
+-- het laatst gesteld is. "Opnieuw vragen mag" = er is activiteit geweest ná de
+-- vraag (`last_activity > stale_asked_at`) én daarná is het weer N dagen stil.
+-- Zonder die strikte volgorde zou het vragen zélf (de vraag is een comment, en
+-- comments tellen mee in `last_activity_at`) de her-vraag-conditie meteen weer
+-- waar maken. De marker wordt daarom NA het plaatsen van de vraag gezet, en de
+-- vergelijking is strikt `>`: gelijk = "niets nieuws sinds de vraag".
+--
+-- Nullable TEXT, geen default: NULL = nog nooit gevraagd. Geen CHECK — de
+-- waarde is een ISO-timestamp zoals elke andere marker-kolom (`triaged_at`,
+-- `decomposed_at`, `locked_at`). ADD COLUMN, dus geen table-recreate op de
+-- gevulde prod-db.
+ALTER TABLE items ADD COLUMN stale_asked_at TEXT;

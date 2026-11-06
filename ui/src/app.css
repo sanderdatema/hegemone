@@ -1,0 +1,2473 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ *
+ * Design tokens
+ *
+ * Kleuren en schaduwen staan in `@theme inline` en verwijzen naar
+ * runtime-variabelen (--bg, --surface, …). Daardoor genereert Tailwind
+ * utilities (bg-surface, text-accent, …) die op gebruiksplek de runtime-
+ * variabele lezen — zodat het dark-mode-blok onderaan álle usages flipt
+ * met één set overrides. Radius/motion zijn statisch.
+ * ------------------------------------------------------------------ */
+@theme inline {
+  /* Oppervlakken */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-border-interactive: var(--border-interactive);
+  /* Tekst */
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  /* Accent */
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  /* Semantisch */
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-guardrail-border: var(--guardrail-border);
+  /* Prioriteit */
+  --color-prio-low: var(--prio-low);
+  --color-prio-low-bg: var(--prio-low-bg);
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+
+  /* Schaduw */
+  --shadow-sm: var(--sh-sm);
+  --shadow-md: var(--sh-md);
+  --shadow-lg: var(--sh-lg);
+}
+
+/* ------------------------------------------------------------------ *
+ * Runtime-waarden — één bron via light-dark() (BETON-61)
+ *
+ * Elke kleur-token draagt zijn licht- én donker-waarde in één
+ * `light-dark(licht, donker)`-definitie; welke gekozen wordt volgt de
+ * *used* color-scheme. `color-scheme: light dark` = volg het systeem
+ * (prefers-color-scheme). Een handmatige keuze forceert de color-scheme
+ * via `[data-theme]` (zie onder), en wint zo in beide richtingen van de
+ * media-query — zónder de kleuren dubbel te definiëren.
+ * ------------------------------------------------------------------ */
+:root {
+  color-scheme: light dark;
+
+  /* Neutralen met een lichte slate/koele bias (weer & water) — gekozen, niet kaal grijs.
+     Donker = diep slate/water. */
+  --bg: light-dark(#f4f6f7, #10141a);
+  --surface: light-dark(#ffffff, #191f27);
+  --surface-2: light-dark(#eceff1, #212832);
+  --surface-3: light-dark(#e3e7ea, #2a323d);
+  --border: light-dark(#dde1e5, #2a323c);
+  --border-strong: light-dark(#c7cdd3, #3a444f);
+  /* Rand van een knop (BETON-418). --border (1,31/1,28 tegen --surface) en
+     --border-strong (1,60/1,67) zijn scheidingslijnen, geen knoprand: een knop
+     met zo'n rand leest als grijs vlak en dus als uitgeschakeld. Deze waarde
+     haalt minstens 3:1 tegen alle drie de ondergronden waar knoppen op staan
+     (nagerekend met de sRGB-luminantieformule):
+       licht  #7c868f — --surface 3,71 · --bg 3,42 · --surface-2 3,21
+       donker #707b86 — --surface 3,84 · --bg 4,28 · --surface-2 3,44 */
+  --border-interactive: light-dark(#7c868f, #707b86);
+
+  --text: light-dark(#161a1e, #e9edf1);
+  --text-secondary: light-dark(#56606a, #9aa5b0);
+  --text-tertiary: light-dark(#8a949d, #6b7681);
+
+  /* Accent: warm oranje/rood (BETON-17). Licht #d1441a haalt AA-contrast
+     (≈4.6:1) met witte tekst op de primary-knop. Donker: helderder oranje
+     zodat de donkere accent-tekst (#1c1206) er leesbaar op staat. */
+  --accent: light-dark(#d1441a, #f0803c);
+  --accent-hover: light-dark(#b93c15, #f5915a);
+  --accent-soft: light-dark(#fceae1, color-mix(in srgb, var(--accent) 22%, transparent));
+  --accent-text: light-dark(#ffffff, #1c1206);
+
+  --danger: light-dark(#d64545, #e06b6b);
+  --danger-soft: light-dark(#fbecec, color-mix(in srgb, var(--danger) 20%, transparent));
+  --on-danger: #ffffff;
+  --on-solid: #ffffff; /* tekst op verzadigde vlakken (avatar, badge) — flipt niet */
+  --success: light-dark(#3d9a6c, #57b98a);
+  --success-soft: light-dark(#e9f6ef, color-mix(in srgb, var(--success) 20%, transparent));
+  --warning: light-dark(#d68f2e, #e0a94e);
+
+  /* Guardrail-markering (BETON-420). Eigen semantisch token, maar op --danger
+     gebaseerd: rood is de juiste betekenis (stop en lees eerst), en --danger is
+     al in beide thema's op contrast gecontroleerd. Een eigen hue zou dat werk
+     overdoen zonder iets toe te voegen — een eigen naam houdt de betekenis
+     wél apart, zodat de guardrail-kleur later los te verzetten is. */
+  --guardrail-border: var(--danger);
+
+  /* Overlay-doek (BETON-221) — één bron voor alle modal/drawer/sheet-
+     backdrops. Bewust niet light-dark: een halftransparant donker doek
+     werkt in beide thema's. */
+  --backdrop: rgba(20, 20, 18, 0.44);
+
+  --prio-low: light-dark(#6b7280, #9aa0a8);
+  --prio-low-bg: light-dark(#eef0f2, color-mix(in srgb, var(--prio-low) 18%, transparent));
+
+  /* Werklast (BETON-311, vervangt priority): licht=groen, middel=amber,
+     zwaar=rood — oplopende "hoeveelheid werk/tokens". */
+  --workload-light: light-dark(#5f6b76, #97a3ae);
+  --workload-medium: light-dark(#2b6cb0, #6aa5e8);
+  --workload-heavy: light-dark(#7b3fc4, #b894f0);
+
+  /* Schaduwen zijn geen kleuren → light-dark() geldt niet; de donkere set
+     komt uit het theme-blok onderaan (systeem + handmatig). */
+  --sh-sm: 0 1px 2px rgba(20, 28, 36, 0.06);
+  --sh-md: 0 1px 2px rgba(20, 28, 36, 0.06), 0 8px 24px -14px rgba(20, 28, 36, 0.22);
+  --sh-lg: 0 24px 60px -20px rgba(20, 28, 36, 0.35);
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-fast: 120ms;
+  --dur-med: 200ms;
+
+  /* Spacing-schaal (BETON-221) — gaps/paddings verwijzen hiernaar i.p.v.
+     losse px, zodat ritme centraal verstelbaar is. */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-7: 24px;
+  --space-8: 32px;
+
+  /* Typografie-schaal (BETON-221) — de discrete font-sizes uit de UI. */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 20px;
+  --leading: 1.5;
+
+  /* Z-index-lagen (BETON-221) — expliciete stapelvolgorde i.p.v. hand-
+     getunede getallen. Semantische lagen + een kleine lokale schaal voor
+     binnen-component-stacking. `+1`-varianten via calc zodat de inhoud
+     bewijsbaar één boven zijn eigen backdrop zit. */
+  --z-raised: 1; /* col-head/tabel-th/timeline-avatar boven siblings */
+  --z-sticky-header: 3; /* drawer sticky header boven zijn scrollende body */
+  --z-popover: 5; /* mention-/[[-autocomplete-dropdowns */
+  --z-bulkbar: 19;
+  --z-topbar: 20;
+  --z-overlay: 40; /* drawer-overlay + generieke overlay */
+  --z-modal: 60;
+  --z-toast: 70;
+  --z-sheet: 80;
+  --z-palette: 200;
+  --z-hints: 210;
+
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+}
+
+/* ---- Handmatige thema-override (BETON-61) ----
+   Forceer de color-scheme; light-dark() flipt alle kleur-tokens mee. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* ---- Donkere schaduwen (niet-kleur; kunnen niet via light-dark) ----
+   Actief als het systeem donker is en de gebruiker niet expliciet licht
+   koos, óf als de gebruiker donker forceert.
+
+   BEWUSTE duplicatie (BETON-221): de donkere schaduw-set staat hier twee
+   keer — één media-query-blok (systeemvoorkeur) én één [data-theme="dark"]-
+   blok (handmatige forcering). Kan NIET geconsolideerd worden zoals de
+   kleuren: `light-dark()` werkt alleen op kleurwaarden, niet op box-shadow.
+   Beide blokken moeten identiek blijven. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --sh-md: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -16px rgba(0, 0, 0, 0.6);
+    --sh-lg: 0 30px 70px -20px rgba(0, 0, 0, 0.7);
+  }
+}
+:root[data-theme="dark"] {
+  --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --sh-md: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -16px rgba(0, 0, 0, 0.6);
+  --sh-lg: 0 30px 70px -20px rgba(0, 0, 0, 0.7);
+}
+
+/* ------------------------------------------------------------------ *
+ * Basis
+ * ------------------------------------------------------------------ */
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--text-md);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  margin: 0;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+/* Scrollbars via tokens (Firefox + WebKit) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Autofill volgt het thema i.p.v. een harde witte/gele achtergrond */
+input:-webkit-autofill,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+  caret-color: var(--text);
+}
+
+/* Zichtbare focus-ring app-breed */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Form-elementen & knoppen
+ * ------------------------------------------------------------------ */
+select,
+input,
+textarea,
+button {
+  font: inherit;
+  color: var(--text);
+}
+
+select,
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+textarea {
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+textarea {
+  min-height: unset;
+}
+/* Kleurkiezer (BETON-480): de generieke input-regel (padding 6px 10px) liet in
+   een 24-34px brede swatch nog ~2px breed vlak over, dus de kleur was onzichtbaar.
+   Een kleurkiezer is geen tekstveld: eigen rand, nauwelijks padding, het vlak
+   vult de hele knop. Maat bepaalt de aanroeper (`.swatch`). */
+input[type="color"] {
+  padding: 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+input[type="color"]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 2px);
+}
+input[type="color"]::-moz-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 2px);
+}
+select:hover,
+.select-trigger:hover,
+input:hover,
+textarea:hover {
+  border-color: var(--text-tertiary);
+}
+select:focus-visible,
+.select-trigger:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Native select met eigen chevron (%23 = url-encoded #, geen kale hex) */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a8a84' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+/* Eigen keuzelijst (Select.svelte, BETON-439) — oogt als het native veld
+   hierboven, maar het menu staat in de pagina: Safari opende het native menu
+   traag. Klasse-selectors winnen van de algemene `button`-regels. */
+.select-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 34px;
+  padding: 6px 8px 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+.select-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.select-trigger > svg {
+  flex: none;
+  color: var(--text-tertiary);
+}
+.select-trigger-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.select-menu {
+  z-index: var(--z-palette);
+  min-width: var(--bits-select-anchor-width);
+  max-height: min(320px, var(--bits-select-content-available-height));
+  overflow-y: auto;
+  padding: var(--space-1);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+.select-heading {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+.select-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-3) 6px var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.select-item[data-highlighted] {
+  background: var(--surface-2);
+  outline: none;
+}
+.select-item[data-selected] {
+  font-weight: 600;
+}
+.select-check {
+  display: inline-flex;
+  width: 14px;
+  flex: none;
+  color: var(--accent);
+}
+
+/* Knopschema (BETON-418) — elke knopsoort zegt met zijn uiterlijk wat hij doet:
+     - gewone actie   `button` / `.sm`: rand --border-interactive, tekst --text
+     - primaire actie `.primary`: gevuld accent — één per scherm, plus een
+                      gekozen state in een SegmentedControl (BETON-415)
+     - aan/uit-actie  `.toggle[aria-pressed="true"]`: accent-tekst + accent-rand
+     - destructief    `.danger` (gevuld, de bevestiging) of `.danger-quiet`
+                      (danger-tekst, de trigger vóór de bevestiging)
+     - terugtrekken   `.ghost` (Annuleren/Sluiten) en `.icon-btn`: geen vlak
+     - uitgeschakeld  `:disabled` — de ENIGE plek voor verlaagde dekking of
+                      grijs-op-grijs. */
+button {
+  cursor: pointer;
+  /* inline-flex + gap houdt icoon en label naast elkaar. Nodig omdat Tailwind
+     Preflight svg op display:block zet; zonder flex valt de tekst anders ónder
+     het icoon (archief/Opslaan e.a. stapelden verticaal). */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+  border: 1px solid var(--border-interactive);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 6px 12px;
+  min-height: 34px;
+  transition:
+    background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+button:hover {
+  background: var(--surface-2);
+}
+button:active {
+  transform: translateY(0.5px);
+}
+button.primary {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  /* Lichte diepte zodat de primaire actie niet als platte accent-vlakte
+     leest (BETON-73). */
+  box-shadow: var(--shadow-sm);
+}
+button.primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+/* Destructieve variant (bv. "Ja, verwijder") — spiegelt .primary maar in
+   danger-kleur. Was ongedefinieerd → viel terug op de secundaire look
+   (BETON-73). */
+button.danger {
+  background: var(--danger);
+  color: var(--on-danger);
+  border-color: var(--danger);
+  box-shadow: var(--shadow-sm);
+}
+button.danger:hover {
+  background: color-mix(in srgb, var(--danger) 86%, black);
+  border-color: color-mix(in srgb, var(--danger) 86%, black);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* Eén consistente focus-ring voor álle knoppen — dezelfde zachte
+   accent-soft-ring als de inputs, i.p.v. de globale outline (BETON-73). */
+button:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+button.primary:focus-visible,
+button.danger:focus-visible {
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 3px var(--accent-soft);
+}
+button.link {
+  border: none;
+  background: none;
+  color: var(--accent);
+  padding: 0;
+  min-height: unset;
+  cursor: pointer;
+}
+button.link:hover {
+  background: none;
+  text-decoration: underline;
+}
+button.ghost {
+  background: none;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+button.ghost:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+button.sm {
+  padding: 5px 11px;
+  min-height: 30px;
+  font-size: var(--text-base);
+}
+/* Aan/uit-actie die aan staat (BETON-418): accent-tekst + accent-rand, geen
+   vol accent — dat blijft voor de primaire actie en een gekozen state. Bewust
+   een klasse en geen kale `button[aria-pressed]`: de nav-tabs in de topbar
+   dragen ook aria-pressed en hebben hun eigen actieve look. */
+button.toggle[aria-pressed="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+/* Trigger van een destructieve actie (verwijderen, verbreken, archiveren) —
+   de bevestiging daarna is `.danger`. Staat ná `button.ghost` (gelijke
+   specificiteit, dus bronvolgorde beslist); `.icon-btn` en `.icon-btn:hover`
+   verliezen op specificiteit (0,1,0 / 0,2,0 tegen 0,1,1 / 0,2,1). */
+button.danger-quiet {
+  color: var(--danger);
+}
+button.danger-quiet:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+/* Ghost-icoonknop (drawer/modal-acties) */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  min-height: unset;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  transition:
+    background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+.icon-btn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.icon-btn.sm {
+  padding: 4px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Bestaande component-klassen (op tokens; markup wordt per fase
+ * herzien — dit houdt de app werkend tussen fases in).
+ * ------------------------------------------------------------------ */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-topbar);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: 10px 16px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  /* BETON-453: één rij van 1024 t/m 1920px. Wat niet past krimpt of verliest
+     zijn label (zie de breekpunten onder "Topbar-breekpunten"); alleen de
+     telefoon (≤640px) mag naar twee rijen wrappen. */
+  flex-wrap: nowrap;
+}
+.tb-cluster {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+/* Middenzone: zoekveld + scope + één filter-knop (BETON-222). */
+.tb-center {
+  flex: 1 1 auto;
+  justify-content: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.tb-right {
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+}
+.tb-left {
+  flex: 0 1 auto;
+}
+
+/* Wordmerk: klein accent-vierkant + naam */
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.wordmark .mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: linear-gradient(140deg, var(--accent), var(--accent-hover));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent-text) 30%, transparent);
+  flex: 0 0 auto;
+}
+/* Boei-merkje (Betonning = boei-/bakensysteem): inline SVG, geen vlakje. */
+.wordmark .mark.buoy {
+  width: 22px;
+  height: 22px;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  display: grid;
+  place-items: center;
+}
+.wordmark .mark.buoy svg {
+  width: 22px;
+  height: 22px;
+}
+.tb-project {
+  /* BETON-348: 220px klipte de langste bestaande projectnaam af (bv.
+     "TTRPG — TTRPG Player Simulator", 30 tekens ≈ 230-260px tekst alleen al).
+     300px geeft ruim genoeg marge voor de huidige lijst + toekomstige namen
+     van vergelijkbare lengte. `.topbar` heeft `flex-wrap: wrap` als vangnet
+     mocht een naam ooit alsnog niet passen op een smal venster — dan wrapt de
+     rij, er valt niets af. Ellipsis als laatste redmiddel: een native
+     <select> knipt tekst anders stil af zonder enig signaal dat er meer is. */
+  max-width: 300px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Zoekveld met icoon */
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 160px;
+  max-width: 380px;
+  min-width: 120px;
+  /* Breedte van de scope-schakelaar rechts in het veld (BETON-453); de
+     input houdt daar padding voor vrij. */
+  --scope-w: 118px;
+}
+.search-toggle {
+  display: none;
+}
+.search .search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+/* Specificity moet minstens gelijk zijn aan de globale input-basisregel
+   (input:not(...):not(...):not(...) = (0,3,1)) zodat padding-left hier niet door de
+   basis-`padding`-shorthand wordt overschreven. */
+.search input.search-input:not([type="checkbox"]):not([type="radio"]):not([type="color"]) {
+  width: 100%;
+  /* BETON-208: zonder min-width:0 gebruikt de flex-item z'n content-breedte als
+     automatische minimumbreedte — dan groeit het zoekveld mee met de getypte
+     tekst en klapt de hele topbar-regel (flex-wrap) om. Nul houdt de layout
+     stabiel; typen neemt geen extra ruimte. */
+  min-width: 0;
+  padding-left: 32px;
+  padding-right: calc(var(--scope-w) + 8px);
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  border-color: transparent;
+}
+.search input.search-input:focus-visible {
+  background: var(--surface);
+}
+/* Zoek-scope ín het veld (BETON-453): dit project ⇄ alle projecten. */
+.search-scope {
+  position: absolute;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  box-sizing: border-box;
+  width: calc(var(--scope-w) - 4px);
+  min-height: 0;
+  height: 24px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--surface-3);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.search-scope:hover {
+  color: var(--text);
+}
+.search-scope.all {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+.tb-inbox.active {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* Filter-pills */
+.pill {
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  border-color: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+}
+.pill:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.pill.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 500;
+}
+.pill.active:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
+}
+/* Cross-project resultatenlijst (BETON-7) */
+.results {
+  padding: 8px 4px 40px;
+}
+.results-hint {
+  padding: 24px 8px;
+  text-align: center;
+}
+/* "Alle projecten"-lege staat + "Recent gewijzigd" (BETON-225) */
+.all-scope-empty {
+  padding: 8vh 16px 20px;
+}
+.all-scope-empty code {
+  background: var(--surface-2);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+}
+.all-scope-empty .empty-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--on-accent, #fff);
+}
+.recent-section {
+  padding: 4px 12px 24px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+.result-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--text);
+}
+.result-row:hover {
+  background: var(--surface-2);
+}
+.result-proj {
+  flex: none;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  min-width: 54px;
+  text-align: center;
+}
+.result-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.result-state {
+  flex: none;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+/* BETON-370: markeert een treffer die alleen in een reactie voorkomt. */
+.result-where {
+  flex: none;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+.tb-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+.tb-clear:hover {
+  color: var(--text);
+}
+
+.tb-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+/* --- Primaire nav (BETON-222): bord/lijst/wiki/inbox als tab-groep --------- */
+.tb-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface-2);
+  border-radius: var(--radius-full);
+}
+.nav-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  position: relative;
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-full);
+  font-size: var(--text-base);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+.nav-tab:hover:not(.active) {
+  color: var(--text);
+}
+.nav-tab.active {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+}
+.nav-label {
+  font-size: var(--text-base);
+}
+
+/* Filter-knop (desktop trigger én mobiel). */
+.tb-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  border-color: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  white-space: nowrap;
+}
+.tb-filter-btn:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+/* Filter-popover (desktop) — bits-ui Popover.Content. app.css is een gewoon
+   (niet Svelte-scoped) stylesheet (main.js:import "./app.css"), dus :global()
+   is hier zinloos — de Svelte-compiler ziet dit bestand nooit en laat de
+   letterlijke tekst ":global(...)" staan, wat een ongeldige CSS-selector
+   oplevert waardoor de browser de hele regel stilletjes verwerpt (BETON-252:
+   het paneel bleef daardoor volledig doorzichtig ondanks een ogenschijnlijk
+   correcte `background: var(--surface)`). Gewone selectors volstaan. */
+.tb-filter-pop {
+  z-index: var(--z-sheet);
+  width: min(320px, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Topbar-dropdownmenu's (Meer + avatar) — bits-ui DropdownMenu.Content. */
+.tb-menu {
+  z-index: var(--z-sheet);
+  min-width: 220px;
+  padding: var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+.tb-menu-head {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+.tb-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: var(--text-md);
+  text-align: left;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.tb-menu-item[data-highlighted] {
+  background: var(--surface-2);
+  outline: none;
+}
+.tb-menu-item.danger {
+  color: var(--danger);
+}
+.tb-menu-item.danger[data-highlighted] {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+.tb-menu-sep {
+  height: 1px;
+  margin: var(--space-2) 0;
+  background: var(--border);
+}
+.tb-menu-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* Snelfilters (BETON-357): togglebare chips onder de bar, wrap op smal. */
+.quick-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Actieve filters als verwijderbare chips onder de bar. */
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.fc-field {
+  color: var(--text-tertiary);
+}
+
+/* Bulk-actiebalk onder de topbar wanneer selectiemodus aanstaat. */
+.bulk-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-bulkbar);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  background: var(--accent-soft);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.bulk-count {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--accent);
+}
+.bulk-move {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+.bulk-move select,
+.bulk-move .select-trigger {
+  min-height: 30px;
+}
+.bulk-done {
+  margin-left: auto;
+}
+
+/* Live-indicator: bolletje, pulse als live */
+.live-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-full);
+  background: var(--text-tertiary);
+  flex: 0 0 auto;
+}
+.live-dot.on {
+  background: var(--success);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 60%, transparent);
+  animation: live-pulse 2s var(--ease) infinite;
+}
+@keyframes live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 55%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--success) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 0%, transparent);
+  }
+}
+
+/* Avatar-menu-trigger (BETON-222): avatar + kleine live-stip in de hoek. */
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  min-height: 0;
+  padding: 2px;
+  border: none;
+  background: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+.user-chip:hover {
+  background: var(--surface-3);
+}
+.user-live {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--surface);
+  box-sizing: content-box;
+}
+
+/* Eén rij, vaste horizontale state-volgorde (BETON-224): werk-kolommen delen
+   de beschikbare breedte gelijk (flex-grow) zolang ze passen — net als het
+   vorige grid — maar wrappen niet meer naar een volgende rij zodra dat niet
+   meer lukt; dan krijgen ze hun vaste minimumbreedte en scrollt het bord zelf
+   horizontaal. Zo blijft de workflow-volgorde altijd van links naar rechts
+   leesbaar, ongeacht schermbreedte (in plaats van kolommen die per breedte
+   van rij wisselen). `columns` komt al in vaste volgorde binnen (JS:
+   orderColumns) — de rust-rail (done/cancelled/deferred) en de Archief-kolom
+   staan dus altijd rechts, ingeklapt smal totdat je ze uitklapt. */
+/* Wrappend grid, GEEN horizontale scroll (BETON-267, keuze A). BETON-224 had
+   het bord een niet-wrappende flex-rij met `overflow-x: auto` gemaakt om een
+   vaste kolomvolgorde te garanderen — dat leverde horizontale scroll op zodra
+   niet alle kolommen pasten. Een grid met `auto-fit` behoudt die vaste volgorde
+   (kolommen staan in bron-/DOM-volgorde) maar laat ze naar een volgende RIJ
+   wrappen i.p.v. horizontaal te scrollen. `auto-fit` (niet `auto-fill`) laat de
+   kolommen de volle breedte vullen — geen dood gat rechts (BETON-76). */
+.board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-5);
+  align-items: start;
+}
+.column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--surface-2);
+  border-radius: var(--radius-lg);
+  padding: 6px 8px 8px;
+  /* BETON-486: bord-top is gemeten (lib/boardTop.js), niet geraden — een vaste
+     aftrek liet de pagina een stukje scrollen zodra er een rij filters boven
+     het bord stond. 2 × --space-5 = de padding boven en onder het bord. */
+  max-height: calc(100dvh - var(--board-top, 49px) - 2 * var(--space-5));
+  overflow-y: auto;
+  transition:
+    background var(--dur-med) var(--ease),
+    outline-color var(--dur-med) var(--ease);
+  outline: 2px dashed transparent;
+  outline-offset: -2px;
+}
+.col-head {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-raised);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 4px 8px;
+  margin: 0 -2px 2px;
+  background: var(--surface-2);
+}
+.col-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex: 0 0 auto;
+}
+.col-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+.col-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--surface-3);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+/* Kolomkop "alles selecteren" (BETON-360): hergebruikt de kaart-checkbox-
+   styling (.card-check) zodat hij visueel bij de kaart-checkboxen past. */
+.col-select-all {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: unset;
+  padding: 0;
+  border: none;
+  background: none;
+}
+.col-select-all .card-check {
+  margin-right: 0;
+}
+.col-add {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  min-height: unset;
+  padding: 0;
+  border: none;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: var(--radius-full);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.column:hover .col-add,
+.col-add:focus-visible {
+  opacity: 1;
+}
+.col-add:hover {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.column.dragover {
+  background: var(--accent-soft);
+  outline-color: var(--accent);
+}
+/* Gesloten kolommen (done/cancelled): gedempt, standaard ingeklapt (BETON-10) */
+.column.closed {
+  background: var(--surface);
+}
+.column.closed .col-head {
+  background: var(--surface);
+}
+.column.closed .col-name {
+  color: var(--text-tertiary);
+}
+.column.closed .col-count {
+  margin-left: auto;
+}
+/* Ingeklapte kolom (BETON-224): smalle strook in de rust-rail i.p.v. een
+   volle kolombreedte. Uitklappen (`.closed` zónder `.collapsed`) laat 'm weer
+   meedelen als gewone kolom binnen dezelfde rij (geen aparte cel/rij). */
+.column.collapsed {
+  flex: 0 0 168px;
+  min-width: 168px;
+  padding-bottom: 6px;
+}
+/* Archief-kolom (BETON-100): eigen, duidelijk-gescheiden weergave i.p.v.
+   gearchiveerde items in een normale (backlog/etc.) kolom te laten hangen.
+   Alleen aanwezig zolang de archief-toggle aanstaat en er iets in zit. */
+.column.archive-col {
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+}
+.column.archive-col .col-head {
+  background: var(--surface);
+}
+.col-collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  min-height: unset;
+  border: none;
+  background: none;
+  /* --text-tertiary haalde 3,09/3,58 (BETON-418). */
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease);
+}
+.col-collapse:hover {
+  color: var(--text);
+}
+.col-nav-chip.closed {
+  color: var(--text-tertiary);
+}
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  cursor: grab;
+  box-shadow: var(--shadow-sm);
+  transition:
+    box-shadow var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease),
+    opacity var(--dur-fast) var(--ease);
+  /* Fade-in op mount: kaarten zijn keyed op ref, dus dit speelt alleen bij
+     een net-verplaatste of nieuwe kaart (en éénmalig bij eerste load), niet
+     bij stille refreshes. */
+  animation: card-in var(--dur-med) var(--ease);
+}
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.card:active {
+  cursor: grabbing;
+}
+.card.dragging {
+  opacity: 0.5;
+  box-shadow: var(--shadow-sm);
+}
+/* Guardrail (BETON-420): een rode ring om de kaart. Bewust een `outline` met
+   negatieve offset en geen `border` — `.card` heeft helemaal geen rand (alleen
+   een schaduw), dus `border-color` zou niets doen en een echte border zou elke
+   gemarkeerde kaart 2px groter maken. Zelfde truc als `.card.selected`, en die
+   staat er bewust NA: selectie is de handeling van dit moment en mag de ring
+   tijdelijk overnemen (gelijke specificiteit, dus de bronvolgorde beslist). */
+.card.card-guardrail {
+  outline: 2px solid var(--guardrail-border);
+  outline-offset: -2px;
+}
+/* Multi-select (BETON-14): selecteerbare kaart wijst niet naar grab; een
+   geselecteerde kaart krijgt een accent-rand. */
+.card.selectable {
+  cursor: pointer;
+}
+.card.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  box-shadow: var(--shadow-md);
+}
+/* Focusring binnen de kaart (BETON-432). De globale `:focus-visible` legt hem
+   2px búiten het element; bij de bovenste kaart viel die rand dan onder de
+   sticky kolomkop (die staat maar 2px hoger) en leek de selectie bovenaan
+   af te breken. Ook de globale radius zou de kaart hoekiger maken. */
+.card:focus-visible {
+  outline-offset: -2px;
+  border-radius: var(--radius-md);
+}
+.card-check {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  margin-right: 6px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  position: relative;
+}
+.card-check.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.card-check.on::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--accent-text);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+/* Ref (en een archief-badge erachter) links, markeringen samen rechts. Zonder
+   deze auto-marge verdeelt space-between elk icoon over de breedte en staat
+   bv. het guardrail-schild midden op de kaart. */
+.card .ref {
+  margin-right: auto;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.card .ref:has(+ .card-arch-badge) {
+  margin-right: 0;
+}
+.card .card-arch-badge {
+  margin-right: auto;
+}
+.card-title {
+  margin: 3px 0 0;
+  font-size: var(--text-md);
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.card-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 9px;
+}
+/* Klein, gedempt aanmaakmoment — nu op dezelfde onderste rij als de labels en
+   de avatar i.p.v. een aparte regel eronder, zodat de avatar echt rechtsonder
+   op de kaart staat (BETON-85). */
+.card-date {
+  flex: 0 0 auto;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.card-labels {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.label-chip {
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  /* light-dark() volgt de color-scheme → flipt mee met systeem én handmatig. */
+  background: light-dark(hsl(var(--label-h) 62% 90%), hsl(var(--label-h) 28% 26%));
+  color: light-dark(hsl(var(--label-h) 42% 32%), hsl(var(--label-h) 68% 78%));
+  white-space: nowrap;
+}
+.col-dropzone {
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  text-align: center;
+  padding: 20px 8px;
+  margin-bottom: 8px;
+}
+
+/* Gedeelde overlay-backdrop-basis (BETON-221): één definitie van de donkere
+   achtergronddoek (positie/doek/animatie). De specifieke overlays voegen
+   alleen hun eigen z-index toe (en waar nodig hun flex-uitlijning). */
+.overlay-backdrop,
+.overlay,
+.drawer-overlay,
+.modal-overlay,
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--backdrop);
+  animation: overlay-in var(--dur-med) var(--ease);
+}
+
+.overlay {
+  z-index: var(--z-overlay);
+  display: flex;
+  justify-content: flex-end;
+}
+.drawer {
+  width: min(720px, 100%);
+  height: 100%;
+  background: var(--surface);
+  padding: 20px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Gedeelde bits-ui drawer-dialog (DrawerDialog.svelte, BETON-172) — zelfde
+   rechter-paneel-look als de handgemaakte .overlay/.drawer, maar dan met
+   focus-trap/Esc/focus-return/aria-modal via bits-ui. Overlay en content zijn
+   siblings (geportald naar body), dus de content positioneert zichzelf i.p.v.
+   als flex-child van de overlay. */
+.drawer-overlay {
+  z-index: var(--z-overlay);
+}
+.drawer-dialog {
+  position: fixed;
+  z-index: calc(var(--z-overlay) + 1);
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: var(--drawer-w, min(720px, 100%));
+  background: var(--surface);
+  padding: 20px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  animation: overlay-in var(--dur-med) var(--ease);
+}
+
+/* Enkel-voor-screenreaders (bv. de verplichte Dialog.Title bij panelen met een
+   eigen zichtbare kop). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* bits-ui Dialog (geportald naar body) — NewItem-modal */
+.modal-overlay {
+  z-index: var(--z-modal);
+}
+.modal {
+  position: fixed;
+  z-index: calc(var(--z-modal) + 1);
+  left: 50%;
+  top: 12vh;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 32px));
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 24px;
+  animation: modal-in var(--dur-med) var(--ease);
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.modal-title {
+  font-size: var(--text-xl);
+  font-weight: 600;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 12px 0;
+  flex: 1;
+}
+.field span {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.field-row {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: 16px;
+}
+
+/* Nieuw-ticket progressive disclosure (BETON-229): hint-regel boven de
+   knoppen + de "Meer opties"-disclosure die de zeldzaam gebruikte velden
+   (status/prioriteit/toewijzing/data/labels/afbeelding) inklapt. */
+.hint {
+  font-size: var(--text-sm);
+  margin: 0;
+}
+.more-options {
+  margin-top: var(--space-3);
+}
+.more-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  padding: 4px 0;
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  font-weight: 500;
+  cursor: pointer;
+}
+.more-toggle:hover {
+  color: var(--text);
+}
+.more-content {
+  margin-top: var(--space-3);
+}
+
+/* Relatie-veld in het nieuw-ticket-formulier (BETON-247), mirror van de
+   drawer-relatiesectie (Drawer.svelte's scoped .rel-*-stijlen) — hier globaal
+   in app.css omdat NewItem.svelte de gedeelde `.mention-list`/`.dchips` al
+   ongescoped hergebruikt. */
+.rel-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.rel-box {
+  position: relative;
+  flex: 1;
+  min-width: 120px;
+}
+.rel-target {
+  width: 100%;
+}
+/* BETON-350: de suggestielijst matchte exact de breedte van het relatie-
+   invoerveld — en dat veld staat altijd in de 288px-brede rail (BETON-248
+   dwingt daar altijd de volle-breedte kolomstapel af, ongeacht schermbreedte),
+   dus elke wat langere tickettitel klipte af tot onleesbaars ("Moeilijkheids-
+   graden als ec…"). Ankeren op de rechterkant en naar links laten groeien:
+   rechts is de rand van de rail (viewportrand dichtbij), links is de bredere
+   hoofdkolom van de drawer — daar is de ruimte. `min-width: 100%` houdt 'm
+   nooit smaller dan het veld zelf.
+   De eerste versie van deze fix capte op 360px — een gok die nog steeds
+   afkapte: live gemeten (BETON-350-vervolg) heeft een gemiddelde tickettitel
+   hier een natuurlijke breedte van ~770px, en het bureaublad-viewport heeft
+   daar ruimschoots plek voor (drawer-hoofdkolom loopt door tot de rechterkant
+   van de rail). Cap daarom alleen op de viewport, niet meer op een vaste
+   waarde — de ellipsis blijft het vangnet voor wat ook dán niet past. */
+.rel-box .mention-list {
+  left: auto;
+  right: 0;
+  min-width: 100%;
+  width: max-content;
+  max-width: calc(100vw - 40px);
+}
+.rel-suggest-ref {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  margin-right: 6px;
+  white-space: nowrap;
+}
+.rel-box .mention-list li {
+  display: flex;
+  align-items: baseline;
+  overflow: hidden;
+}
+.rel-box .mention-list li .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rel-pending-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 0;
+}
+.rel-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  padding: 4px 8px;
+  width: fit-content;
+  max-width: 100%;
+}
+.rel-type-tag {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  flex: 0 0 auto;
+}
+.rel-chip-target {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rel-x {
+  display: inline-flex;
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  padding: 3px;
+  min-height: unset;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+.rel-x:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 8px 0;
+  flex-wrap: wrap;
+}
+.label {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  min-width: 80px;
+}
+.comment {
+  border-top: 1px solid var(--border);
+  padding: 8px 0;
+}
+.comment .meta {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+.mention-box {
+  position: relative;
+}
+.mention-list {
+  position: absolute;
+  z-index: var(--z-popover);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 4px;
+  min-width: 160px;
+  box-shadow: var(--shadow-md);
+}
+.mention-list li {
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.mention-list li:hover,
+.mention-list li.active {
+  background: var(--accent-soft);
+}
+.login {
+  max-width: 400px;
+  margin: 14vh auto;
+  background: var(--surface);
+  padding: 32px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+}
+.login-mark {
+  font-size: 22px;
+}
+.login-mark .mark {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+}
+.login-sub {
+  margin: 12px 0 20px;
+  font-size: var(--text-base);
+}
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.login-form input,
+.login-form button {
+  width: 100%;
+}
+.error {
+  color: var(--danger);
+  font-size: var(--text-base);
+}
+.muted {
+  color: var(--text-secondary);
+}
+
+/* @mention-chip in gerenderde markdown (BETON-60). Accent-tint via tokens,
+   dus thema-veilig in beide modi. */
+.mention {
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 0 5px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.desc {
+  background: var(--surface-2);
+  padding: 10px;
+  border-radius: var(--radius-md);
+}
+.desc p {
+  margin: 4px 0;
+}
+
+/*
+ * Markdown-rendering binnen .md-containers (wiki-view BETON-127/129).
+ * .desc/.md worden samen gebruikt; .md is de hook voor volledige markdown-
+ * styling, terwijl de smalle drawer met alleen .desc de platte basis behoudt.
+ */
+.md > :first-child {
+  margin-top: 0;
+}
+.md > :last-child {
+  margin-bottom: 0;
+}
+/* Koptrap H1–H6 (BETON-129): volledige hiërarchie in de brede wiki-view. */
+.md h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 20px 0 10px;
+  line-height: 1.3;
+}
+.md h2 {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  margin: 18px 0 8px;
+  line-height: 1.3;
+}
+.md h3 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin: 16px 0 6px;
+  line-height: 1.35;
+}
+.md h4 {
+  font-size: var(--text-md);
+  font-weight: 600;
+  margin: 14px 0 4px;
+  line-height: 1.35;
+}
+.md h5 {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 12px 0 4px;
+  line-height: 1.35;
+}
+.md h6 {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  margin: 10px 0 4px;
+  line-height: 1.35;
+}
+/* GFM-tabellen (BETON-127). */
+.md table {
+  border-collapse: collapse;
+  /* BETON-458: de tabel krijgt zijn natuurlijke breedte en scrolt horizontaal
+     in de smalle drawer, i.p.v. de eerste kolom per letter af te breken. */
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 10px 0;
+  font-size: var(--text-base);
+}
+.md th,
+.md td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.md th:first-child,
+.md td:first-child {
+  min-width: 12ch;
+}
+/* <details>/<summary> uit de markdown-whitelist (BETON-458). */
+.md details {
+  margin: 8px 0;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.md summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.md th {
+  background: var(--surface-3);
+  font-weight: 600;
+}
+.md tr:nth-child(2n) td {
+  background: color-mix(in srgb, var(--surface-3) 50%, transparent);
+}
+/* Codeblokken en inline code. */
+.md pre {
+  background: var(--surface-3);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  margin: 10px 0;
+}
+.md pre code {
+  background: none;
+  padding: 0;
+  font-size: var(--text-base);
+  line-height: 1.5;
+}
+.md code {
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  background: var(--surface-3);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.92em;
+}
+/* Blockquote, lijsten, afbeeldingen. */
+.md blockquote {
+  margin: 10px 0;
+  padding: 2px 12px;
+  border-left: 3px solid var(--border-strong);
+  color: var(--text-secondary);
+}
+.md blockquote p {
+  margin: 4px 0;
+}
+.md ul,
+.md ol {
+  margin: 8px 0;
+  padding-left: 22px;
+}
+.md ul {
+  list-style: disc outside;
+}
+.md ol {
+  list-style: decimal outside;
+}
+.md li > ul,
+.md li > ol {
+  margin: 2px 0;
+}
+.md li {
+  margin: 2px 0;
+}
+.md img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+.md hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 14px 0;
+}
+.md a {
+  color: var(--accent);
+}
+
+.toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: var(--z-toast);
+  max-width: 360px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: var(--danger);
+  color: var(--on-danger);
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--text-base);
+  animation: toast-in var(--dur-med) var(--ease);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.toast .x {
+  display: inline-flex;
+  border: none;
+  background: none;
+  color: var(--on-danger);
+  cursor: pointer;
+  padding: 2px;
+  min-height: unset;
+  border-radius: var(--radius-sm);
+  opacity: 0.85;
+}
+.toast .x:hover {
+  background: color-mix(in srgb, var(--on-danger) 20%, transparent);
+  opacity: 1;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 14vh 16px;
+  gap: var(--space-2);
+}
+.empty-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  background: linear-gradient(140deg, var(--accent), var(--accent-hover));
+  box-shadow: var(--shadow-md);
+  margin-bottom: 10px;
+}
+.empty-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin: 0;
+}
+.col-empty {
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  padding: 10px 0;
+}
+/* "Toon meer" op een begrensde (closed_limit) kolom, BETON-359. */
+.col-more {
+  width: 100%;
+  margin-top: 2px;
+  padding: 6px 0;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  min-height: unset;
+}
+.col-more:hover:not(:disabled) {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.col-more:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Skeleton-loading (alleen bij eerste/lege load) */
+.skel {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    var(--surface-3) 0%,
+    color-mix(in srgb, var(--surface-3) 55%, var(--surface)) 50%,
+    var(--surface-3) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: var(--radius-sm);
+  animation: skel-pulse 1.4s ease-in-out infinite;
+}
+.skel-head {
+  height: 14px;
+  width: 45%;
+  margin: 8px 4px 10px;
+}
+.skel-card {
+  cursor: default;
+  pointer-events: none;
+}
+.skel-line {
+  height: 10px;
+  width: 100%;
+  margin-bottom: 7px;
+}
+.skel-line.short {
+  width: 30%;
+}
+.skel-line.med {
+  width: 65%;
+  margin-bottom: 0;
+}
+@keyframes skel-pulse {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Skeleton-uitbreidingen voor <Skeleton> (BETON-226): rij (avatar + regel,
+   voor lijst/inbox/tijdlijn-rijen) en kaart-blok (Agents-kaarten). */
+.skel-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.skel-avatar {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+}
+.skel-row .skel-line {
+  margin-bottom: 0;
+}
+.skel-card-block {
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+/* ------------------------------------------------------------------ *
+ * Mobiel-only controls (standaard verborgen op desktop) + bottomsheet
+ * ------------------------------------------------------------------ */
+.filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.col-nav {
+  display: none;
+}
+
+/* Eenmalige touch-hint (BETON-172): drag&drop staat op touch uit, dus leggen
+   we uit dat de status via de kaart-drawer wijzigt. Subtiel, in de huisstijl. */
+.drag-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  line-height: 1.35;
+}
+.drag-hint > svg {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+.drag-hint span {
+  flex: 1;
+}
+.drag-hint-close {
+  flex: 0 0 auto;
+}
+
+.sheet-overlay {
+  z-index: var(--z-sheet);
+  display: flex;
+  align-items: flex-end;
+}
+.sheet {
+  width: 100%;
+  background: var(--surface);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: var(--shadow-lg);
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
+  animation: sheet-in var(--dur-med) var(--ease);
+}
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.sheet-grip {
+  display: block;
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  margin: 6px auto 12px;
+}
+.sheet-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.sheet-title {
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+.sheet-done {
+  width: 100%;
+  margin-top: 14px;
+}
+
+/* ---- Topbar-breekpunten (BETON-453) ----------------------------------- *
+ * Eén rij van 1024 t/m 1920px. Volgorde van inleveren:
+ *   ≤1360  labels van de view-knoppen weg (icoon + title/aria-label)
+ *   ≤1180  "Nieuwe ticket" → +-icoon, "Filter" → icoon, scope-label weg,
+ *          smallere projectkiezer, wordmerk-tekst weg
+ *   ≤900   zoekveld → zoek-icoon dat het veld uitklapt (zie .search.open)
+ * Op de telefoon (≤640) geldt de mobiele indeling verderop.              */
+@media (max-width: 1360px) {
+  .nav-label {
+    display: none;
+  }
+  .nav-tab {
+    padding: var(--space-1) var(--space-2);
+  }
+}
+@media (max-width: 1180px) {
+  .topbar {
+    gap: var(--space-3);
+  }
+  .tb-label,
+  .tb-filter-label,
+  .search-scope-label,
+  .topbar .wordmark-text {
+    display: none;
+  }
+  .tb-new {
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+  .tb-project {
+    max-width: 200px;
+  }
+  .search {
+    --scope-w: 38px;
+  }
+}
+@media (min-width: 641px) and (max-width: 900px) {
+  .search:not(.open) {
+    display: none;
+  }
+  .search.open {
+    flex: 1 1 140px;
+    min-width: 100px;
+  }
+  .search-toggle {
+    display: inline-flex;
+  }
+  .search-toggle.open {
+    display: none;
+  }
+}
+
+/* ---- Tablet ---- */
+@media (max-width: 900px) {
+  .tb-project {
+    /* BETON-348: was 170px, klipte middellange namen al af. Ellipsis (basis-
+       regel hierboven) blijft het vangnet voor wat ook op 220px niet past. */
+    max-width: 220px;
+  }
+}
+
+/* ---- Telefoon t/m kleine tablet: bord als verticale stapel ---- */
+/* BETON-224 maakte het bord op desktop een niet-wrappende flex-rij met
+   horizontale scroll. Onder 820px (telefoon t/m kleine tablet) draaien we terug
+   naar een verticale stapel met kolom-nav-chips: géén horizontale scroll en geen
+   kolommen die buiten beeld vallen (BETON-255 — in de 641–820-band waren de
+   chips verborgen én scrollde het bord horizontaal, waardoor rechter kolommen
+   onbereikbaar raakten). Boven 820px blijft de horizontale-scroll-rij staan. */
+@media (max-width: 820px) {
+  .col-nav {
+    display: flex;
+    gap: var(--space-2);
+    overflow-x: auto;
+    padding: 8px 12px 2px;
+    scrollbar-width: none;
+  }
+  .col-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .col-nav-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    white-space: nowrap;
+    min-height: 34px;
+    padding: 5px 12px;
+    border-radius: var(--radius-full);
+    background: var(--surface-2);
+    border-color: transparent;
+    font-size: var(--text-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+  }
+  .col-nav-count {
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Eén full-width kolom per rij (verticale stapel); de col-nav-chips springen
+     ernaartoe. `flex-wrap: nowrap` is bewust: bij `wrap` kan een flex-container
+     met kolom-richting én een (in sommige engines, bv. WebKit) oplosbare hoogte
+     naar een TWEEDE kolom wrappen die dan onder `overflow-x: visible` buiten
+     beeld valt — precies de "kolommen vallen weg"-regressie. Een verticale
+     stapel hoort nooit te wrappen. Geen interne kolom-scroll — de pagina scrollt. */
+  .board {
+    /* Overschrijf het desktop-grid expliciet met flex: één full-width kolom per
+       rij. Zonder `display: flex` zou het `auto-fit`-grid hier meerdere kolommen
+       tonen i.p.v. een verticale stapel. */
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    overflow-x: visible;
+    gap: var(--space-4);
+    padding: 8px 0 calc(12px + env(safe-area-inset-bottom));
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  .column,
+  .column.collapsed {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    max-height: none;
+    overflow-y: visible;
+    /* Bij chip-navigatie niet onder de sticky topbar belanden. */
+    scroll-margin-top: 112px;
+  }
+  /* Kolomkop niet sticky in de verticale stapel — hij zou onder de sticky
+     topbar schuiven en onzichtbaar blijven plakken. */
+  .col-head {
+    position: static;
+  }
+}
+
+/* ---- Telefoon ---- */
+@media (max-width: 640px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding: 8px 12px;
+    padding-top: calc(8px + env(safe-area-inset-top));
+  }
+  .tb-cluster {
+    gap: var(--space-3);
+  }
+  .tb-left {
+    /* Geen flex-grow: anders claimt dit cluster de hele rijbreedte (ook
+       voorbij zijn eigen inhoud) en wordt .tb-right naar een 3e regel
+       geduwd. Alleen shrink toestaan zodat een lange projectnaam niet
+       overflowt. */
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .tb-right {
+    order: 2;
+    flex: 0 0 auto;
+  }
+  .tb-center {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  .search {
+    flex: 1 1 auto;
+    max-width: none;
+    --scope-w: 118px;
+  }
+  /* Scope-label blijft op de telefoon zichtbaar: er is een hele rij ruimte. */
+  .topbar .search-scope-label {
+    display: inline;
+  }
+  /* Nav icoon-only op telefoon (labels weg) + "Nieuw ticket"-tekst weg. */
+  .nav-label,
+  .tb-label {
+    display: none;
+  }
+  .nav-tab {
+    padding: var(--space-1) var(--space-2);
+  }
+  .tb-new {
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+  /* Wordmerk-tekst weg (alleen het icoontje blijft) — geeft ruim genoeg
+     marge zodat tb-left + tb-right samen op rij 1 passen, ook op de
+     kleinste ondersteunde breedte (≥360px), zonder het project-select
+     tot onleesbaars te moeten uitknijpen. */
+  .topbar .wordmark-text {
+    display: none;
+  }
+  .tb-project {
+    max-width: 140px;
+  }
+
+  .card {
+    padding: 12px 14px;
+  }
+  .card-title {
+    font-size: var(--text-md);
+  }
+
+  button,
+  select,
+  .select-trigger,
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea {
+    min-height: 40px;
+  }
+  .icon-btn {
+    min-height: 40px;
+    min-width: 40px;
+  }
+  .live-dot {
+    display: none;
+  }
+
+  .drawer,
+  .drawer-dialog {
+    width: 100dvw;
+    padding: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .modal {
+    top: 0;
+    left: 0;
+    transform: none;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+    padding: 16px;
+    padding-top: calc(16px + env(safe-area-inset-top));
+    animation: modal-in-mobile var(--dur-med) var(--ease);
+  }
+  @keyframes modal-in-mobile {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .field-row {
+    flex-direction: column;
+  }
+
+  .toast {
+    left: 12px;
+    right: 12px;
+    max-width: none;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+}

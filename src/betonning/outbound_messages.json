@@ -1,0 +1,502 @@
+{
+  "build_agent_policy.1": {
+    "en": "The current state blocks execution; only comments are allowed.",
+    "nl": "De huidige state blokkeert uitvoering; alleen comments zijn toegestaan."
+  },
+  "stand_down_reason.1": {
+    "en": "this item is no longer assigned to you",
+    "nl": "dit item is niet langer aan jou toegewezen"
+  },
+  "stand_down_reason.2": {
+    "en": "this item is archived",
+    "nl": "dit item is gearchiveerd"
+  },
+  "stand_down_reason.3": {
+    "en": "this item is blocked by another item",
+    "nl": "dit item is geblokkeerd door een ander item"
+  },
+  "stand_down_reason.4": {
+    "en": "this item is marked as a duplicate; the canonical item takes precedence",
+    "nl": "dit item is gemarkeerd als duplicaat; het canonieke item telt"
+  },
+  "stand_down_reason.5": {
+    "en": "this item is cancelled",
+    "nl": "dit item is geannuleerd"
+  },
+  "stand_down_reason.6": {
+    "en": "this item is complete",
+    "nl": "dit item is afgerond"
+  },
+  "instruction_reason.1": {
+    "en": "someone",
+    "nl": "iemand"
+  },
+  "instruction_reason.2": {
+    "en": "the work has been unblocked and may now be picked up",
+    "nl": "het werk is vrijgegeven en mag nu opgepakt worden"
+  },
+  "instruction_reason.3": {
+    "en": "{p0} mentioned you in a comment",
+    "nl": "{p0} noemde je in een comment"
+  },
+  "instruction_reason.4": {
+    "en": "this item is assigned to you",
+    "nl": "dit item is aan jou toegewezen"
+  },
+  "instruction_reason.5": {
+    "en": "you were previously involved in this item",
+    "nl": "je was eerder bij dit item betrokken"
+  },
+  "instruction_reason.6": {
+    "en": "you follow all items (subscribe_all)",
+    "nl": "je leest mee op alle items (subscribe_all)"
+  },
+  "instruction_reason.7": {
+    "en": "something changed on this item",
+    "nl": "er is iets op dit item veranderd"
+  },
+  "action_do.1": {
+    "en": "No action required; this is informational only.",
+    "nl": "Geen actie vereist; dit is louter ter info."
+  },
+  "action_do.2": {
+    "en": "Respond substantively to {p0} in a comment, from your role.",
+    "nl": "Reageer inhoudelijk op {p0} via een comment, vanuit jouw rol."
+  },
+  "action_do.3": {
+    "en": "Pick up the work on {p0} and carry it out.",
+    "nl": "Pak het werk op {p0} op en voer het uit."
+  },
+  "action_do.4": {
+    "en": "Follow {p0}; respond in a comment if needed.",
+    "nl": "Lees mee op {p0}; reageer via een comment als dat nodig is."
+  },
+  "action_do.5": {
+    "en": "Read the answer on {p0} and resume the work that was waiting for it.",
+    "nl": "Lees het antwoord op {p0} en hervat het werk dat erop wachtte."
+  },
+  "action_do.6": {
+    "en": "Stop working on {p0}. This is no longer yours; there is nothing left to do.",
+    "nl": "Stop met het werk aan {p0}. Dit is niet (meer) van jou; er valt niets meer te doen."
+  },
+  "action_do_not.1": {
+    "en": "This comment is addressed to someone else; do not join the conversation.",
+    "nl": "Deze comment is aan iemand anders gericht — praat niet mee."
+  },
+  "action_do_not.2": {
+    "en": "You are only following through subscribe_all; do not respond.",
+    "nl": "Je leest alleen mee via subscribe_all — reageer niet."
+  },
+  "action_do_not.3": {
+    "en": "No action was requested from you; do not post a comment.",
+    "nl": "Er is geen actie van je gevraagd — plaats geen comment."
+  },
+  "action_do_not.4": {
+    "en": "Do not pick up the work; do not change state or assignee.",
+    "nl": "Pak het werk niet op; wijzig state of assignee niet."
+  },
+  "action_do_not.5": {
+    "en": "Do not archive or cancel anything; do not touch other tickets.",
+    "nl": "Archiveer of cancel niets; raak geen andere tickets aan."
+  },
+  "action_do_not.6": {
+    "en": "Do not execute anything; the current state (`{p0}`) forbids it. Only responding is allowed.",
+    "nl": "Voer niets uit — de huidige status (`{p0}`) verbiedt het; alleen reageren mag."
+  },
+  "action_do_not.7": {
+    "en": "Do not ask the same question again.",
+    "nl": "Stel dezelfde vraag niet opnieuw."
+  },
+  "action_do_not.8": {
+    "en": "Do not continue working on this item or finish anything off.",
+    "nl": "Werk niet verder aan dit item en rond niets meer 'even af'."
+  },
+  "action_do_not.9": {
+    "en": "Do not post a comment or change state, assignee or labels.",
+    "nl": "Plaats geen comment; wijzig state, assignee of labels niet."
+  },
+  "action_do_not.10": {
+    "en": "Do not claim this item or pick it up again.",
+    "nl": "Claim dit item niet en pak het niet (opnieuw) op."
+  },
+  "action_do_not.11": {
+    "en": "Do not apply the old project conventions anymore.",
+    "nl": "Pas de conventies van het oude project niet meer toe."
+  },
+  "action_do_not.12": {
+    "en": "Your access level on this project is `respond`: you may respond, but may not pick up work.",
+    "nl": "Je toegangsniveau op dit project is `respond`: oppakken mag niet, reageren wel."
+  },
+  "action_read.1": {
+    "en": "the ticket with its description and comments",
+    "nl": "het ticket met omschrijving en comments"
+  },
+  "action_read.2": {
+    "en": "full context is needed to respond or act meaningfully",
+    "nl": "volledige context nodig om zinvol te reageren of te handelen"
+  },
+  "action_read.3": {
+    "en": "memory for the NEW project",
+    "nl": "geheugen van het NIEUWE project"
+  },
+  "action_read.4": {
+    "en": "the new project conventions now apply, rather than the old ones",
+    "nl": "je conventies zijn nu die van het nieuwe project, niet het oude"
+  },
+  "action_read.5": {
+    "en": "the work plan/handover",
+    "nl": "het werkplan/handover"
+  },
+  "action_read.6": {
+    "en": "a more capable model provided a detailed work plan here",
+    "nl": "een zwaarder model zette hier een gedetailleerd werkplan neer"
+  },
+  "action_read.7": {
+    "en": "project and global memory (wiki)",
+    "nl": "project- en globaal geheugen (wiki)"
+  },
+  "action_read.8": {
+    "en": "conventions and project knowledge needed to carry out the work",
+    "nl": "conventies en projectkennis om het werk uit te voeren"
+  },
+  "action_read.9": {
+    "en": "project and global memory (wiki)",
+    "nl": "project- en globaal geheugen (wiki)"
+  },
+  "action_read.10": {
+    "en": "conventions needed to respond substantively",
+    "nl": "conventies die je nodig hebt om inhoudelijk te reageren"
+  },
+  "build_instructions.1": {
+    "en": "POST {p0}/api/v1/items/{p1}/comments with JSON {{\"body_md\": \"...\"}} (or MCP tool comment_item). Authenticate with your own Bearer key.",
+    "nl": "POST {p0}/api/v1/items/{p1}/comments met JSON {{\"body_md\": \"...\"}} (of MCP-tool comment_item). Auth: je eigen Bearer-key."
+  },
+  "build_instructions.2": {
+    "en": "You were asked to respond to {p0} ({p1}). Fetch the ticket yourself (`get_item(ref)` or GET {p2}) for its description and comments, and post a substantive comment from your role.",
+    "nl": "Je bent gevraagd te reageren op {p0} ({p1}). Haal het ticket zelf op (`get_item(ref)` of GET {p2}) voor de omschrijving en comments, en plaats een inhoudelijke reactie vanuit jouw rol via een comment."
+  },
+  "build_instructions.3": {
+    "en": "{p0} is assigned to you and may be picked up ({p1}). Fetch the ticket (`get_item(ref)` or GET {p2}), carry out the work and report progress or completion in a comment.",
+    "nl": "{p0} is aan jou toegewezen en mag opgepakt worden ({p1}). Haal het ticket op (`get_item(ref)` of GET {p2}), voer het werk uit en koppel voortgang/afronding terug via een comment."
+  },
+  "build_instructions.4": {
+    "en": " Work class: {p0} — your model: {p1}.",
+    "nl": " Werkklasse: {p0} — voor jou: {p1}."
+  },
+  "build_instructions.5": {
+    "en": "You are involved in {p0} ({p1}), but the current state (`{p2}`) blocks execution; only responding is allowed. Fetch the ticket (`get_item(ref)` or GET {p3}) and respond in a comment if needed.",
+    "nl": "Je bent betrokken bij {p0} ({p1}), maar de huidige status (`{p2}`) blokkeert uitvoering — alleen reageren mag. Haal het ticket op (`get_item(ref)` of GET {p3}) en reageer via een comment als dat nodig is."
+  },
+  "build_instructions.6": {
+    "en": "For information: {p0} changed ({p1}). No action is expected from you; you may respond if you have something to add.",
+    "nl": "Ter info: {p0} is gewijzigd ({p1}). Er wordt geen actie van je verwacht; reageren mag als je iets toe te voegen hebt."
+  },
+  "build_instructions.7": {
+    "en": "The person answered your question on {p0}, and all open questions on this item have now been answered. The answer is INLINE on the question comment (`kind='question'`): read `answer_text` there (and `answer_option_index` for a choice); there is NO separate answer comment. Fetch the item (for example with MCP tool `get_item` or the API) to read the answer, then resume the work waiting for it and report progress or completion in a comment.",
+    "nl": "De mens heeft je vraag op {p0} beantwoord, en alle openstaande vragen op dit item zijn nu beantwoord. Het antwoord staat INLINE op de vraag-comment (`kind='question'`): lees daar `answer_text` (en bij een keuze `answer_option_index`) — er is GÉÉN los antwoord-comment. Haal het item op (bv. via de MCP-tool `get_item` of de API) om het antwoord te lezen, en hervat daarna het werk dat op dit antwoord wachtte; koppel voortgang of afronding terug via een comment."
+  },
+  "build_instructions.8": {
+    "en": "STOP working on {p0}: {p1}. This is not a request to do something, but to STOP what you were doing. Do not finish anything, post a comment or change this item. If you were working on it, let it go and continue your other work.",
+    "nl": "STOP met het werk aan {p0}: {p1}. Dit is geen verzoek om iets te doen, maar om te STOPPEN met wat je aan het doen was. Rond niets meer af, plaats geen comment en wijzig niets aan dit item. Was je hiermee bezig, laat het dan los en ga verder met je andere werk."
+  },
+  "build_instructions.9": {
+    "en": "{p0} Respond through: {p1}",
+    "nl": "{p0} Reageren doe je via: {p1}"
+  },
+  "wiki_advertisement.1": {
+    "en": "Hegemone is your memory provider (LLM wiki). Load the full content through context_url (or `load_memory`/`get_memory_page`) before working on the task. Update the wiki through the API/MCP when you learn something durable.",
+    "nl": "Hegemone is je memory-provider (LLM-wiki). Laad de volledige inhoud via 'context_url' (of `load_memory`/`get_memory_page`) vóór je aan de taak werkt. Werk de wiki bij via de API/MCP als je iets duurzaams leert."
+  },
+  "telegram_headline.1": {
+    "en": "🔒 Locked (emergency stop) — you can unlock it:",
+    "nl": "🔒 Op slot (noodstop) — jij kunt hem ontgrendelen:"
+  },
+  "telegram_headline.2": {
+    "en": "❓ <b>@{p0}</b> has a question for you:",
+    "nl": "❓ <b>@{p0}</b> heeft een vraag voor je:"
+  },
+  "telegram_text.1": {
+    "en": "someone",
+    "nl": "iemand"
+  },
+  "telegram_text.2": {
+    "en": "<b>@{p0}</b> {p1} something.",
+    "nl": "<b>@{p0}</b> {p1} iets."
+  },
+  "universal_do_not.1": {
+    "nl": "Reageer niet als de thread al afgehandeld is.",
+    "en": "Do not respond if the thread has already been handled."
+  },
+  "universal_do_not.2": {
+    "nl": "Plaats geen comment die niets toevoegt.",
+    "en": "Do not post a comment that adds nothing."
+  },
+  "universal_do_not.3": {
+    "nl": "Bevestig niet louter dat je het gezien hebt.",
+    "en": "Do not merely acknowledge that you have seen it."
+  },
+  "telegram.verb.1": {
+    "nl": "maakte",
+    "en": "created"
+  },
+  "telegram.verb.2": {
+    "nl": "wijzigde",
+    "en": "changed"
+  },
+  "telegram.verb.3": {
+    "nl": "archiveerde",
+    "en": "archived"
+  },
+  "telegram.verb.4": {
+    "nl": "reageerde op",
+    "en": "commented on"
+  },
+  "telegram.verb.5": {
+    "nl": "bewerkte een reactie op",
+    "en": "edited a comment on"
+  },
+  "telegram.verb.6": {
+    "nl": "legde een relatie op",
+    "en": "added a relation on"
+  },
+  "telegram.verb.7": {
+    "nl": "verwijderde een relatie op",
+    "en": "removed a relation on"
+  },
+  "test.instructions": {
+    "nl": "Alleen een verbindingstest. Bevestig ontvangst; voer geen taken uit en verstuur geen berichten.",
+    "en": "Connection test only. Acknowledge receipt; do not perform tasks or send messages."
+  },
+  "test.do_not": {
+    "nl": "Verwerk geen tickets en laad geen privécontext.",
+    "en": "Do not process tickets or load private context."
+  },
+  "apply_eval_result.1": {
+    "en": "Clear enough; a coding agent will pick this up.",
+    "nl": "Duidelijk genoeg, een coding-agent pakt dit op."
+  },
+  "format_answered_question.1": {
+    "en": "(answer to your question: {p0})\n\n{p1}",
+    "nl": "(antwoord op je vraag: {p0})\n\n{p1}"
+  },
+  "format_enrich_questions.1": {
+    "en": "More information is needed to enrich this description. Answer the following questions in a comment and I will try again:",
+    "nl": "Om deze omschrijving goed te kunnen verrijken mist er nog informatie. Beantwoord de volgende vragen in een reactie, dan doe ik een nieuwe poging:"
+  },
+  "format_enrich_proposal.1": {
+    "en": "Based on your answer, I have a proposal for the description. Review and confirm it with the Enrich button, or use the proposal below:",
+    "nl": "Op basis van je antwoord heb ik een voorstel voor de omschrijving. Bekijk en bevestig het via de Verrijk-knop, of neem het hieronder over:"
+  },
+  "format_stale_question.1": {
+    "en": "{p0}This ticket has been in an active state without activity for {p1} days. What should happen next?",
+    "nl": "{p0}Dit ticket staat al {p1} dagen in een lopende status zonder activiteit. Wat is de bedoeling?"
+  },
+  "format_guardrail_review_question.1": {
+    "en": "{p0}The review date for this ticket guardrail has passed ({p1}). Does it still apply?",
+    "nl": "{p0}De reviewdatum van de guardrail op dit ticket is verstreken ({p1}). Geldt hij nog?"
+  },
+  "agent_umbrella_reason.1": {
+    "en": "agent-internal umbrella with an empty description",
+    "nl": "agent-interne umbrella met lege omschrijving"
+  },
+  "agent_umbrella_reason.2": {
+    "en": "agent-internal deliberation (title pattern)",
+    "nl": "agent-intern deliberatie-overleg (titelpatroon)"
+  },
+  "agent_umbrella_reason.3": {
+    "en": "agent-internal umbrella with subtasks",
+    "nl": "agent-interne umbrella met subtaken"
+  },
+  "apply_triage.1": {
+    "en": "\n\n_Assigned to **{p0}**: {p1}_",
+    "nl": "\n\n_Toegewezen aan **{p0}**: {p1}_"
+  },
+  "apply_triage.2": {
+    "en": "{p0}_Not assigned to a coding agent: {p1}._",
+    "nl": "{p0}_Niet toegewezen aan een coding-agent: {p1}._"
+  },
+  "apply_triage.3": {
+    "en": "the task consists of multiple steps",
+    "nl": "de taak bestaat uit meerdere stappen"
+  },
+  "apply_triage.4": {
+    "en": "💡 Consider splitting this item into subtasks ('Split into subtasks'): {p0}.",
+    "nl": "💡 Overweeg dit item op te knippen in subtaken ('Opknippen in subtaken'): {p0}."
+  },
+  "options.stale.0": {
+    "nl": "Nog mee bezig — laat staan",
+    "en": "Still working on it — leave as is"
+  },
+  "options.stale.1": {
+    "nl": "Terug naar todo",
+    "en": "Back to todo"
+  },
+  "options.stale.2": {
+    "nl": "Vrijgeven aan de coding-queue",
+    "en": "Release to the coding queue"
+  },
+  "options.guardrail.0": {
+    "nl": "Blijft geldig — verleng de reviewdatum",
+    "en": "Still valid — extend the review date"
+  },
+  "options.guardrail.1": {
+    "nl": "Vervalt — hef de guardrail op",
+    "en": "No longer valid — lift the guardrail"
+  },
+  "options.guardrail.2": {
+    "nl": "Aanpassen — ik pas de tekst zelf aan",
+    "en": "Needs changes — I will edit the text myself"
+  },
+  "decompose.summary": {
+    "nl": "**[Decompose]** Opgeknipt in {refs}.",
+    "en": "**[Decompose]** Split into {refs}."
+  },
+  "parent.auto_close": {
+    "nl": "**[Subtaken]** Alle subtaken zijn afgerond — deze umbrella is automatisch gesloten (agent-intern container-ticket).",
+    "en": "**[Subtaken]** All subtasks are complete; this umbrella was closed automatically (agent-internal container ticket)."
+  },
+  "parent.suggest_close": {
+    "nl": "**[Subtaken]** Alle subtaken zijn afgerond — kan dit item dicht?",
+    "en": "**[Subtaken]** All subtasks are complete; can this item be closed?"
+  },
+  "handover.note": {
+    "nl": "**Nodig van @{handle}:** {body}",
+    "en": "**Needed from @{handle}:** {body}"
+  },
+  "commands.resolve_targets.1": {
+    "nl": "Onbekend item: {p0}",
+    "en": "Unknown item: {p0}"
+  },
+  "commands.resolve_targets.2": {
+    "nl": "{p0} hoort niet bij dit project",
+    "en": "{p0} does not belong to this project"
+  },
+  "commands.validate.1": {
+    "nl": "Onbekend commando: {p0}",
+    "en": "Unknown command: {p0}"
+  },
+  "commands.validate.2": {
+    "nl": "Onbekend project",
+    "en": "Unknown project"
+  },
+  "commands.validate.3": {
+    "nl": "create_item vereist een titel",
+    "en": "create_item requires a title"
+  },
+  "commands.validate.4": {
+    "nl": "{p0} vereist een selector (refs of filter)",
+    "en": "{p0} requires a selector (refs or filter)"
+  },
+  "commands.validate.5": {
+    "nl": "Geen enkel item matcht de selector",
+    "en": "No items match the selector"
+  },
+  "commands.validate.6": {
+    "nl": "set_state vereist 'state'",
+    "en": "set_state requires 'state'"
+  },
+  "commands.validate.7": {
+    "nl": "Onbekende state: {p0}",
+    "en": "Unknown state: {p0}"
+  },
+  "commands.validate.8": {
+    "nl": "Ongeldige priority",
+    "en": "Invalid priority"
+  },
+  "commands.validate.9": {
+    "nl": "Onbekende assignee: {p0}",
+    "en": "Unknown assignee: {p0}"
+  },
+  "commands.validate.10": {
+    "nl": "@{p0} mag niet toegewezen worden in dit project",
+    "en": "@{p0} cannot be assigned in this project"
+  },
+  "commands.validate.11": {
+    "nl": "{p0} vereist 'label'",
+    "en": "{p0} requires 'label'"
+  },
+  "commands.validate.12": {
+    "nl": "Onbekende milestone: {p0}",
+    "en": "Unknown milestone: {p0}"
+  },
+  "commands.validate.13": {
+    "nl": "Onbekend relatietype: {p0}",
+    "en": "Unknown relation type: {p0}"
+  },
+  "commands.validate.14": {
+    "nl": "Onbekend doel-item: {p0}",
+    "en": "Unknown target item: {p0}"
+  },
+  "chat.parse_chat_output.1": {
+    "nl": "Ik kon geen antwoord vormen.",
+    "en": "I could not form a response."
+  },
+  "chat.resolve_scope_project.1": {
+    "nl": "{p0} hoort niet bij deze thread — wissel van thread.",
+    "en": "{p0} does not belong to this thread; switch threads."
+  },
+  "chat.resolve_scope_project.2": {
+    "nl": "Noem het project (bv. \"project\": \"SOS\").",
+    "en": "Specify the project (for example, \"project\": \"TEAM\")."
+  },
+  "chat.resolve_scope_project.3": {
+    "nl": "Onbekend project: {p0}",
+    "en": "Unknown project: {p0}"
+  },
+  "chat.run_turn.1": {
+    "nl": "Dit kan ik zo niet uitvoeren.",
+    "en": "I cannot execute this as proposed."
+  },
+  "chat.run_turn.2": {
+    "nl": "Voorgestelde actie",
+    "en": "Proposed action"
+  },
+  "chat.run_turn.3": {
+    "nl": "Ik kon geen antwoord vormen.",
+    "en": "I could not form a response."
+  },
+  "chat.init.1": {
+    "nl": "Typ {p0} om deze bulk-actie te bevestigen",
+    "en": "Type {p0} to confirm this bulk action"
+  },
+  "chat.confirm.1": {
+    "nl": "Voorstel verlopen: ",
+    "en": "Proposal expired: "
+  },
+  "chat.confirm.2": {
+    "nl": "Uitgevoerd op {p0} item(s): ",
+    "en": "Executed on {p0} items: "
+  },
+  "chat.cancel.1": {
+    "nl": "Voorstel geannuleerd.",
+    "en": "Proposal cancelled."
+  },
+  "chat.status.cancelled": {
+    "nl": "De gebruiker annuleerde het voorstel.",
+    "en": "The user cancelled the proposal."
+  },
+  "chat.status.expired": {
+    "nl": "Het voorstel kon niet meer uitgevoerd worden: {rest}",
+    "en": "The proposal could no longer be executed: {rest}"
+  },
+  "chat.status.executed": {
+    "nl": "Het voorstel is uitgevoerd. {rest}",
+    "en": "The proposal was executed. {rest}"
+  },
+  "commands.invalid_ref": {
+    "nl": "Ongeldige ref: {ref}",
+    "en": "Invalid ref: {ref}"
+  },
+  "commands.unknown_guard": {
+    "nl": "Onbekend commando: {verb}",
+    "en": "Unknown command: {verb}"
+  },
+  "wiki.pending_review": {
+    "nl": "Wacht op menselijke goedkeuring",
+    "en": "Awaiting human approval"
+  },
+  "chat.confirm.one": {
+    "nl": "Uitgevoerd op {p0} item(s): ",
+    "en": "Executed on {p0} item: "
+  }
+}
