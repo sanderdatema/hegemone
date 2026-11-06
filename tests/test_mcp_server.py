@@ -20,6 +20,14 @@ from betonning.repo import users as users_repo
 from betonning.server import create_app
 
 
+@pytest.fixture(autouse=True)
+def isolated_mcp_configuration(tmp_path, monkeypatch):
+    """Nooit een echte gebruikersconfiguratie of impliciete key in tooltests lezen."""
+    monkeypatch.setenv("BETONNING_CONFIG", str(tmp_path / "mcp-unconfigured.json"))
+    monkeypatch.delenv("BETONNING_API_KEY", raising=False)
+    monkeypatch.setenv("BETONNING_BASE_URL", "http://test")
+
+
 @pytest.fixture
 def mcp_env(tmp_path, monkeypatch):
     db_path = str(tmp_path / "mcp.db")
@@ -1349,6 +1357,8 @@ def mcp_as_agent(tmp_path, monkeypatch):
         )
         projects_repo.create(conn, key="SOS", name="SOS")
         conn.close()
+        monkeypatch.setenv("BETONNING_API_KEY", key)
+        monkeypatch.setenv("BETONNING_BASE_URL", "http://test")
         app = create_app(db_path, enable_dispatcher=False)
         monkeypatch.setattr(
             mcp_server,
@@ -1401,3 +1411,14 @@ def test_agent_krijgt_hint_bij_ontbrekende_werkklasse(agent_env):
 def test_agent_mag_geen_modellabel_aanmaken(agent_env):
     with pytest.raises(RuntimeError, match="werkklasse"):
         _run(mcp_server.create_label("SOS", "sonnet"))
+
+
+def test_tool_configuration_is_isolated_from_user_files(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    def only_synthetic_configuration(path, *args, **kwargs):
+        assert path == tmp_path / "mcp-unconfigured.json"
+        raise FileNotFoundError
+
+    monkeypatch.setattr(Path, "read_text", only_synthetic_configuration)
+    assert mcp_server._config() == {"base_url": "http://test", "api_key": None}
