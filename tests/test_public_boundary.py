@@ -142,6 +142,7 @@ def test_scanner_does_not_follow_symlinks_or_print_private_text(
 ):
     root = tmp_path / "repository"
     (root / "tools").mkdir(parents=True)
+    (root / ".git").mkdir()
     (root / "pyproject.toml").write_text(
         '[project]\nauthors = [{ name = "Alex Maintainer" }]\n[project.urls]\nRepository = "https://github.com/alex-maintainer/project"\n'
     )
@@ -165,3 +166,25 @@ def test_scanner_does_not_follow_symlinks_or_print_private_text(
     output = capsys.readouterr().out
     assert '"rule": "symlink"' in output
     assert "synthetic-private-value" not in output
+
+
+def test_archive_reports_checkout_requirement_without_scanning_parent_repo(
+    tmp_path, monkeypatch, capsys
+):
+    root = tmp_path / "archive"
+    (root / "tools").mkdir(parents=True)
+    monkeypatch.setattr(
+        boundary, "__file__", str(root / "tools/check_public_boundary.py")
+    )
+
+    def unexpected_git(*args, **kwargs):
+        raise AssertionError("Een bovenliggende repository mag niet worden gescand")
+
+    monkeypatch.setattr(boundary.subprocess, "check_output", unexpected_git)
+    monkeypatch.setattr(sys, "argv", ["check_public_boundary.py"])
+    with pytest.raises(SystemExit) as error:
+        boundary.main()
+    assert error.value.code == 2
+    output = capsys.readouterr()
+    assert "Git-checkout" in output.err
+    assert "Traceback" not in output.err

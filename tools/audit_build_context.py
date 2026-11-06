@@ -21,6 +21,7 @@ DOCS = [
     "THIRD_PARTY.md",
     "NATIVE_DEPLOYMENT.md",
     "PUBLIC_BOUNDARY.md",
+    "RELEASE_VERIFICATION.md",
     "FRONTEND_LICENSES.txt",
     "screenshots/board-en.png",
     "screenshots/board-nl.png",

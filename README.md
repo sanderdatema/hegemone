@@ -2,7 +2,7 @@
 
 Hegemone is a self-hosted Kanban and ticket system for people and AI agents.
 It combines projects, task progress, a knowledge wiki, MCP access and optional
-webhook integrations. The public distribution is under development.
+webhook integrations. Version 0.1.0 is the initial public release.
 
 ## Built with AI assistance, with checks you can inspect
 
@@ -17,11 +17,12 @@ frontend tests, production builds and browser tests against isolated installatio
 The test code is part of the source distribution, so these checks can be inspected
 and repeated.
 
-Verification is specific to a revision. The first public release is awaiting
-independent installation and release review. The clean local candidate has passed
-frontend tests/build, backend checks with targeted corrective reruns, dependency
-and secret scans, and container setup/MCP/upgrade/restore checks. See [Security and verification](SECURITY.md)
-for the current scope and reporting guidance. Passing checks reduce risk; they do
+Verification is specific to a revision. A separate test agent has exercised a
+fresh installation from the source archive, following this README with synthetic
+data. Published releases are gated by the [verification workflow](https://github.com/sanderdatema/hegemone/actions/workflows/hegemone.yml),
+including backend/frontend tests, dependency checks and container setup/MCP/restore/upgrade.
+See [release verification](RELEASE_VERIFICATION.md) and [security](SECURITY.md)
+for the observed scope and reporting guidance. Passing checks reduce risk; they do
 not establish that the application is free of vulnerabilities.
 
 ## License
@@ -29,6 +30,14 @@ not establish that the application is free of vulnerabilities.
 GNU General Public License v3.0 only (`GPL-3.0-only`). See the accompanying
 `LICENSE` file for the full terms. The public repository destination is
 [github.com/sanderdatema/hegemone](https://github.com/sanderdatema/hegemone).
+
+## Source downloads
+
+Use a Git checkout for development and publication checks. Release source archives
+omit `.git`; download `SOURCE_MANIFEST.json` and `SHA256SUMS` from the same release
+to verify the archive, its revision/tree identity and per-file hashes. Git archive
+PAX metadata also records the source revision. Neither the application nor its
+container installation requires Git metadata.
 
 ## Local container installation
 
@@ -147,7 +156,8 @@ Focused tests cover schema-51 data preservation and stopped-directory restore.
 The local Linux/arm64 container smoke also verified fresh setup, non-root volume
 writes, authenticated MCP, encrypted-provider-key restore, attachments/wiki/comments
 and a schema-51 upgrade using synthetic fixtures. These are point-in-time checks;
-the exact final candidate and independent installation review remain release gates.
+the verification workflow repeats these automated gates for the release revision.
+The separate installation review is recorded in [RELEASE_VERIFICATION.md](RELEASE_VERIFICATION.md).
 
 Before upgrades, back up and retain the previous image. Build the new source,
 then run `docker compose up -d` and check health and sign-in. Database migrations
@@ -158,9 +168,9 @@ the matching backup, not merely starting an old image.
 
 Backend: Python 3.12+, `uv sync --extra mcp`, then `uv run pytest`.
 Frontend: `cd ui`, `npm ci`, `npm test`, `npm run build`.
-The current product requires completing localization, public-source auditing,
-license/asset review and independent clean-install/upgrade verification before
-public release. No private Git history is part of the intended distribution.
+Run targeted checks during development. Release candidates additionally require
+the full verification workflow and an independent installation review. The public
+repository contains a new source history; private development history is excluded.
 
 ## Project documentation
 
@@ -169,6 +179,7 @@ public release. No private Git history is part of the intended distribution.
 - [Support and compatibility](SUPPORT.md): targets, verified scope and limitations.
 - [Changelog](CHANGELOG.md): prepared changes and release status.
 - [Security](SECURITY.md): verification scope and vulnerability reporting.
+- [Release verification](RELEASE_VERIFICATION.md): observed installation checks and release gates.
 
 Third-party licenses and copyright notices are preserved in [THIRD_PARTY.md](THIRD_PARTY.md) and [FRONTEND_LICENSES.txt](FRONTEND_LICENSES.txt).
 

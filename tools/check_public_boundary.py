@@ -114,6 +114,10 @@ def main():
     parser.add_argument("--history", action="store_true")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
+    if not (root / ".git").exists():
+        parser.error(
+            "Deze publicatiecontrole vereist een Git-checkout; gebruik bij een bronarchief de releasechecksums en het bronmanifest"
+        )
     names, repository = settings(root)
     paths = (
         subprocess.check_output(

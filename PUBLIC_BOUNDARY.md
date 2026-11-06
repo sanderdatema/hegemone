@@ -37,7 +37,10 @@ repository cleanup.
 
 ## Checks and review
 
-Run `uv run python tools/check_public_boundary.py --history` before publication.
+Run `uv run python tools/check_public_boundary.py --history` from a Git checkout before publication.
+Source archives intentionally omit `.git`; verify their accompanying SHA256 and
+`SOURCE_MANIFEST.json` instead. The checker exits with a clear requirement message
+when run from an archive and never scans an unrelated parent repository.
 The checker reports paths/rule identifiers, never matched private text. It checks
 maintainer-name leakage outside narrow legal/package attribution, home paths,
 private addresses, tracked private/generated files and commit-message hygiene.

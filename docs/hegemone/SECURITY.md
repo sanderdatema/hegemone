@@ -1,8 +1,7 @@
 # Security and verification
 
-Hegemone is under active development. The first public release has not yet been
-verified end to end. Do not treat a working development build as a production
-security certification.
+Hegemone is under active development. Version 0.1.0 has a recorded clean-install
+review and automated release gates. These checks are not a security certification.
 
 ## Checks performed
 
@@ -15,34 +14,25 @@ The repository contains behavioral regression tests for these areas, including
 local database and through the browser. Focused upgrade/restore tests cover schema
 51 data preservation and a stopped-directory backup containing attachments,
 comments, wiki data and onboarding state. Local Linux/arm64 container checks also verified volume ownership, encrypted-key
-restore, fresh setup/API/MCP and a synthetic schema-51 upgrade. These point-in-time
-checks do not substitute for the final candidate or independent installation review.
+restore, fresh setup/API/MCP and a synthetic schema-51 upgrade. The fresh installation was separately exercised by a test agent using only the
+source archive and README. Scope is recorded in [RELEASE_VERIFICATION.md](RELEASE_VERIFICATION.md).
 
-For the private source revision used to prepare the public distribution, Gitleaks
-8.30.1 reported no findings across 931 reachable commits and a tracked-file
-snapshot. That result does not clear the private history for publication: privacy
-references were found separately, and the public export must be audited again.
-Only a new Git history will be published.
+The public source is checked with secret scanning and a source/commit boundary
+policy. Private development history, operational profiles, databases, attachments
+and credentials are excluded. Third-party notices are preserved.
 
-Dependency audits and source scans are point-in-time checks. Repeat them for the
-exact release candidate. No independent penetration test or security certification
-is claimed. The intended CI workflow is included in source; its presence alone
-is not evidence that a particular build has passed.
-
-## Before public release
-
-The public source export, dependency/asset licensing, complete localization,
-container runtime, fresh installation, upgrade and backup-restore checks must
-be verified for the release candidate. Publicly available source must never
-include production databases, attachments, keys or private deployment history.
+Dependency audits and source scans are point-in-time checks. The verification
+workflow checks the release revision, including application tests, dependency
+policy, exact container context and runtime setup/MCP/restore/upgrade. Inspect
+the actual workflow result for a given commit. No independent penetration test
+or security certification is claimed.
 
 ## Reporting a vulnerability
 
 Do not put API keys, private ticket data or exploit details in a public issue.
 Private vulnerability reporting is enabled on the public GitHub repository.
 Use [Report a vulnerability](https://github.com/sanderdatema/hegemone/security/advisories/new)
-for private security reports. This project does not yet offer a supported public
-release or a guaranteed response time.
+for private security reports. No guaranteed response time is offered.
 
 ## Dependency audit policy
 

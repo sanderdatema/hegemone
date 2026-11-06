@@ -1,9 +1,8 @@
 # Changelog
 
-## Unreleased — initial public distribution
+## 0.1.0 — 2026-11-06
 
-This entry describes work prepared for the first public version; it is not a
-published release announcement.
+Initial public source release.
 
 - Hegemone branding, GPL-3.0-only licensing and explicit Claude Code/Codex credits.
 - First-administrator setup with a dedicated token and resumable onboarding.
@@ -17,6 +16,7 @@ published release announcement.
 
 The clean local candidate has undergone source/privacy/license checks, frontend
 and backend verification, and container setup/MCP/upgrade/restore checks. Bundled
-frontend notices and Python runtime license files are preserved. Independent
-installation/release review and a GitHub CI run remain before a supported release.
-Private repository history is excluded from the public distribution.
+frontend notices and Python runtime license files are preserved. A separate test agent completed the clean installation review; the release is
+gated by the verification workflow on its revision. Source archives include
+checksums and a detached revision/file manifest. Private development history is
+excluded from the public distribution.

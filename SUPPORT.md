@@ -1,16 +1,16 @@
 # Support and compatibility
 
-Hegemone's first public release is still in preparation. There is no published
-supported release or response-time commitment yet. Source files and a CI
-configuration do not by themselves prove that a release candidate passed.
+Version 0.1.0 is the initial public source release for single-worker installations.
+Verification is tied to a revision and platform. Check its workflow result and
+[release verification](RELEASE_VERIFICATION.md); no response-time commitment is offered.
 
 | Area | Target | Verification status |
 | --- | --- | --- |
-| Container | Linux, Docker Engine and Compose v2 | Clean local arm64/Linux candidate built; setup/API/MCP and synthetic restore verified; independent review remains |
-| Source backend | Python >=3.12, uv, SQLite | Clean-candidate Python 3.12 backend run and targeted corrections checked; GitHub CI configured but not yet run |
+| Container | Linux, Docker Engine and Compose v2 | Clean arm64/Linux build, separate README installation review and setup/API/MCP/persistence verified; automated restore/upgrade gates in CI |
+| Source backend | Python >=3.12, uv, SQLite | Python 3.12 application checks and release CI workflow; native existing-service migration exercised |
 | Frontend build | Node.js 22, npm lockfile | 1,075 frontend tests, production build and affected browser flows checked; Node.js 22 container build verified |
-| Data upgrade | Existing SQLite schema, numbered migrations | Synthetic schema-51 upgrade checked natively and in the clean local Linux container; independent review remains |
-| Backups | Stopped complete data directory plus persistent secret configuration | Native and Linux-container restore fixtures checked, including ownership and saved keys; independent review remains |
+| Data upgrade | Existing SQLite schema, numbered migrations | Synthetic schema-51 upgrade checked natively and in the container smoke gate |
+| Backups | Stopped complete data directory plus persistent secret configuration | Native and Linux-container restore fixtures checked, including ownership and saved keys; fresh-operator persistence/relogin checked |
 | Windows native | No supported native procedure declared | Not verified |
 
 Run one application worker. Background tasks, in-memory request budgets and live

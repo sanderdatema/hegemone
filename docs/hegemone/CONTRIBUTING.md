@@ -1,7 +1,7 @@
 # Contributing to Hegemone
 
-The first public distribution is being prepared. Check the current release
-status in [SUPPORT.md](SUPPORT.md) before relying on an installation procedure.
+Check the current release status and verified platforms in
+[SUPPORT.md](SUPPORT.md) before choosing an installation procedure.
 
 ## Development setup
 
@@ -69,6 +69,8 @@ roles and technical constraints; fixtures use fictional people. Intentional
 package authorship and required license notices are the only attribution
 exceptions. Keep private operational notes and profiles outside the checkout.
 
+Development/publication checks require a Git checkout; release archives are
+verified using their accompanying checksums and source manifest.
 Before committing, run `uv run python tools/check_public_boundary.py`. For a
 publication candidate also use `--history`; CI does this automatically. Enable
 the optional local message hook with `git config core.hooksPath .githooks`.

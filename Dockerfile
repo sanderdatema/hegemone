@@ -18,6 +18,7 @@ COPY LICENSE ./LICENSE
 COPY docs/hegemone/SECURITY.md ./SECURITY.md
 COPY docs/hegemone/NATIVE_DEPLOYMENT.md ./NATIVE_DEPLOYMENT.md
 COPY docs/hegemone/PUBLIC_BOUNDARY.md ./PUBLIC_BOUNDARY.md
+COPY docs/hegemone/RELEASE_VERIFICATION.md ./RELEASE_VERIFICATION.md
 COPY docs/hegemone/THIRD_PARTY.md docs/hegemone/FRONTEND_LICENSES.txt ./
 COPY docs/hegemone/screenshots/ ./screenshots/
 # Alleen de gelockte runtimeafhankelijkheden; de private packagebeschrijving
