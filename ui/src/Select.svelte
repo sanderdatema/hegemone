@@ -186,12 +186,12 @@
 {/if}
 
 <style>
-  :global(.searchable-select) {
+  :global(.select-menu.searchable-select) {
     display: flex;
     flex-direction: column;
     min-width: var(--bits-popover-anchor-width);
     max-width: calc(100vw - 24px);
-    max-height: min(360px, var(--bits-popover-content-available-height));
+    max-height: min(360px, calc(100dvh - 80px));
     overflow: hidden;
   }
   input {
@@ -199,8 +199,9 @@
     width: 100%;
     margin-bottom: var(--space-1);
   }
-  .searchable-options { overflow-y: auto; min-height: 0; }
+  .searchable-options { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
   .searchable-options .select-item {
+    justify-content: flex-start;
     width: 100%;
     text-align: left;
     border: 0;
