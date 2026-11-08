@@ -78,3 +78,15 @@ it('vertaalt projectgroepen zonder projectnamen of keuzes te veranderen', () => 
   expect(groups[0].label).toBe('Quiet projects');
   expect(groups[0].options[0]).toMatchObject({ value: 'EIGEN', label: 'EIGEN — Mijn project' });
 });
+
+
+it("keeps archived projects out of active choices and exposes a separate readable group", () => {
+  const projects = [
+    { key: "OLD", name: "Archived project", archived_at: "2026-01-01" },
+    { key: "LIVE", name: "Active project" },
+  ];
+  expect(projectPickerOptions(projects, "OLD").map(p => p.value)).toEqual([OVERVIEW_VALUE, "LIVE"]);
+  expect(projectPickerGroups(projects, "OLD", undefined, "en")).toEqual([
+    { label: "Archived", options: [{ value: "OLD", label: "OLD — Archived project" }] },
+  ]);
+});

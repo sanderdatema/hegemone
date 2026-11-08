@@ -29,6 +29,7 @@
 
   let {
     projectKey,
+    readOnly = false,
     projectName,
     projectDescription = "",
     triageEnabled = false,
@@ -97,6 +98,7 @@
   });
 
   async function guard(fn) {
+    if (readOnly) return;
     error = "";
     try {
       await fn();
@@ -328,6 +330,8 @@
   </header>
   <ErrorNote message={error} onRetry={load} />
 
+  {#if readOnly}<p class="project-readonly-note" role="status">{$t("api.project_archived_readonly")}</p>{/if}
+  <fieldset disabled={readOnly} class="settings-fields">
   <section class="ps-sec">
     <div class="ps-head"><Info size={14} /> {$t("projectSettings.name")}</div>
     <form class="desc-edit name-edit" onsubmit={(e) => { e.preventDefault(); saveName(); }}>
@@ -666,9 +670,11 @@
       <button class="primary sm st-add-btn" onclick={addState}><Plus size={14} /> {$t("common.add")}</button>
     </div>
   </section>
+  </fieldset>
 </div>
 
 <style>
+  .settings-fields { padding: 0; border: 0; margin: 0; min-width: 0; }
   .ps-top {
     display: flex;
     align-items: center;

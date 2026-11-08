@@ -1460,6 +1460,21 @@ def test_build_instructions_respond_on_mention():
     assert "reageren" in r["instructions"].lower()
 
 
+@pytest.mark.parametrize("language", ["en", "nl"])
+def test_instructions_use_human_readable_comment_references(monkeypatch, language):
+    from betonning.outbound import outbound
+
+    monkeypatch.setenv("HEGEMONE_LANGUAGE", language)
+    result = _instr(
+        {"type": "mention", "mentioned_by": "person", "addressed_to": ["worker"]},
+        {"work_allowed": True, "state": "todo"},
+        handle="worker",
+    )
+    assert result["expected_action"] == "respond"
+    assert outbound("human_comment_references", language=language) in result["instructions"]
+    assert result["reply"]["url"].endswith("/api/v1/items/SOS-1/comments")
+
+
 def test_build_instructions_pickup_on_assigned_workable():
     r = _instr(
         {"type": "assigned", "mentioned_by": None, "addressed_to": None},

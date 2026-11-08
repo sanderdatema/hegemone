@@ -1,4 +1,12 @@
 {
+  "project_readonly": {
+    "en": "Archived projects are read-only. Restore the project to make changes.",
+    "nl": "Gearchiveerde projecten zijn alleen-lezen. Herstel het project om wijzigingen te maken."
+  },
+  "human_comment_references": {
+    "en": "HUMAN-READABLE REFERENCES: People do not see internal comment IDs in the interface. In comments, questions, handovers and summaries, identify a previous comment by its author, date or a short relevant quote, with the ticket ref when needed. Do not use a bare comment ID or invent a link. Keep IDs unchanged in API/tool arguments and structured protocol fields.",
+    "nl": "LEESBARE VERWIJZINGEN: Mensen zien interne comment-ID’s niet in de interface. Verwijs in comments, vragen, overdrachten en samenvattingen naar auteur, datum of een kort relevant citaat, zo nodig met de ticketref. Gebruik geen kaal comment-ID en verzin geen link. Behoud ID’s ongewijzigd in API-/toolargumenten en gestructureerde protocolvelden."
+  },
   "build_agent_policy.1": {
     "en": "The current state blocks execution; only comments are allowed.",
     "nl": "De huidige state blokkeert uitvoering; alleen comments zijn toegestaan."
@@ -498,5 +506,181 @@
   "chat.confirm.one": {
     "nl": "Uitgevoerd op {p0} item(s): ",
     "en": "Executed on {p0} item: "
+  },
+  "execution.authorization_required": {
+    "en": "Execution authorization required",
+    "nl": "Uitvoerautorisatie vereist"
+  },
+  "execution.agent_required": {
+    "en": "An active, non-virtual agent is required",
+    "nl": "Een actieve, niet-virtuele agent is vereist"
+  },
+  "execution.identity_mismatch": {
+    "en": "Execution belongs to another identity",
+    "nl": "Uitvoering hoort bij een andere identiteit"
+  },
+  "execution.owner_stale": {
+    "en": "Execution owner or fence is stale",
+    "nl": "Uitvoereigenaar of eigendomsversie is verouderd"
+  },
+  "execution.profile_mismatch": {
+    "en": "Execution identity or profile does not match",
+    "nl": "Uitvoeridentiteit of profiel komt niet overeen"
+  },
+  "execution.assignment_blocked": {
+    "en": "Assignment or human input prevents execution",
+    "nl": "Toewijzing of menselijke input verhindert uitvoering"
+  },
+  "execution.context_changed": {
+    "en": "Read the full current task and plan before claiming",
+    "nl": "Lees vóór het claimen de volledige actuele taak en het plan"
+  },
+  "execution.capabilities_missing": {
+    "en": "Required capabilities were not verified",
+    "nl": "Benodigde capabilities zijn niet gecontroleerd"
+  },
+  "execution.claim_held": {
+    "en": "Another owner holds the claim",
+    "nl": "Een andere uitvoerder heeft de taak geclaimd"
+  },
+  "execution.not_ready": {
+    "en": "Execution is not ready to claim",
+    "nl": "Uitvoering is niet gereed om te claimen"
+  },
+  "execution.owner_proof_required": {
+    "en": "Execution owner proof is required",
+    "nl": "Bewijs van uitvoereigendom is vereist"
+  },
+  "execution.context_revoked": {
+    "en": "Execution was changed, blocked or revoked",
+    "nl": "Uitvoering is gewijzigd, geblokkeerd of ingetrokken"
+  },
+  "execution.run_mismatch": {
+    "en": "External run identity changed",
+    "nl": "Identiteit van de externe uitvoerpoging is gewijzigd"
+  },
+  "execution.started_state_missing": {
+    "en": "Project has no executable started state",
+    "nl": "Project heeft geen uitvoerbare status voor gestart werk"
+  },
+  "execution.stop_required": {
+    "en": "Execution must stop; no new work is authorized",
+    "nl": "Uitvoering moet stoppen; nieuw werk is niet toegestaan"
+  },
+  "execution.recovery_required": {
+    "en": "Explicit recovery is required for a lost execution owner",
+    "nl": "Een verloren uitvoereigenaar vereist expliciet herstel"
+  },
+  "execution.not_active": {
+    "en": "Execution is no longer active",
+    "nl": "Uitvoering is niet meer actief"
+  },
+  "execution.transport_recovery_required": {
+    "en": "Transport retries after execution require explicit recovery",
+    "nl": "Transport opnieuw proberen na gestarte uitvoering vereist expliciet herstel"
+  },
+  "execution.question_required": {
+    "en": "Use the existing human question workflow first",
+    "nl": "Gebruik eerst de bestaande vraagmodule voor menselijke input"
+  },
+  "execution.not_blocked": {
+    "en": "Execution is not blocked",
+    "nl": "Uitvoering is niet geblokkeerd"
+  },
+  "execution.recovery_confirmation": {
+    "en": "Confirm the prior worker stopped and previous effects were reviewed",
+    "nl": "Bevestig dat de vorige uitvoerder is gestopt en eerdere gevolgen zijn gecontroleerd"
+  },
+  "execution.resume_assignment_blocked": {
+    "en": "Assignment or human input prevents resuming",
+    "nl": "Toewijzing of menselijke input verhindert hervatting"
+  },
+  "execution.evidence_immutable": {
+    "en": "Completion evidence cannot be changed after completion",
+    "nl": "Opleverbewijs kan na afronding niet worden gewijzigd"
+  },
+  "execution.completion_required": {
+    "en": "Only a live running execution can declare completion with evidence",
+    "nl": "Alleen een actieve lopende uitvoering kan met bewijs worden afgerond"
+  },
+  "execution.identity_revoked": {
+    "en": "Executor identity was revoked",
+    "nl": "Uitvoeridentiteit is ingetrokken"
+  },
+  "execution.archived_locked": {
+    "en": "Task is archived or locked",
+    "nl": "Taak is gearchiveerd of vergrendeld"
+  },
+  "execution.no_task": {
+    "en": "Task no longer exists",
+    "nl": "Taak bestaat niet meer"
+  },
+  "execution.state_blocked": {
+    "en": "Task state does not permit execution",
+    "nl": "Taakstatus staat uitvoering niet toe"
+  },
+  "execution.executor_disabled": {
+    "en": "Executor is disabled or its identity is no longer authorized",
+    "nl": "Uitvoerder is uitgeschakeld of de identiteit is niet meer gemachtigd"
+  },
+  "execution.project_permission": {
+    "en": "Executor lacks project assignment or credential permission",
+    "nl": "Uitvoerder mist projecttoewijzing of sleutelrechten"
+  },
+  "execution.relation_blocked": {
+    "en": "Task is blocked by another ticket or marked as a duplicate",
+    "nl": "Taak wordt geblokkeerd door een ander ticket of is als duplicaat gemarkeerd"
+  },
+  "execution.owner_lost": {
+    "en": "Execution owner was lost; previous effects are unknown",
+    "nl": "Uitvoereigenaar is verloren gegaan; eerdere gevolgen zijn onbekend"
+  },
+  "execution.owner_recovery": {
+    "en": "A human must confirm the old worker stopped and review previous effects",
+    "nl": "Een mens moet bevestigen dat de oude uitvoerder is gestopt en eerdere gevolgen controleren"
+  },
+  "execution.human_answer": {
+    "en": "A human answer is required",
+    "nl": "Een menselijk antwoord is nodig"
+  },
+  "execution.source_changed": {
+    "en": "Assignment or task revision changed",
+    "nl": "Toewijzing of taakversie is gewijzigd"
+  },
+  "execution.owner_ack_required": {
+    "en": "The current owner must stop and acknowledge before another claim",
+    "nl": "De huidige uitvoerder moet stoppen en dit bevestigen vóór een nieuwe claim"
+  },
+  "execution.answer_existing": {
+    "en": "Answer or withdraw the existing human question",
+    "nl": "Beantwoord de bestaande vraag aan een mens of trek deze in"
+  },
+  "execution.permission_resume": {
+    "en": "Restore the relevant execution permission or workflow prerequisite",
+    "nl": "Herstel de betreffende uitvoerrechten of workflowvoorwaarde"
+  },
+  "execution.assignment_changed": {
+    "en": "Assignment changed",
+    "nl": "Toewijzing is gewijzigd"
+  },
+  "execution.question_or_policy": {
+    "en": "Resolve the existing human question or workflow prerequisite",
+    "nl": "Los de bestaande menselijke vraag of workflowvoorwaarde op"
+  },
+  "execution.owner_stopped": {
+    "en": "Executor acknowledged it stopped",
+    "nl": "Uitvoerder heeft bevestigd te zijn gestopt"
+  },
+  "execution.notification_only": {
+    "en": "This is a notification for a managed execution request. The configured executor must read the full current task and plan, verify its capabilities and claim through the execution API. Do not start work or post a routine receipt from this webhook turn.",
+    "nl": "Dit is een melding voor een beheerd uitvoerverzoek. De ingestelde uitvoerder moet de volledige actuele taak en het plan lezen, capabilities controleren en via de uitvoer-API claimen. Start vanuit deze webhookbeurt geen werk en plaats geen ontvangstcomment."
+  },
+  "execution.wait_for_executor": {
+    "en": "Leave execution ownership to the configured executor; the request remains durable until explicitly handled.",
+    "nl": "Laat het uitvoereigendom bij de ingestelde uitvoerder; het verzoek blijft duurzaam beschikbaar tot het expliciet is afgehandeld."
+  },
+  "execution.no_receipt": {
+    "en": "Do not change the ticket to in-progress or post capability/receipt comments merely because this notification arrived.",
+    "nl": "Zet het ticket niet op in-progress en plaats geen capability- of ontvangstcomments alleen omdat deze melding binnenkomt."
   }
 }

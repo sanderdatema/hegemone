@@ -19,11 +19,13 @@ const toOption = (p) => ({ value: p.key, label: `${p.key} — ${p.name}` });
 function splitQuiet(projects, current, now) {
   const active = [];
   const quiet = [];
+  const archived = [];
   for (const p of projects || []) {
+    if (p.archived_at) { archived.push(p); continue; }
     (p.key !== current && p.last_activity_at !== undefined && isQuiet(p, now) ? quiet : active).push(p);
   }
   quiet.sort((a, b) => a.key.localeCompare(b.key));
-  return { active, quiet };
+  return { active, quiet, archived };
 }
 
 export function projectPickerOptions(projects, current = null, now = Date.now(), locale = "nl") {
@@ -35,8 +37,11 @@ export function projectPickerOptions(projects, current = null, now = Date.now(),
 
 /** Optgroups voor de kiezer: "Stille projecten" onderaan, op alfabet. */
 export function projectPickerGroups(projects, current = null, now = Date.now(), locale = "nl") {
-  const { quiet } = splitQuiet(projects, current, now);
-  return quiet.length ? [{ label: translate(locale, "project.quiet"), options: quiet.map(toOption) }] : [];
+  const { quiet, archived } = splitQuiet(projects, current, now);
+  return [
+    ...(quiet.length ? [{ label: translate(locale, "project.quiet"), options: quiet.map(toOption) }] : []),
+    ...(archived.length ? [{ label: translate(locale, "projects.archived"), options: archived.map(toOption) }] : []),
+  ];
 }
 
 // Wat de kiezer toont: in de overzicht-view het Overzicht, anders het project.

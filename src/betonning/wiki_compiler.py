@@ -28,6 +28,7 @@ from .repo import llm_usage
 from .repo import comments as comments_repo
 from .repo import events as events_repo
 from .repo import items as items_repo
+from .repo import projects as projects_repo
 from .repo import states as states_repo
 from .repo import users as users_repo
 from .repo import wiki as wiki_repo
@@ -126,6 +127,7 @@ def apply_compile(
     project_id = item["project_id"]
     touched: list[str] = []
     with db_module.transaction(conn):
+        projects_repo.require_writable(conn, project_id)
         if not result.skip:
             for page in result.pages:
                 slug = wiki_repo.slugify(page.slug)
@@ -188,7 +190,7 @@ def find_uncompiled(
            JOIN projects p ON p.id = i.project_id
            JOIN states s ON s.id = i.state_id
            WHERE i.wiki_compiled_at IS NULL AND i.archived_at IS NULL
-             AND p.wiki_compile_enabled = 1
+             AND p.wiki_compile_enabled = 1 AND p.archived_at IS NULL
              AND {states_repo.state_closed_sql('s')}
              AND i.wiki_compile_attempts < ?
              AND i.updated_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ?)
@@ -203,7 +205,7 @@ def compile_once(
 ) -> bool | None:
     """Compileer één afgerond ticket → projectwiki."""
     item = items_repo.get(conn, item_id)
-    if item is None or item["wiki_compiled_at"] is not None:
+    if item is None or item["wiki_compiled_at"] is not None or projects_repo.is_archived(conn, item["project_id"]):
         return None
     limit = int(env("BETONNING_WIKI_DAILY_BUDGET", "100"))
     if not llm_usage.claim(conn, "wiki-compiler", limit):
@@ -242,6 +244,7 @@ def _record_failure(conn: sqlite3.Connection, item_id: int) -> int:
     row = conn.execute(
         "UPDATE items SET wiki_compile_attempts = wiki_compile_attempts + 1, "
         "wiki_compile_error_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ? "
+        "AND EXISTS (SELECT 1 FROM projects p WHERE p.id = items.project_id AND p.archived_at IS NULL) "
         "RETURNING wiki_compile_attempts",
         (item_id,),
     ).fetchone()

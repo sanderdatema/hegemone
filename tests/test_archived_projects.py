@@ -24,10 +24,9 @@ from conftest import _create
 
 @pytest.fixture
 def two_projects(client: TestClient, auth: dict) -> tuple[str, str]:
-    """LIVE (actief) en OUD (gearchiveerd)."""
+    """LIVE en OUD; archiveer OUD pas na het opbouwen van de testinhoud."""
     for key in ("LIVE", "OUD"):
         client.post("/api/v1/projects", json={"key": key, "name": key}, headers=auth)
-    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     return "LIVE", "OUD"
 
 
@@ -49,6 +48,7 @@ def test_my_issues_skips_archived_project(
     _create(client, auth, live, title="echt werk", assignee="claude")
     _create(client, auth, oud, title="dood werk", assignee="claude")
 
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     refs = [i["ref"] for i in client.get("/api/v1/me/issues", headers=claude_auth).json()]
     assert refs == ["LIVE-1"]
 
@@ -59,6 +59,7 @@ def test_my_issues_returns_it_again_after_restore(
     """Archiveren is omkeerbaar: het filter zit in de query, niet in de data."""
     live, oud = two_projects
     _create(client, auth, oud, title="dood werk", assignee="claude")
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     assert client.get("/api/v1/me/issues", headers=claude_auth).json() == []
 
     client.post(f"/api/v1/projects/{oud}/restore", headers=auth)
@@ -81,6 +82,7 @@ def test_inbox_skips_events_from_archived_project(
         # levert een inbox-reden ("assigned"), niet het aanmaken zelf.
         client.patch(f"/api/v1/items/{ref}", json={"assignee": "claude"}, headers=auth)
 
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     inbox = client.get("/api/v1/inbox", headers=claude_auth).json()
     assert {e["ref"] for e in inbox["items"]} == {"LIVE-1"}
 
@@ -92,6 +94,7 @@ def test_due_entry_skips_archived_project(
     _create(client, auth, live, title="echt", assignee="claude", due_date="2020-01-01")
     _create(client, auth, oud, title="dood", assignee="claude", due_date="2020-01-01")
 
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     inbox = client.get("/api/v1/inbox", headers=claude_auth).json()
     due = [e for e in inbox["items"] if e["reason"] == "due"]
     assert [e["ref"] for e in due] == ["LIVE-1"]
@@ -114,6 +117,7 @@ def test_guardrail_concept_entry_skips_archived_project(
         )
         assert r.status_code == 200
 
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     inbox = client.get("/api/v1/inbox", headers=auth).json()
     concepts = [e for e in inbox["items"] if e["reason"] == "guardrail"]
     assert [e["ref"] for e in concepts] == [f"{live}-1"]
@@ -135,6 +139,7 @@ def test_open_questions_skips_archived_project(
             headers=auth,
         )
 
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     open_qs = client.get("/api/v1/questions?open=true", headers=claude_auth).json()
     assert [q["item"]["ref"] for q in open_qs] == ["LIVE-1"]
 
@@ -151,6 +156,7 @@ def test_open_questions_skips_archived_item(
         json={"body_md": "Welke kant op?", "kind": "question"},
         headers=auth,
     )
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     assert client.get("/api/v1/questions?open=true", headers=claude_auth).json()
 
     client.delete(f"/api/v1/items/{ref}", headers=auth)  # archiveert
@@ -165,6 +171,7 @@ def test_search_skips_archived_project(client: TestClient, auth: dict, two_proje
     _create(client, auth, live, title="zeppelin in bedrijf")
     _create(client, auth, oud, title="zeppelin uit bedrijf")
 
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     hits = client.get("/api/v1/search?q=zeppelin", headers=auth).json()
     assert [h["ref"] for h in hits] == ["LIVE-1"]
 
@@ -179,6 +186,7 @@ def test_search_substring_fallback_skips_archived_project(
 
     # "chipl" is geen woord-prefix, dus FTS levert niets en de substring-tak
     # beslist; beide titels bevatten het fragment.
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     hits = client.get("/api/v1/search?q=chipl", headers=auth).json()
     assert [h["ref"] for h in hits] == ["LIVE-1"]
 
@@ -196,6 +204,7 @@ def test_search_comment_hits_skip_archived_project(
             headers=auth,
         )
 
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     hits = client.get("/api/v1/search?q=kortegolf", headers=auth).json()
     assert [h["ref"] for h in hits] == ["LIVE-1"]
 
@@ -210,6 +219,7 @@ def test_search_include_archived_returns_them_again(
     _live, oud = two_projects
     _create(client, auth, oud, title="zeppelin uit bedrijf")
 
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     assert items_repo.search(conn, "zeppelin") == []
     hits = items_repo.search(conn, "zeppelin", include_archived=True)
     assert [h["ref"] for h in hits] == ["OUD-1"]
@@ -223,6 +233,7 @@ def test_ref_candidates_skips_archived_project(
     _create(client, auth, live, title="echt")
     _create(client, auth, oud, title="dood")
 
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     hits = client.get(
         "/api/v1/ref-candidates", headers=auth, params={"q": "1", "project": live}
     ).json()
@@ -242,6 +253,7 @@ def test_full_ref_still_finds_a_ticket_in_an_archived_project(
     _live, oud = two_projects
     _create(client, auth, oud, title="dood werk")
 
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     hits = client.get("/api/v1/search?q=OUD-1", headers=auth).json()
     assert [h["ref"] for h in hits] == ["OUD-1"]
 
@@ -257,6 +269,7 @@ def test_explicitly_scoped_reads_still_see_archived_project(
     _live, oud = two_projects
     ref = _create(client, auth, oud, title="dood werk").json()["ref"]
 
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     assert client.get(f"/api/v1/items/{ref}", headers=auth).status_code == 200
     items = client.get(f"/api/v1/projects/{oud}/items", headers=auth).json()
     assert [i["ref"] for i in items] == [ref]
@@ -288,11 +301,13 @@ def test_guardrail_in_archived_project_falls_out(
 
     live_id = conn.execute("SELECT id FROM projects WHERE key = ?", (live,)).fetchone()["id"]
     oud_id = conn.execute("SELECT id FROM projects WHERE key = ?", (oud,)).fetchone()["id"]
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     assert guardrails_repo.project_wide_count(conn, live_id) == 1
     assert guardrails_repo.project_wide_count(conn, oud_id) == 0
     assert [g["ref"] for g in guardrails_repo.project_wide(conn, live_id)] == [f"{live}-1"]
     assert guardrails_repo.project_wide(conn, oud_id) == []
 
+    assert client.post("/api/v1/projects/OUD/restore", headers=auth).status_code == 200
     # Gescoped: hetzelfde beeld via applicable_for_item.
     for key in (live, oud):
         item = items_repo.get_by_ref(conn, f"{key}-1")
@@ -302,6 +317,7 @@ def test_guardrail_in_archived_project_falls_out(
             (key,),
         ).fetchone()["id"]
         guardrails_repo.set_scope(conn, item["id"], [label])
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
 
     live_target = items_repo.get_by_ref(conn, f"{live}-2")
     oud_target = items_repo.get_by_ref(conn, f"{oud}-2")
@@ -334,6 +350,7 @@ def test_guardrail_review_finder_skips_archived_project(
             conn, item["id"], text="regel", review_by="2020-01-01", set_by=None
         )
 
+    assert client.delete("/api/v1/projects/OUD", headers=auth).status_code == 204
     found = triage_worker.find_guardrails_due_review(
         conn, triage_user_id=triage["id"], limit=10
     )

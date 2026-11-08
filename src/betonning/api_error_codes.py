@@ -69,3 +69,18 @@ async def localized_validation_error(request, exc):
         response.body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
         response.headers['content-length'] = str(len(response.body))
     return response
+
+
+async def database_integrity_error(request, exc):
+    """Vertaal alleen de expliciete archiefpoort; verberg geen andere DB-fouten."""
+    from starlette.exceptions import HTTPException
+    from .repo.projects import READONLY_ERROR
+
+    if str(exc) == 'execution_owner_active':
+        return await localized_http_error(request, HTTPException(status_code=409, detail=CATALOG['execution_owner_active']['nl']))
+    if str(exc) != READONLY_ERROR:
+        raise exc
+    return await localized_http_error(request, HTTPException(
+        status_code=409,
+        detail="Gearchiveerde projecten zijn alleen-lezen. Herstel het project om wijzigingen te maken.",
+    ))

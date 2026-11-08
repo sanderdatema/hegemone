@@ -43,6 +43,7 @@ from ..repo import milestones
 from ..repo import follows as follows_repo
 from ..repo import mutes as mutes_repo
 from ..repo import projects as projects_repo
+from ..repo import execution as execution_repo
 from ..repo import relations as relations_repo
 from ..repo import states as states_repo
 from ..repo import users as users_repo
@@ -264,6 +265,9 @@ def get_item(
     # BETON-294: has_unread is per user — serialiseer t.o.v. de aanroeper. Het
     # ophalen markeert bewust niets als gelezen; dat doet POST /items/{ref}/read.
     data = items_repo.serialize(conn, item, user["id"])
+    execution_request = execution_repo.latest(conn, item["id"])
+    if execution_request is not None:
+        data["execution"] = execution_repo.serialize(conn, execution_request)
     child_rows = [
         items_repo.serialize(conn, c, user["id"])
         for c in items_repo.children(conn, item["id"])

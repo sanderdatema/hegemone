@@ -168,6 +168,7 @@ def _enforce_policy(request, user, conn):
             and not read
             and "/items" not in path
             and "/wiki" not in path
+            and "/executions" not in path
         ):
             if "admin" not in scopes:
                 raise HTTPException(403, "Projectinstellingen vereisen beheerscope")
@@ -185,6 +186,38 @@ def _enforce_policy(request, user, conn):
     if path in ("/api/v1/session", "/api/v1/logout", "/api/v1/media-cookie"):
         return
     raise HTTPException(403, "Gebruik een expliciet toegestane projectroute")
+
+
+async def _enforce_archive_policy(request: Request, conn: sqlite3.Connection) -> None:
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return
+    params = request.path_params
+    # These execution endpoints can only stop/expire owners or update run metadata.
+    if "/executions/" in request.url.path and request.url.path.rsplit("/",1)[-1] in ("poll","heartbeat","stop","block"):
+        return
+    # Persoonlijke leesstatus verandert geen projectinhoud of workflow.
+    if params.get("ref") and request.url.path == f"/api/v1/items/{params['ref']}/read":
+        return
+    if params.get("key") and request.method == "POST" and request.url.path == f"/api/v1/projects/{params['key']}/restore":
+        return
+    ids = projects_repo.write_target_project_ids(
+        conn, key=params.get("key"), ref=params.get("ref"),
+        comment_id=params.get("comment_id"), message_id=params.get("message_id"),
+        proposal_id=params.get("proposal_id"),
+    )
+    if "application/json" in request.headers.get("content-type", ""):
+        try:
+            body = await request.json()
+        except ValueError:
+            body = None
+        if isinstance(body, dict):
+            if isinstance(body.get("project"), str):
+                ids.update(projects_repo.write_target_project_ids(conn, key=body["project"]))
+            for field in ("target", "parent", "target_ref"):
+                if isinstance(body.get(field), str):
+                    ids.update(projects_repo.write_target_project_ids(conn, ref=body[field]))
+    for project_id in ids:
+        projects_repo.require_writable(conn, project_id)
 
 
 async def current_user(
@@ -240,6 +273,7 @@ async def current_user(
                             raise HTTPException(
                                 403, "Doel valt buiten de projectscopes"
                             )
+    await _enforce_archive_policy(request, conn)
     request.state.user_id = user["id"]
     return user
 

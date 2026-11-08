@@ -27,6 +27,7 @@ from ..deps import (
 )
 from ..models import TriageChatConfirm, TriageChatMessage
 from ..repo import triage_chat as chat_repo
+from ..repo import projects as projects_repo
 from ..triage_chat_engine import (
     ConfirmationRequired,
     LLMError,
@@ -46,7 +47,9 @@ def _project_id(conn: sqlite3.Connection, key: str) -> int:
 def _serialize_session(conn: sqlite3.Connection, project_id: int | None) -> dict:
     """De actieve sessie van een scope: berichtenhistorie + eventueel het
     openstaande voorstel."""
-    session = chat_repo.active_session(conn, project_id)
+    session = chat_repo.active_session(conn, project_id, create=not projects_repo.is_archived(conn, project_id))
+    if session is None:
+        return {"session_id": None, "project_id": project_id, "messages": [], "pending": None}
     messages = [
         chat_repo.serialize_message(m)
         for m in chat_repo.list_messages(conn, session["id"])

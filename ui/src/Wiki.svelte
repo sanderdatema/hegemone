@@ -35,7 +35,7 @@
   // `onswitchproject(key)` wisselt het actieve project op app-niveau — nodig
   // om een wikilink naar een ánder project dan het geselecteerde te kunnen
   // volgen (BETON-306); zonder die callback blijft zo'n link binnen de view.
-  let { project, projectName, me, onclose, onopenref, onswitchproject, liveTick = 0 } = $props();
+  let { project, projectName, projectArchived = false, me, onclose, onopenref, onswitchproject, liveTick = 0 } = $props();
 
   // Bekende project-keys, voor het klikbaar maken van ticketrefs (BETON-106).
   let projectKeys = $state([]);
@@ -46,6 +46,7 @@
 
   // scope: 'global' of 'project'. Zonder project altijd globaal.
   let scope = $state(project ? "project" : "global");
+  let projectReadOnly = $derived(scope === "project" && projectArchived);
   let pages = $state([]);
   let selected = $state(null); // huidige slug
   let editing = $state(false);
@@ -211,6 +212,7 @@
   }
 
   async function restoreRevision() {
+    if (projectReadOnly) return;
     if (!revDetail) return;
     try {
       await api.wikiRestore(scopeKey, current.slug, revDetail.revision.id);
@@ -244,6 +246,7 @@
   // ontstaat een duplicaat in de verkeerde scope. Een ánder project bereiken we
   // via de projectwissel op app-niveau, net als bij `open`.
   async function startCreateFromPrompt() {
+    if (projectReadOnly) return;
     const slug = createPrompt;
     const target = createPromptScope || currentScope;
     if (target !== currentScope) {
@@ -303,6 +306,7 @@
   }
 
   function startEdit() {
+    if (projectReadOnly) return;
     if (!current) return;
     // Verlaat een eventuele diff-weergave: bewerken gaat over de huidige inhoud.
     revDetail = null;
@@ -313,6 +317,7 @@
   }
 
   function startCreate(slug = "") {
+    if (projectReadOnly) return;
     creating = true;
     editing = false;
     selected = null;
@@ -385,6 +390,7 @@
 
   let saving = false; // dubbele Cmd+Enter mag niet dubbel opslaan (BETON-462)
   async function saveEdit() {
+    if (projectReadOnly) return;
     if (saving) return;
     saving = true;
     try {
@@ -403,6 +409,7 @@
   }
 
   async function saveCreate() {
+    if (projectReadOnly) return;
     const slug = (slugDraft || titleDraft).trim();
     if (!slug || !titleDraft.trim()) {
       error = $tr("wiki.validation");
@@ -427,6 +434,7 @@
   }
 
   async function doDelete() {
+    if (projectReadOnly) return;
     try {
       await api.wikiDelete(scopeKey, current.slug);
       confirmDelete = false;
@@ -492,7 +500,7 @@
       />
     </div>
 
-    <button class="wiki-new" onclick={() => startCreate()}>
+    <button disabled={projectReadOnly} class="wiki-new" onclick={() => startCreate()}>
       <Plus size={15} /> {$tr("wiki.new")}
     </button>
 
@@ -524,9 +532,10 @@
 
   <!-- Hoofdinhoud: het geselecteerde artikel, de editor of een lege staat. -->
   <main class="wiki-main" class:mobile-hidden={pane !== "main"}>
+    {#if projectReadOnly}<p class="project-readonly-note" role="status">{$tr("api.project_archived_readonly")}</p>{/if}
     {#if error}<p class="error wiki-error">{error}</p>{/if}
     {#if me?.kind === "human"}
-      <WikiReview project={scopeKey} {liveTick} onchanged={load} />
+      <WikiReview readOnly={projectReadOnly} project={scopeKey} {liveTick} onchanged={load} />
     {/if}
 
     {#if creating}
@@ -539,10 +548,10 @@
             {$tr("wiki.newInScope", {scope: scope === "global" ? $tr("wiki.global") : projectName || project})}
           </h2>
         </div>
-        <input class="full" bind:value={titleDraft} placeholder={$tr("wiki.title")} />
-        <input class="full" bind:value={slugDraft} placeholder={$tr("wiki.slugHint")} />
+        <input disabled={projectReadOnly} class="full" bind:value={titleDraft} placeholder={$tr("wiki.title")} />
+        <input disabled={projectReadOnly} class="full" bind:value={slugDraft} placeholder={$tr("wiki.slugHint")} />
         <div class="ac-wrap">
-          <AutoTextarea
+          <AutoTextarea disabled={projectReadOnly}
             class="full wiki-textarea"
             bind:textareaRef={editorEl}
             bind:value={bodyDraft}
@@ -556,7 +565,7 @@
         </div>
         <div class="btn-row">
           <button class="sm" onclick={() => (creating = false)}>{$tr("common.cancel")}</button>
-          <button class="primary sm" onclick={saveCreate}>{$tr("common.create")}</button>
+          <button disabled={projectReadOnly} class="primary sm" onclick={saveCreate}>{$tr("common.create")}</button>
         </div>
       </div>
     {:else if current}
@@ -576,9 +585,9 @@
               >
                 <History size={16} />
               </button>
-              <button class="icon-btn sm" title={$tr("wiki.edit")} onclick={startEdit}><Pencil size={16} /></button>
+              <button disabled={projectReadOnly} class="icon-btn sm" title={$tr("wiki.edit")} onclick={startEdit}><Pencil size={16} /></button>
               {#if me?.kind === "human"}
-                <button class="icon-btn sm danger-quiet" title={$tr("wiki.delete")} onclick={() => (confirmDelete = true)}>
+                <button disabled={projectReadOnly} class="icon-btn sm danger-quiet" title={$tr("wiki.delete")} onclick={() => (confirmDelete = true)}>
                   <Trash2 size={16} />
                 </button>
               {/if}
@@ -591,7 +600,7 @@
             <h1 class="wiki-doc-title">{current.title}</h1>
             <p class="muted">{$tr("wiki.source")}: {current.source_kind ?? $tr("wiki.existingKnowledge")} · {$tr(current.protected ? "wiki.protected" : "wiki.ordinary")}</p>
             {#if me?.kind === "human" && scopeKey}
-              <button class="sm" onclick={async () => {
+              <button disabled={projectReadOnly} class="sm" onclick={async () => {
                 try { await api.wikiProtect(scopeKey, current.slug, !current.protected); await load(); }
                 catch (e) { error = e.message; }
               }}>{$tr(current.protected ? "wiki.unprotect" : "wiki.protect")}</button>
@@ -608,7 +617,7 @@
         {/if}
 
         {#if confirmDelete}
-          <ConfirmBar
+          <ConfirmBar confirmDisabled={projectReadOnly}
             cancelLabel={$tr("common.cancel")}
             danger
             message={$tr("wiki.deleteQuestion", {slug: current.slug})}
@@ -620,9 +629,9 @@
         {/if}
 
         {#if editing}
-          <input class="full" bind:value={titleDraft} placeholder={$tr("wiki.title")} />
+          <input disabled={projectReadOnly} class="full" bind:value={titleDraft} placeholder={$tr("wiki.title")} />
           <div class="ac-wrap">
-            <AutoTextarea
+            <AutoTextarea disabled={projectReadOnly}
               class="full wiki-textarea"
               bind:textareaRef={editorEl}
               bind:value={bodyDraft}
@@ -636,7 +645,7 @@
           </div>
           <div class="btn-row">
             <button class="sm" onclick={() => (editing = false)}>{$tr("common.cancel")}</button>
-            <button class="primary sm" onclick={saveEdit}>{$tr("common.save")}</button>
+            <button disabled={projectReadOnly} class="primary sm" onclick={saveEdit}>{$tr("common.save")}</button>
           </div>
         {:else if revDetail}
           <div class="rev-view">
@@ -659,10 +668,10 @@
               <div class="rev-banner-actions">
                 {#if restoreConfirm}
                   <span class="rev-confirm-q">{$tr("wiki.restoreQuestion")}</span>
-                  <button class="primary sm" onclick={restoreRevision}>{$tr("wiki.yesRestore")}</button>
-                  <button class="sm" onclick={() => (restoreConfirm = false)}>{$tr("common.cancel")}</button>
+                  <button disabled={projectReadOnly} class="primary sm" onclick={restoreRevision}>{$tr("wiki.yesRestore")}</button>
+                  <button disabled={projectReadOnly} class="sm" onclick={() => (restoreConfirm = false)}>{$tr("common.cancel")}</button>
                 {:else}
-                  <button class="sm" onclick={() => (restoreConfirm = true)}>
+                  <button disabled={projectReadOnly} class="sm" onclick={() => (restoreConfirm = true)}>
                     <RotateCcw size={14} /> {$tr("wiki.restore")}
                   </button>
                   <button class="icon-btn sm" title={$tr("wiki.closeDiff")} onclick={closeRevision}>
@@ -691,7 +700,7 @@
         {/if}
 
         {#if createPrompt}
-          <ConfirmBar cancelLabel={$tr("common.cancel")} confirmLabel={$tr("common.create")} onconfirm={startCreateFromPrompt} oncancel={() => (createPrompt = "")}>
+          <ConfirmBar confirmDisabled={projectReadOnly} cancelLabel={$tr("common.cancel")} confirmLabel={$tr("common.create")} onconfirm={startCreateFromPrompt} oncancel={() => (createPrompt = "")}>
             {#snippet message()}
               {$tr("wiki.missing", {slug: createPromptScope && createPromptScope !== currentScope ? `${createPromptScope}:${createPrompt}` : createPrompt})}
             {/snippet}

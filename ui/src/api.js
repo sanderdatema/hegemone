@@ -294,6 +294,8 @@ export const api = {
   // Vraagmodule (BETON-219). Beantwoorden: body = precies één van {text} of
   // {option_index}. Open vragen gericht aan de ingelogde user.
   answerQuestion: (commentId, body) => req("POST", `/comments/${commentId}/answer`, body),
+  withdrawQuestion: (commentId, reason) => req("POST", `/comments/${commentId}/withdraw`, { reason }),
+  resumeExecution: (ref, executionId, body) => req("POST", `/items/${ref}/executions/${executionId}/resume`, body),
   updateAnswer: (commentId, body) => req("PATCH", `/comments/${commentId}/answer`, body),
   openQuestions: () => req("GET", "/questions?open=true"),
   updateComment: (ref, id, body_md) =>

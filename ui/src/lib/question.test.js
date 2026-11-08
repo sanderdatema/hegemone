@@ -4,6 +4,7 @@ import {
   textAnswer,
   isQuestion,
   questionState,
+  canDismissTriageQuestion,
   matchedOptionIndex,
   openQuestionRows,
 } from "./question.js";
@@ -163,5 +164,24 @@ describe("ingetrokken vraag (BETON-454)", () => {
     ]);
     expect(rows.find((r) => r.id === 1).state).toBe("Done");
     expect(rows.find((r) => r.id === 2).state).toBeNull();
+  });
+});
+
+
+describe("dismissing triage questions", () => {
+  const question = { author: "triage", kind: "question" };
+  it("offers the action to humans for an open triage question", () => {
+    expect(canDismissTriageQuestion(question, { kind: "human" })).toBe(true);
+  });
+  it.each([
+    [{ ...question, answered_at: "2026-01-01" }, { kind: "human" }],
+    [{ ...question, withdrawn_at: "2026-01-01" }, { kind: "human" }],
+    [{ ...question, author: "worker" }, { kind: "human" }],
+    [{ ...question, kind: "comment" }, { kind: "human" }],
+    [question, { kind: "agent" }],
+    [question, null],
+    [null, { kind: "human" }],
+  ])("does not offer dismissal for an ineligible question or viewer", (comment, user) => {
+    expect(canDismissTriageQuestion(comment, user)).toBe(false);
   });
 });

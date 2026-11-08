@@ -13,7 +13,10 @@
   // `action`: een kiezer die na elke keuze terugvalt op zijn lege waarde (de
   // bulkbalk, "verplaats naar project") — `onchange` krijgt de keuze, maar de
   // getoonde waarde blijft `value`.
-  import { Select } from "bits-ui";
+  import { Select, Popover } from "bits-ui";
+  import { tick } from "svelte";
+  import { moveIndex } from "./lib/palette.js";
+  import { t } from "./lib/i18n.js";
   import { Check, ChevronDown } from "@lucide/svelte";
 
   let {
@@ -28,6 +31,8 @@
     class: klass = "",
     disabled = false,
     action = false,
+    searchable = false,
+    searchLabel = "",
   } = $props();
 
   const EMPTY = "__betonning_empty__";
@@ -40,6 +45,42 @@
     flat.find((o) => toInner(o.value) === toInner(value))?.label ?? placeholder
   );
 
+  const uid = $props.id();
+  let open = $state(false);
+  let query = $state("");
+  let active = $state(0);
+  let searchInput = $state();
+  const listId = `${uid}-options`;
+  const optionId = (o) => `${listId}-${encodeURIComponent(String(o.value))}`;
+  let searchOptions = $derived(options.filter(matches));
+  let searchGroups = $derived((groups ?? []).map(g => ({ ...g, options: g.options.filter(matches) })).filter(g => g.options.length));
+  let matchesFlat = $derived([...searchOptions, ...searchGroups.flatMap(g => g.options)]);
+
+  function matches(o) {
+    return `${o.value} ${o.label}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
+  }
+  function choose(o) {
+    pick(toInner(o.value));
+    open = false;
+  }
+  async function focusSearch(event) {
+    event.preventDefault();
+    await tick();
+    searchInput?.focus();
+  }
+  function searchKey(event) {
+    if (event.isComposing) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      active = moveIndex(active, event.key === "ArrowDown" ? 1 : -1, matchesFlat.length);
+      const option = matchesFlat[active];
+      if (option) document.getElementById(optionId(option))?.scrollIntoView({ block: "nearest" });
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      if (matchesFlat[active]) choose(matchesFlat[active]);
+    }
+  }
+
   function pick(v) {
     const out = fromInner(v);
     if (out === value) return;
@@ -47,6 +88,60 @@
     onchange?.(out);
   }
 </script>
+
+{#if searchable}
+  <Popover.Root bind:open onOpenChange={(next) => { if (next) { query = ""; active = 0; } }}>
+    <Popover.Trigger class={`select-trigger ${klass}`.trim()} aria-label={ariaLabel} {id} {title} {disabled}>
+      <span class="select-trigger-label">{selectedLabel}</span>
+      <ChevronDown size={16} aria-hidden="true" />
+    </Popover.Trigger>
+    <Popover.Portal>
+      <Popover.Content class="select-menu searchable-select" align="start" sideOffset={4} onOpenAutoFocus={focusSearch}>
+        <input
+          bind:this={searchInput}
+          bind:value={query}
+          oninput={() => (active = 0)}
+          onkeydown={searchKey}
+          type="search"
+          role="combobox"
+          aria-label={searchLabel}
+          placeholder={searchLabel}
+          aria-expanded={open}
+          aria-autocomplete="list"
+          aria-controls={listId}
+          aria-activedescendant={matchesFlat[active] ? optionId(matchesFlat[active]) : undefined}
+        />
+        <div class="searchable-options" id={listId} role="listbox" aria-label={ariaLabel}>
+          {#snippet option(o)}
+            <button
+              type="button"
+              class="select-item"
+              class:search-active={matchesFlat[active]?.value === o.value}
+              id={optionId(o)}
+              role="option"
+              aria-selected={toInner(o.value) === toInner(value)}
+              tabindex="-1"
+              onpointerdown={(event) => event.preventDefault()}
+              onpointermove={() => (active = matchesFlat.findIndex(it => it.value === o.value))}
+              onclick={() => choose(o)}
+            >
+              <span class="select-check">{#if toInner(o.value) === toInner(value)}<Check size={14} aria-hidden="true" />{/if}</span>
+              {o.label}
+            </button>
+          {/snippet}
+          {#each searchOptions as o (o.value)}{@render option(o)}{/each}
+          {#each searchGroups as g (g.label)}
+            <div role="group" aria-label={g.label}>
+              <div class="select-heading" aria-hidden="true">{g.label}</div>
+              {#each g.options as o (o.value)}{@render option(o)}{/each}
+            </div>
+          {/each}
+        </div>
+        {#if !matchesFlat.length}<p class="search-empty" role="status">{$t("ui.noMatch")}</p>{/if}
+      </Popover.Content>
+    </Popover.Portal>
+  </Popover.Root>
+{:else}
 
 <Select.Root
   type="single"
@@ -87,3 +182,32 @@
     </Select.Content>
   </Select.Portal>
 </Select.Root>
+
+{/if}
+
+<style>
+  :global(.searchable-select) {
+    display: flex;
+    flex-direction: column;
+    min-width: var(--bits-popover-anchor-width);
+    max-width: calc(100vw - 24px);
+    max-height: min(360px, var(--bits-popover-content-available-height));
+    overflow: hidden;
+  }
+  input {
+    flex: none;
+    width: 100%;
+    margin-bottom: var(--space-1);
+  }
+  .searchable-options { overflow-y: auto; min-height: 0; }
+  .searchable-options .select-item {
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    font-weight: 400;
+  }
+  .searchable-options .select-item[aria-selected="true"] { font-weight: 600; }
+  .searchable-options .search-active { background: var(--surface-2); }
+  .search-empty { margin: var(--space-2); color: var(--text-tertiary); }
+</style>

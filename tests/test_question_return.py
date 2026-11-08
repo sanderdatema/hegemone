@@ -107,3 +107,23 @@ def test_stale_keep_going_returns_to_prior(client, auth, conn, project):
     )
     _answer(client, auth, qid, option_index=0)
     assert _assignee(client, auth) == users_repo.VIRTUAL_CODING
+
+
+def test_human_dismisses_triage_question_without_creating_an_answer(
+    client, auth, conn, project
+):
+    _agent(conn, "worker")
+    qid = _triage_question(client, auth, conn, body="Which direction?", assignee="worker")
+    reason = "Marked as not relevant by a human."
+    response = client.post(
+        f"/api/v1/comments/{qid}/withdraw", json={"reason": reason}, headers=auth
+    )
+    assert response.status_code == 200
+    assert response.json()["withdrawn_reason"] == reason
+    assert response.json()["answered_at"] is None
+    assert _assignee(client, auth) == "worker"
+    item = client.get("/api/v1/items/SOS-1", headers=auth).json()
+    assert item["has_open_question"] is False
+    preserved = next(comment for comment in item["comments"] if comment["id"] == qid)
+    assert preserved["body_md"] == "Which direction?"
+    assert preserved["withdrawn_at"] is not None

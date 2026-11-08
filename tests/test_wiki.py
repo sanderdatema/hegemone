@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from betonning.repo import projects as projects_repo
 from betonning.repo import wiki as wiki_repo
 
@@ -91,7 +93,8 @@ def test_context_markdown_under_budget_is_full(conn):
     assert wiki_repo.INDEX_HEADING not in md
 
 
-def test_context_markdown_over_budget_keeps_pages_whole(conn):
+@pytest.mark.parametrize("tied", [False, True])
+def test_context_markdown_over_budget_keeps_pages_whole(conn, tied):
     """Boven het budget: volledige pagina's tot het budget op is, rest als index.
 
     Inkorten tot losse eerste alinea's leverde een blob op waarin vrijwel elke
@@ -107,13 +110,27 @@ def test_context_markdown_over_budget_keeps_pages_whole(conn):
         body_md="# Nieuw\n\nverse inhoud " + ("vulling " * 20),
     )
     conn.commit()
+    # Expliciete fixturetijden: recency eerst, bij gelijke tijden slug aflopend.
+    old_timestamp = "2026-01-02T00:00:00.000Z" if tied else "2026-01-01T00:00:00.000Z"
+    conn.execute(
+        "UPDATE wiki_pages SET created_at = ?, updated_at = ? WHERE slug = 'oud'",
+        (old_timestamp, old_timestamp),
+    )
+    conn.execute(
+        "UPDATE wiki_pages SET created_at = ?, updated_at = ? WHERE slug = 'nieuw'",
+        ("2026-01-02T00:00:00.000Z", "2026-01-02T00:00:00.000Z"),
+    )
+    conn.commit()
     md = wiki_repo.context_markdown(conn, None, budget=500)  # inclusief bronmetadata
-    # De meest recent bijgewerkte pagina gaat volledig mee...
-    assert "verse inhoud" in md
-    # ...de andere staat alleen als index-regel met zijn blurb.
-    assert "oude inhoud die niet meer past" not in md
-    assert "`oud` — Oud" in md
+    # De hoogst gerangschikte pagina gaat volledig mee, de andere alleen als index.
+    selected = "oude inhoud die niet meer past" if tied else "verse inhoud"
+    omitted = "verse inhoud" if tied else "oude inhoud die niet meer past"
+    index_entry = "`nieuw` — Nieuw" if tied else "`oud` — Oud"
+    assert selected in md
+    assert omitted not in md
+    assert index_entry in md
     assert "# Niet geladen (index)" in md
+    assert len(md) <= 500
 
 
 def test_context_index_blurb_skips_title_echo(conn):

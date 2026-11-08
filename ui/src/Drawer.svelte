@@ -85,6 +85,7 @@
   import ImageLightbox from "./ImageLightbox.svelte";
   import { lightboxClicks } from "./lib/lightbox.js";
   import ErrorNote from "./ErrorNote.svelte";
+  import ExecutionStatus from "./ExecutionStatus.svelte";
   import Skeleton from "./Skeleton.svelte";
   import EmptyState from "./EmptyState.svelte";
   import { workloadOptions, stateOptions } from "./lib/segmentedOptions.js";
@@ -93,6 +94,7 @@
     optionAnswer,
     textAnswer,
     questionState,
+    canDismissTriageQuestion,
     matchedOptionIndex,
   } from "./lib/question.js";
 
@@ -125,6 +127,7 @@
   } = $props();
 
   let item = $state(null);
+  let projectReadOnly = $derived(Boolean(item?.project_archived_at));
   let activity = $state([]);
   let attachments = $state([]);
   // Lightbox (BETON-474): afbeelding uit markdown of bijlage groot tonen.
@@ -252,6 +255,7 @@
     confirmArchive = false;
     confirmClose = false;
     confirmDeleteId = null;
+    dismissQuestionId = null;
     expandedProp = null;
     labelPickerOpen = false;
     labelQuery = "";
@@ -317,6 +321,7 @@
   let triageNote = $derived(triagePendingNote(item, $locale));
 
   async function patch(body) {
+    if (projectReadOnly) return;
     // Optimistische property-edit (BETON-62): pas de lokale state meteen aan en
     // draai terug bij een fout — zelfde patroon als applyMove op het board.
     const prev = item;
@@ -345,6 +350,7 @@
   }
 
   function startTitle() {
+    if (projectReadOnly) return;
     titleDraft = item.title;
     editingTitle = true;
   }
@@ -355,6 +361,7 @@
   }
 
   function startDesc() {
+    if (projectReadOnly) return;
     descDraft = item.description_md || "";
     editingDesc = true;
     descMentionMatches = [];
@@ -413,11 +420,13 @@
     if (showPlan) await loadPlan();
   }
   async function startPlanEdit() {
+    if (projectReadOnly) return;
     if (item.has_plan && planMd == null) await loadPlan();
     planDraft = planMd || "";
     editingPlan = true;
   }
   async function savePlan() {
+    if (projectReadOnly) return;
     editingPlan = false;
     const next = planDraft.trim();
     if (next === (planMd || "")) return;
@@ -482,6 +491,7 @@
   // guardrail projectbreed is. Scopen blijft zo één klik, zonder een veld te
   // verzinnen dat de backend niet heeft.
   function startGuardrailEdit() {
+    if (projectReadOnly) return;
     guardrailDraft = guardrail.text;
     guardrailReviewDraft = guardrail.reviewBy || "";
     guardrailScopeDraft = [...guardrail.scope];
@@ -495,6 +505,7 @@
   // `guardrailValidation` weigert hem toch, en de mens moet hem dan bewust
   // kiezen (de backend zou bij goedkeuren de default-horizon pakken).
   function startGuardrailEditFromProposal() {
+    if (projectReadOnly) return;
     if (!guardrailProposal) return;
     guardrailDraft = guardrailProposal.text;
     const proposed = guardrailProposal.reviewBy || "";
@@ -508,6 +519,7 @@
   }
 
   async function doApproveGuardrail() {
+    if (projectReadOnly) return;
     busy = true;
     try {
       await api.approveGuardrail(ref);
@@ -523,6 +535,7 @@
   }
 
   async function doRejectGuardrail() {
+    if (projectReadOnly) return;
     confirmRejectGuardrail = false;
     busy = true;
     try {
@@ -544,6 +557,7 @@
   }
 
   async function saveGuardrail() {
+    if (projectReadOnly) return;
     if (!guardrailCheck.ok) {
       error = guardrailCheck.error;
       return;
@@ -568,6 +582,7 @@
   }
 
   async function doLiftGuardrail() {
+    if (projectReadOnly) return;
     confirmLiftGuardrail = false;
     busy = true;
     try {
@@ -604,6 +619,7 @@
   }
 
   async function runEnrich() {
+    if (projectReadOnly) return;
     enriching = true;
     enrichNotice = null;
     try {
@@ -626,6 +642,7 @@
     }
   }
   async function acceptEnrich() {
+    if (projectReadOnly) return;
     const proposal = enrichProposal;
     const labels = enrichLabelsPicked;
     enrichProposal = null;
@@ -661,6 +678,7 @@
   let decomposeProposal = $state(null); // null = geen voorstel open
 
   async function runDecompose() {
+    if (projectReadOnly) return;
     decomposing = true;
     error = "";
     try {
@@ -672,6 +690,7 @@
     }
   }
   async function applyDecompose() {
+    if (projectReadOnly) return;
     const proposal = decomposeProposal;
     decomposeProposal = null;
     try {
@@ -686,6 +705,7 @@
   }
 
   async function toggleLabel(name) {
+    if (projectReadOnly) return;
     const prev = item;
     const has = (item.labels || []).includes(name);
     const labels = toggleSelection(item.labels || [], name);
@@ -705,6 +725,7 @@
   }
 
   async function addRelation() {
+    if (projectReadOnly) return;
     const target = relTarget.trim();
     if (!target) return;
     const type = relType;
@@ -740,6 +761,7 @@
   // laten de relatie zelf ongedaan maken — die staat er al. Geeft een
   // melding terug i.p.v. `error` direct te zetten (zie call-site).
   async function cancelDuplicateIfNeeded(type, target) {
+    if (projectReadOnly) return;
     const duplicateRef = duplicateRefForRelation(type, ref, target);
     if (!duplicateRef) return null;
     try {
@@ -780,6 +802,7 @@
   function pickRelTarget(targetRef) { return relPicker.pick(targetRef); }
 
   async function removeRelation(type, target) {
+    if (projectReadOnly) return;
     const prev = item;
     const relations = { ...(item.relations || {}) };
     relations[type] = (relations[type] || []).filter((r) => r !== target); // optimistisch
@@ -803,6 +826,7 @@
   // volgen; andermans mute-status tonen we niet meer. Na afloop item +
   // volgerslijst vers laden.
   async function applyFollowChoice(choice) {
+    if (projectReadOnly) return;
     if (!choice || !me) return;
     const ops = followChoiceOps(choice, { following: item?.is_following === true, muted: selfMuted });
     if (!ops.length) return;
@@ -826,6 +850,7 @@
   // Noodstop (BETON-302). Mens-only: de knoppen staan alleen voor een mens in
   // het menu, en de backend weigert een agent sowieso met 403.
   async function doLock() {
+    if (projectReadOnly) return;
     confirmLock = false;
     try {
       await api.lockItem(ref);
@@ -841,6 +866,7 @@
   let unlockMenuOpen = $state(false);
 
   async function doUnlock(headroom = 5) {
+    if (projectReadOnly) return;
     unlockMenuOpen = false;
     try {
       await api.unlockItem(ref, headroom);
@@ -851,6 +877,7 @@
   }
 
   async function doArchive() {
+    if (projectReadOnly) return;
     confirmArchive = false;
     try {
       await api.archiveItem(ref);
@@ -869,6 +896,7 @@
   });
 
   async function doMove() {
+    if (projectReadOnly) return;
     confirmMove = false;
     const target = moveTarget;
     moveTarget = "";
@@ -886,6 +914,7 @@
   }
 
   async function doDelete() {
+    if (projectReadOnly) return;
     confirmDelete = false;
     try {
       await api.deleteItem(ref);
@@ -898,6 +927,7 @@
 
   // Herstel uit archief (BETON-59): zet het item terug op het board.
   async function doRestore() {
+    if (projectReadOnly) return;
     try {
       await api.restoreItem(ref);
       onchanged?.();
@@ -944,6 +974,7 @@
   // De relates_to-relatie naar het origineel legt de aanroeper (App.svelte) —
   // duplicateDraft() kent het origineel zelf niet.
   function doDuplicate() {
+    if (projectReadOnly) return;
     onduplicate?.(duplicateDraft(item, $locale), item.ref);
   }
 
@@ -992,6 +1023,7 @@
   // Gedeeld door de sleep/plak-flow (dataTransfer/clipboardData) én de
   // zichtbare upload-knop (file-input, BETON-74).
   async function uploadImages(files, target, el, questionId) {
+    if (projectReadOnly) return;
     if (!files.length) return;
     uploading = true;
     try {
@@ -1096,6 +1128,7 @@
   // dezelfde comment werd dan 4× geplaatst en elke kopie triggerde agents.
   let commentBusy = $state(false);
   async function submitComment() {
+    if (projectReadOnly) return;
     const body = commentText.trim();
     if (!body || commentBusy) return;
     commentBusy = true;
@@ -1120,6 +1153,20 @@
     }
   }
 
+  $effect(() => {
+    if (!projectReadOnly) return;
+    editingTitle = false;
+    editingDesc = false;
+    editingPlan = false;
+    editingGuardrail = false;
+    editingCommentId = null;
+    editingAnswerId = null;
+    pendingOption = null;
+    dismissQuestionId = null;
+    enrichProposal = null;
+    decomposeProposal = null;
+  });
+
   // --- Vraagmodule: beantwoorden (BETON-219) -------------------------------
   // Vrijtekst-concepten per vraag-comment-id; de gekozen-optie-bevestiging als
   // {id, index} zodat een optieklik niet meteen vuurt (inline confirm-bar, in
@@ -1128,8 +1175,27 @@
   let answerDrafts = $state({});
   let pendingOption = $state(null); // { id, index } of null
   let answerBusy = $state(false);
+  let dismissQuestionId = $state(null);
+
+  async function dismissTriageQuestion(id) {
+    if (projectReadOnly) return;
+    if (answerBusy) return;
+    answerBusy = true;
+    try {
+      await api.withdrawQuestion(id, $uiText("detail.notRelevantReason"));
+      dismissQuestionId = null;
+      pendingOption = null;
+      await load();
+      onchanged?.();
+    } catch (e) {
+      error = e.message;
+    } finally {
+      answerBusy = false;
+    }
+  }
 
   async function answerWith(questionId, body) {
+    if (projectReadOnly) return;
     if (answerBusy) return;
     answerBusy = true;
     try {
@@ -1149,10 +1215,12 @@
   let editingAnswerId = $state(null);
   let answerEditDraft = $state("");
   function startEditAnswer(c) {
+    if (projectReadOnly) return;
     editingAnswerId = c.id;
     answerEditDraft = questionState(c).answerText ?? "";
   }
   async function saveAnswerEdit(questionId, body) {
+    if (projectReadOnly) return;
     if (answerBusy) return;
     answerBusy = true;
     try {
@@ -1189,12 +1257,14 @@
   }
 
   function startEditComment(c) {
+    if (projectReadOnly) return;
     confirmDeleteId = null;
     editingCommentId = c.id;
     editCommentText = c.body_md;
   }
   let savingEditComment = false; // dubbele Cmd+Enter (BETON-462)
   async function saveEditComment() {
+    if (projectReadOnly) return;
     const body = editCommentText.trim();
     if (!body || savingEditComment) return;
     savingEditComment = true;
@@ -1209,6 +1279,7 @@
     }
   }
   async function doDeleteComment(id) {
+    if (projectReadOnly) return;
     confirmDeleteId = null;
     try {
       await api.deleteComment(ref, id);
@@ -1442,7 +1513,8 @@
         confirmMove ||
         confirmDeleteId != null ||
         confirmRelation != null ||
-        pendingOption != null,
+        pendingOption != null ||
+        dismissQuestionId != null,
       unsavedComment: hasUnsavedComment,
     });
     if (!rung) return; // niets open → laat de dialog sluiten
@@ -1501,6 +1573,7 @@
         confirmRelation = null;
         moveTarget = "";
         pendingOption = null;
+        dismissQuestionId = null;
         break;
       case "unsavedComment":
         confirmClose = true;
@@ -1649,12 +1722,12 @@
                   <ClipboardCopy size={15} /> {$uiText("detail.copyMarkdown")}
                 </DropdownMenu.Item>
                 {#if !item.archived_at}
-                  <DropdownMenu.Item class="dw-menu-item" onSelect={doDuplicate}>
+                  <DropdownMenu.Item disabled={projectReadOnly} class="dw-menu-item" onSelect={doDuplicate}>
                     <Files size={15} /> {$uiText("detail.duplicate")}
                   </DropdownMenu.Item>
                 {/if}
                 {#if moveTargets.length && !item.archived_at}
-                  <DropdownMenu.Item class="dw-menu-item" onSelect={() => (movePickerOpen = true)}>
+                  <DropdownMenu.Item disabled={projectReadOnly} class="dw-menu-item" onSelect={() => (movePickerOpen = true)}>
                     <FolderInput size={15} /> {$t("drawer.move")}
                   </DropdownMenu.Item>
                 {/if}
@@ -1664,28 +1737,28 @@
                          direct te ontgrendelen. NB: nooit `onSelect={doUnlock}` —
                          bits-ui geeft het event mee, dat zou als `headroom`
                          binnenkomen. -->
-                    <DropdownMenu.Item
+                    <DropdownMenu.Item disabled={projectReadOnly}
                       class="dw-menu-item"
                       onSelect={() => (unlockMenuOpen = true)}
                     >
                       <LockOpen size={15} /> {$t("drawer.unlock")}
                     </DropdownMenu.Item>
                   {:else}
-                    <DropdownMenu.Item class="dw-menu-item" onSelect={() => (confirmLock = true)}>
+                    <DropdownMenu.Item disabled={projectReadOnly} class="dw-menu-item" onSelect={() => (confirmLock = true)}>
                       <Lock size={15} /> {$t("drawer.lock")}
                     </DropdownMenu.Item>
                   {/if}
                 {/if}
                 {#if item.archived_at}
-                  <DropdownMenu.Item class="dw-menu-item" onSelect={doRestore}>
+                  <DropdownMenu.Item disabled={projectReadOnly} class="dw-menu-item" onSelect={doRestore}>
                     <ArchiveRestore size={15} /> {$uiText("detail.restoreArchived")}
                   </DropdownMenu.Item>
                 {:else}
-                  <DropdownMenu.Item class="dw-menu-item" onSelect={() => (confirmArchive = true)}>
+                  <DropdownMenu.Item disabled={projectReadOnly} class="dw-menu-item" onSelect={() => (confirmArchive = true)}>
                     <Archive size={15} /> {$t("drawer.archive")}
                   </DropdownMenu.Item>
                 {/if}
-                <DropdownMenu.Item class="dw-menu-item danger" onSelect={() => (confirmDelete = true)}>
+                <DropdownMenu.Item disabled={projectReadOnly} class="dw-menu-item danger" onSelect={() => (confirmDelete = true)}>
                   <Trash2 size={15} /> {$uiText("ui.remove")}
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
@@ -1698,7 +1771,7 @@
       </header>
 
       {#if confirmArchive}
-        <ConfirmBar
+        <ConfirmBar confirmDisabled={projectReadOnly}
           role="alertdialog"
           ariaLabel={$t("drawer.archiveConfirm")}
           focus
@@ -1710,7 +1783,7 @@
       {/if}
 
       {#if confirmLock}
-        <ConfirmBar
+        <ConfirmBar confirmDisabled={projectReadOnly}
           role="alertdialog"
           ariaLabel={$uiText("ui.confirmLock")}
           focus
@@ -1737,18 +1810,18 @@
               <span class="unlock-choice">
                 <span class="unlock-label">{$uiText("ui.headroom")}</span>
                 {#each [5, 10, 20] as n}
-                  <button class="sm" onclick={() => doUnlock(n)}>{n}</button>
+                  <button disabled={projectReadOnly} class="sm" onclick={() => doUnlock(n)}>{n}</button>
                 {/each}
-                <button class="sm" onclick={() => (unlockMenuOpen = false)}>{$t("drawer.cancel")}</button>
+                <button disabled={projectReadOnly} class="sm" onclick={() => (unlockMenuOpen = false)}>{$t("drawer.cancel")}</button>
               </span>
             {:else}
-              <button class="sm" onclick={() => (unlockMenuOpen = true)}>{$uiText("detail.unlock")}</button>
+              <button disabled={projectReadOnly} class="sm" onclick={() => (unlockMenuOpen = true)}>{$uiText("detail.unlock")}</button>
             {/if}
           {/if}
         </div>
       {/if}
       {#if confirmDelete}
-        <ConfirmBar
+        <ConfirmBar confirmDisabled={projectReadOnly}
           danger
           role="alertdialog"
           ariaLabel={$t("drawer.deleteConfirm")}
@@ -1761,7 +1834,7 @@
         />
       {/if}
       {#if confirmClose}
-        <ConfirmBar
+        <ConfirmBar confirmDisabled={projectReadOnly}
           role="alertdialog"
           ariaLabel={$uiText("ui.confirmClose")}
           focus
@@ -1773,7 +1846,7 @@
         />
       {/if}
       {#if movePickerOpen && moveTargets.length}
-        <ConfirmBar
+        <ConfirmBar confirmDisabled={projectReadOnly}
           role="group"
           ariaLabel={$t("drawer.move")}
           focus
@@ -1783,7 +1856,7 @@
           <Select
             action
             ariaLabel={$t("drawer.moveOther")}
-            disabled={busy}
+            disabled={projectReadOnly || (busy)}
             value=""
             options={[
               { value: "", label: $uiText("detail.chooseProject") },
@@ -1800,7 +1873,7 @@
         </ConfirmBar>
       {/if}
       {#if confirmMove}
-        <ConfirmBar
+        <ConfirmBar confirmDisabled={projectReadOnly}
           role="alertdialog"
           ariaLabel={$t("drawer.moveConfirm")}
           focus
@@ -1812,11 +1885,12 @@
       {/if}
       {#if error}<div class="dw-error"><ErrorNote message={error} onRetry={load} /></div>{/if}
 
+      {#if projectReadOnly}<p class="project-readonly-note" role="status">{$uiText("api.project_archived_readonly")}</p>{/if}
       <div class="dw-cols">
         <div class="dw-title-area">
           {#if editingTitle}
             <!-- svelte-ignore a11y_autofocus -->
-            <input
+            <input disabled={projectReadOnly}
               class="title-edit"
               bind:value={titleDraft}
               autofocus
@@ -1824,14 +1898,18 @@
               onkeydown={(e) => e.key === "Enter" && saveTitle()}
             />
           {:else}
-            <h2
-              class="dw-title editable"
-              role="button"
-              tabindex="0"
-              title={$uiText("ui.clickEdit")}
-              onclick={startTitle}
-              onkeydown={(e) => { if (e.key === "Enter") { e.preventDefault(); startTitle(); } }}
-            >{item.title}</h2>
+            {#if projectReadOnly}
+              <h2 class="dw-title">{item.title}</h2>
+            {:else}
+              <h2
+                class="dw-title editable"
+                role="button"
+                tabindex="0"
+                title={$uiText("ui.clickEdit")}
+                onclick={startTitle}
+                onkeydown={(e) => { if (e.key === "Enter") { e.preventDefault(); startTitle(); } }}
+              >{item.title}</h2>
+            {/if}
           {/if}
         </div>
 
@@ -1846,7 +1924,7 @@
                 ariaLabel={$t("drawer.status")}
                 options={stateOpts}
                 value={item.state}
-                disabled={busy}
+                disabled={projectReadOnly || (busy)}
                 onchange={(v) => patch({ state: v })}
               />
             </div>
@@ -1856,7 +1934,7 @@
                 ariaLabel={$uiText("ui.workload")}
                 options={workloadOpts}
                 value={item.workload}
-                disabled={busy}
+                disabled={projectReadOnly || (busy)}
                 onchange={(v) => patch({ workload: v })}
               />
             </div>
@@ -1871,7 +1949,7 @@
                 value={item.assignee ?? ""}
                 {users}
                 {me}
-                disabled={busy}
+                disabled={projectReadOnly || (busy)}
                 onchange={(v) => patch({ assignee: v })}
               />
               {#if triageNote}
@@ -1880,7 +1958,7 @@
               {#if quickHandoffs.length}
                 <div class="quick-handoffs" aria-label={$uiText("detail.handoff")}>
                   {#each quickHandoffs as target (target.handle)}
-                    <button type="button" disabled={busy} onclick={() => patch({ assignee: target.handle })}>{target.label}</button>
+                    <button type="button" disabled={projectReadOnly || (busy)} onclick={() => patch({ assignee: target.handle })}>{target.label}</button>
                   {/each}
                 </div>
               {/if}
@@ -1920,7 +1998,7 @@
                     class="rail-select"
                     ariaLabel="Milestone"
                     value={item.milestone ?? ""}
-                    disabled={busy}
+                    disabled={projectReadOnly || (busy)}
                     options={[
                       { value: "", label: $uiText("detail.noMilestone") },
                       ...milestones.map((m) => ({ value: m.name, label: m.name })),
@@ -1952,12 +2030,12 @@
                   <input
                     type="date"
                     aria-label={$t("drawer.due")}
-                    disabled={busy}
+                    disabled={projectReadOnly || (busy)}
                     value={(item.due_date || "").slice(0, 10)}
                     onchange={(e) => patch({ due_date: e.currentTarget.value || null })}
                   />
                   {#if item.due_date}
-                    <button class="link" title={$uiText("ui.clearDue")} disabled={busy} onclick={() => patch({ due_date: null })}>{$uiText("ui.clear")}</button>
+                    <button class="link" title={$uiText("ui.clearDue")} disabled={projectReadOnly || (busy)} onclick={() => patch({ due_date: null })}>{$uiText("ui.clear")}</button>
                   {/if}
                 </span>
               {/if}
@@ -1979,12 +2057,12 @@
                   <input
                     type="date"
                     aria-label={$t("drawer.defer")}
-                    disabled={busy}
+                    disabled={projectReadOnly || (busy)}
                     value={(item.deferred_until || "").slice(0, 10)}
                     onchange={(e) => patch({ deferred_until: e.currentTarget.value || null })}
                   />
                   {#if item.deferred_until}
-                    <button class="link" title={$uiText("ui.clearDefer")} disabled={busy} onclick={() => patch({ deferred_until: null })}>{$uiText("ui.clear")}</button>
+                    <button class="link" title={$uiText("ui.clearDefer")} disabled={projectReadOnly || (busy)} onclick={() => patch({ deferred_until: null })}>{$uiText("ui.clear")}</button>
                   {/if}
                 </span>
               {/if}
@@ -2004,7 +2082,7 @@
                     <span class="prop-empty">{railProps.get("labels").text}</span>
                   {/if}
                   {#each item.labels || [] as name (name)}
-                    <Chip tone="label" hue={labelHueOf(name, projectKeyOfRef(item?.ref))} removable onremove={() => toggleLabel(name)}>{name}</Chip>
+                    <Chip tone="label" hue={labelHueOf(name, projectKeyOfRef(item?.ref))} removable={!projectReadOnly} onremove={() => toggleLabel(name)}>{name}</Chip>
                   {/each}
                   <button
                     class="label-add"
@@ -2012,7 +2090,7 @@
                     title={$t("drawer.addLabel")}
                     aria-label={$t("drawer.addLabel")}
                     aria-expanded={labelPickerOpen}
-                    disabled={busy}
+                    disabled={projectReadOnly || (busy)}
                     onclick={() => { labelPickerOpen = !labelPickerOpen; labelQuery = ""; }}
                   >
                     <Plus size={14} />
@@ -2022,7 +2100,7 @@
               {#if labelPickerOpen}
                 <div class="label-picker">
                   {#if projectLabels.length}
-                    <input class="label-search" placeholder={$t("drawer.searchLabel")} bind:value={labelQuery} />
+                    <input disabled={projectReadOnly} class="label-search" placeholder={$t("drawer.searchLabel")} bind:value={labelQuery} />
                     <div class="label-options">
                       {#each labelList as l (l.name)}
                         <Chip
@@ -2079,7 +2157,7 @@
               {#if decomposeProposal == null}
                 {#if expandedProp === "subtasks"}
                   <div class="subtask-actions">
-                    <button
+                    <button disabled={projectReadOnly}
                       class="sm rail-full-btn"
                       onclick={() => onnew?.({ parent: item.ref, milestone: item.milestone })}
                       title={$uiText("ui.addSubtask")}
@@ -2090,7 +2168,7 @@
                       <button
                         class="sm rail-full-btn"
                         onclick={runDecompose}
-                        disabled={decomposing}
+                        disabled={projectReadOnly || (decomposing)}
                         title={$t("drawer.splitAi")}
                       >
                         <Scissors size={13} /> {decomposing ? $uiText("detail.splitBusy") : $uiText("detail.split")}
@@ -2108,7 +2186,7 @@
                     </li>
                   {/each}
                 </ol>
-                <ConfirmBar
+                <ConfirmBar confirmDisabled={projectReadOnly}
                   confirmLabel={$uiText("detail.createSubtasks", {count: decomposeProposal.subtasks.length})}
                   onconfirm={applyDecompose}
                   oncancel={cancelDecompose}
@@ -2142,7 +2220,7 @@
                   confirmLabel={$uiText("ui.yesUnlink")}
                   confirmClass="danger"
                   cancelLabel={$uiText("ui.no")}
-                  confirmDisabled={busy}
+                  confirmDisabled={projectReadOnly || (busy)}
                   onconfirm={() => {
                     const { type, target } = confirmRelation;
                     confirmRelation = null;
@@ -2156,18 +2234,18 @@
                    !relAddOpen`, dus een ticket met vijf relaties kreeg
                    permanent een select + tekstveld + knop die niemand vroeg. -->
               {#if !relAddOpen}
-                <button class="add-affordance" type="button" onclick={openRelAdd}>
+                <button disabled={projectReadOnly} class="add-affordance" type="button" onclick={openRelAdd}>
                   <Plus size={14} /> {$uiText("ui.addRelation")}
                 </button>
               {:else}
               <div class="rel-add">
-                <Select
+                <Select disabled={projectReadOnly}
                   ariaLabel={$uiText("ui.relationType")}
                   bind:value={relType}
                   options={RELATION_TYPES.map((t) => ({ value: t, label: relationLabel(t, $locale) }))}
                 />
                 <div class="rel-box">
-                  <input
+                  <input disabled={projectReadOnly}
                     bind:this={relInput}
                     class="rel-target"
                     placeholder={$uiText("detail.relationHint")}
@@ -2181,7 +2259,7 @@
                   />
                   <PickerSuggestions id="rel-suggest" tickets={relMatches} ticketActive={relActive} onticket={pickRelTarget} />
                 </div>
-                <button class="sm rail-full-btn" disabled={busy} onclick={addRelation}>{$t("drawer.addRelation")}</button>
+                <button class="sm rail-full-btn" disabled={projectReadOnly || (busy)} onclick={addRelation}>{$t("drawer.addRelation")}</button>
               </div>
               {/if}
             </div>
@@ -2205,7 +2283,7 @@
                       ariaLabel={$uiText("ui.notifications")}
                       title={$uiText("detail.followHint")}
                       value={selfFollow.state === "muted" ? "mute" : selfFollow.state === "following" ? "follow" : "normal"}
-                      disabled={busy}
+                      disabled={projectReadOnly || (busy)}
                       options={followChoices($locale)}
                       onchange={applyFollowChoice}
                     />
@@ -2234,6 +2312,10 @@
         </aside>
 
         <div class="dw-main">
+          {#if item.execution}
+            <ExecutionStatus value={item.execution} ref={item.ref} {me} readOnly={projectReadOnly}
+              onchanged={async () => { await load(); onchanged?.(); }} />
+          {/if}
           <section class="dw-section" onclick={onTicketClick} onkeydown={onTicketKeydown} role="presentation">
             <!-- BETON-416: geen "OMSCHRIJVING"-kop meer — dit is de eerste
                  sectie en het enige prozablok, de kop voegde niets toe naast
@@ -2251,19 +2333,19 @@
                     {/if}
                   </span>
                 {/if}
-                <button class="sm" onclick={runEnrich} disabled={enriching} title={$t("drawer.enrich")}>
+                <button class="sm" onclick={runEnrich} disabled={projectReadOnly || (enriching)} title={$t("drawer.enrich")}>
                   <Sparkles size={13} /> {enriching ? $uiText("detail.enrichBusy") : $uiText("detail.enrich")}
                 </button>
                 <button
                   class="sm"
                   type="button"
-                  disabled={uploading}
+                  disabled={projectReadOnly || (uploading)}
                   title={$uiText("ui.addImageDirect")}
                   onclick={() => descQuickFileInput?.click()}
                 >
                   <ImagePlus size={13} /> {uploading ? $uiText("detail.uploadBusy") : $uiText("detail.image")}
                 </button>
-                <input
+                <input disabled={projectReadOnly}
                   bind:this={descQuickFileInput}
                   type="file"
                   accept="image/*,text/*,application/json,application/pdf,.log,.md,.csv"
@@ -2303,7 +2385,7 @@
                 {/if}
                 <div class="btn-row">
                   <button class="sm" onclick={cancelEnrich}>{$t("drawer.cancel")}</button>
-                  <button class="primary sm" onclick={acceptEnrich}>{$t("drawer.saveProposal")}</button>
+                  <button disabled={projectReadOnly} class="primary sm" onclick={acceptEnrich}>{$t("drawer.saveProposal")}</button>
                 </div>
               </div>
             {:else if editingDesc}
@@ -2327,7 +2409,7 @@
                     <PickerSuggestions mentions={descMentionMatches} tickets={descHashMatches} mentionActive={descMentionActive} ticketActive={descHashActive} onmention={pickDescMention} onticket={pickDescHashRef} />
                   {/snippet}
                 </MarkdownEditor>
-                <input
+                <input disabled={projectReadOnly}
                   bind:this={descFileInput}
                   type="file"
                   accept="image/*,text/*,application/json,application/pdf,.log,.md,.csv"
@@ -2341,7 +2423,7 @@
                     <button
                       class="sm img-upload-btn"
                       type="button"
-                      disabled={uploading}
+                      disabled={projectReadOnly || (uploading)}
                       title={$uiText("ui.addImage")}
                       onclick={() => descFileInput?.click()}
                     >
@@ -2349,7 +2431,7 @@
                     </button>
                     <span class="muted upload-hint">{uploading ? $uiText("detail.uploadBusy") : $uiText("detail.drop")}</span>
                   </div>
-                  <button
+                  <button disabled={projectReadOnly}
                     class="sm"
                     onclick={() => {
                       editingDesc = false;
@@ -2357,7 +2439,7 @@
                       descHashMatches = [];
                     }}>{$t("drawer.cancel")}</button
                   >
-                  <button class="primary sm" onclick={saveDesc}>{$uiText("ui.save")}</button>
+                  <button disabled={projectReadOnly} class="primary sm" onclick={saveDesc}>{$uiText("ui.save")}</button>
                 </div>
               </div>
             {:else if item.description_md}
@@ -2366,16 +2448,20 @@
                    in een alinea omdat het hele blok het hitgebied is. De
                    bestaande hover-achtergrond (.desc.editable:hover) blijft de
                    enige affordance. -->
-              <div
-                class="desc md editable"
-                role="button"
-                tabindex="0"
-                onclick={onDescClick}
-                use:lightboxClicks={openLightbox}
-                onkeydown={onDescEditKeydown}
-              >{@html renderMarkdown(item.description_md, knownHandles, projectKeys)}</div>
+              {#if projectReadOnly}
+                <div class="desc md" use:lightboxClicks={openLightbox}>{@html renderMarkdown(item.description_md, knownHandles, projectKeys)}</div>
+              {:else}
+                <div
+                  class="desc md editable"
+                  role="button"
+                  tabindex="0"
+                  onclick={onDescClick}
+                  use:lightboxClicks={openLightbox}
+                  onkeydown={onDescEditKeydown}
+                >{@html renderMarkdown(item.description_md, knownHandles, projectKeys)}</div>
+              {/if}
             {:else}
-              <button class="empty-edit" onclick={startDesc}>{$uiText("ui.emptyDescription")}</button>
+              <button disabled={projectReadOnly} class="empty-edit" onclick={startDesc}>{$uiText("ui.emptyDescription")}</button>
             {/if}
           </section>
 
@@ -2397,11 +2483,11 @@
                        space-between, dus twee losse knoppen zetten "Wijzigen"
                        midden in de kop. -->
                   <span class="guardrail-head-actions">
-                    <button class="sm" onclick={startGuardrailEdit}>
+                    <button disabled={projectReadOnly} class="sm" onclick={startGuardrailEdit}>
                       {guardrail.active ? $uiText("ui.change") : $uiText("guardrail.set")}
                     </button>
                     {#if guardrail.active}
-                      <button
+                      <button disabled={projectReadOnly}
                         class="sm danger-quiet"
                         onclick={() => (confirmLiftGuardrail = true)}
                       >{$uiText("ui.lift")}</button>
@@ -2443,7 +2529,7 @@
                          daarom één klik. Zie de toelichting bij
                          startGuardrailEdit waarom dit niet alleen ná een
                          voorstel-activatie verschijnt. -->
-                    <button class="sm guardrail-scope-hint" onclick={startGuardrailEdit}>
+                    <button disabled={projectReadOnly} class="sm guardrail-scope-hint" onclick={startGuardrailEdit}>
                       {$uiText("ui.projectScope")}
                     </button>
                   {/if}
@@ -2494,15 +2580,15 @@
 
                   {#if me?.kind === "human"}
                     <div class="btn-row">
-                      <button class="primary sm" onclick={doApproveGuardrail} disabled={busy}>
+                      <button class="primary sm" onclick={doApproveGuardrail} disabled={projectReadOnly || (busy)}>
                         {$uiText("ui.approve")}
                       </button>
                       {#if !guardrailProposal.isLift}
-                        <button class="sm" onclick={startGuardrailEditFromProposal}>
+                        <button disabled={projectReadOnly} class="sm" onclick={startGuardrailEditFromProposal}>
                           {$uiText("ui.change")}
                         </button>
                       {/if}
-                      <button
+                      <button disabled={projectReadOnly}
                         class="sm danger-quiet"
                         onclick={() => (confirmRejectGuardrail = true)}
                       >{$uiText("ui.reject")}</button>
@@ -2512,7 +2598,7 @@
               {/if}
 
               {#if confirmRejectGuardrail}
-                <ConfirmBar
+                <ConfirmBar confirmDisabled={projectReadOnly}
                   message={$uiText("detail.reject")}
                   danger
                   role="alertdialog"
@@ -2526,7 +2612,7 @@
               {/if}
 
               {#if confirmLiftGuardrail}
-                <ConfirmBar
+                <ConfirmBar confirmDisabled={projectReadOnly}
                   message={$uiText("detail.lift")}
                   danger
                   role="alertdialog"
@@ -2541,7 +2627,7 @@
 
               {#if editingGuardrail}
                 <div class="guardrail-editor">
-                  <AutoTextarea
+                  <AutoTextarea disabled={projectReadOnly}
                     rows="6"
                     bind:value={guardrailDraft}
                     placeholder={$uiText("guardrail.placeholder")}
@@ -2554,13 +2640,13 @@
                     >{guardrailDraft.trim().length} / {GUARDRAIL_MAX_CHARS}</span>
                     <label class="guardrail-date">
                       {$uiText("ui.reviewDate")}
-                      <input type="date" bind:value={guardrailReviewDraft} />
+                      <input disabled={projectReadOnly} type="date" bind:value={guardrailReviewDraft} />
                     </label>
                   </div>
                   <div class="guardrail-scope-edit">
                     <span class="muted">{$uiText("guardrail.scopeHint")}</span>
                     {#if projectLabels.length}
-                      <input class="label-search" placeholder={$t("drawer.searchLabel")} bind:value={guardrailScopeQuery} />
+                      <input disabled={projectReadOnly} class="label-search" placeholder={$t("drawer.searchLabel")} bind:value={guardrailScopeQuery} />
                       <div class="label-options">
                         {#each guardrailScopeList as l (l.name)}
                           <Chip
@@ -2586,11 +2672,11 @@
                     <span class="guardrail-hint">{guardrailCheck.error}</span>
                   {/if}
                   <div class="btn-row">
-                    <button class="sm" onclick={() => (editingGuardrail = false)}>{$t("drawer.cancel")}</button>
+                    <button disabled={projectReadOnly} class="sm" onclick={() => (editingGuardrail = false)}>{$t("drawer.cancel")}</button>
                     <button
                       class="primary sm"
                       onclick={saveGuardrail}
-                      disabled={busy || !guardrailCheck.ok}
+                      disabled={projectReadOnly || (busy || !guardrailCheck.ok)}
                     >{$uiText(editingFromProposal ? "guardrail.approveChanges" : "guardrail.save")}</button>
                   </div>
                 </div>
@@ -2623,8 +2709,8 @@
                   onsubmit={savePlan}
                 />
                 <div class="btn-row">
-                  <button class="sm" onclick={() => (editingPlan = false)}>{$t("drawer.cancel")}</button>
-                  <button class="primary sm" onclick={savePlan} disabled={busy}>{$uiText("ui.save")}</button>
+                  <button disabled={projectReadOnly} class="sm" onclick={() => (editingPlan = false)}>{$t("drawer.cancel")}</button>
+                  <button class="primary sm" onclick={savePlan} disabled={projectReadOnly || (busy)}>{$uiText("ui.save")}</button>
                 </div>
               </div>
             {:else if showPlan && item.has_plan}
@@ -2637,14 +2723,18 @@
                      is voor de agent die het uitvoert, niet voor de mens die het
                      ticket beoordeelt (dat is de omschrijving), en moet er stiller
                      en ondergeschikt uitzien i.p.v. als gelijkwaardige muur tekst. -->
-                <div
-                  class="plan-body md editable"
-                  role="button"
-                  tabindex="0"
-                  onclick={onPlanClick}
-                  use:lightboxClicks={openLightbox}
-                  onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); startPlanEdit(); } }}
-                >{@html renderMarkdown(planMd, knownHandles, projectKeys)}</div>
+                {#if projectReadOnly}
+                  <div class="plan-body md" use:lightboxClicks={openLightbox}>{@html renderMarkdown(planMd, knownHandles, projectKeys)}</div>
+                {:else}
+                  <div
+                    class="plan-body md editable"
+                    role="button"
+                    tabindex="0"
+                    onclick={onPlanClick}
+                    use:lightboxClicks={openLightbox}
+                    onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); startPlanEdit(); } }}
+                  >{@html renderMarkdown(planMd, knownHandles, projectKeys)}</div>
+                {/if}
               {/if}
             {/if}
           </section>
@@ -2658,7 +2748,7 @@
               <div class="add-links">
                 {#each links as l, i (l)}
                   {#if i > 0}<span aria-hidden="true">·</span>{/if}
-                  <button class="add-link" onclick={l === "plan" ? startPlanEdit : startGuardrailEdit}>
+                  <button disabled={projectReadOnly} class="add-link" onclick={l === "plan" ? startPlanEdit : startGuardrailEdit}>
                     + {l === "plan" ? "Plan" : "Guardrail"}
                   </button>
                 {/each}
@@ -2694,7 +2784,7 @@
                         </span>
                       {/if}
                     </a>
-                    <button
+                    <button disabled={projectReadOnly}
                       class="sm attachment-insert"
                       type="button"
                       title={$uiText("ui.insertDescription")}
@@ -2720,12 +2810,12 @@
                   <span class="unlock-choice">
                     <span class="unlock-label">{$uiText("ui.headroom")}</span>
                     {#each [5, 10, 20] as n}
-                      <button class="sm" onclick={() => doUnlock(n)}>{n}</button>
+                      <button disabled={projectReadOnly} class="sm" onclick={() => doUnlock(n)}>{n}</button>
                     {/each}
-                    <button class="sm" onclick={() => (unlockMenuOpen = false)}>{$t("drawer.cancel")}</button>
+                    <button disabled={projectReadOnly} class="sm" onclick={() => (unlockMenuOpen = false)}>{$t("drawer.cancel")}</button>
                   </span>
                 {:else}
-                  <button class="sm" onclick={() => (unlockMenuOpen = true)}>
+                  <button disabled={projectReadOnly} class="sm" onclick={() => (unlockMenuOpen = true)}>
                     <LockOpen size={13} /> {$t("drawer.unlock")}
                   </button>
                 {/if}
@@ -2767,17 +2857,17 @@
                         {#if qs.isQuestion && qs.withdrawn}<span class="q-tag">{$uiText("detail.withdrawn")} {qs.withdrawnReason ?? ""}</span>{/if}
                         {#if me && c.author === me.handle && editingCommentId !== c.id}
                           <span class="cmt-actions">
-                            <button class="icon-btn sm" title={$uiText("ui.edit")} onclick={() => startEditComment(c)}>
+                            <button disabled={projectReadOnly} class="icon-btn sm" title={$uiText("ui.edit")} onclick={() => startEditComment(c)}>
                               <Pencil size={13} />
                             </button>
-                            <button class="icon-btn sm danger-quiet" title={$t("drawer.delete")} onclick={() => (confirmDeleteId = c.id)}>
+                            <button disabled={projectReadOnly} class="icon-btn sm danger-quiet" title={$t("drawer.delete")} onclick={() => (confirmDeleteId = c.id)}>
                               <Trash2 size={13} />
                             </button>
                           </span>
                         {/if}
                       </div>
                       {#if editingCommentId === c.id}
-                        <AutoTextarea
+                        <AutoTextarea disabled={projectReadOnly}
                           class="full"
                           bind:value={editCommentText}
                           rows="3"
@@ -2787,11 +2877,11 @@
                           ondrop={(e) => handleImageDrop(e, "editComment")}
                         />
                         <div class="btn-row">
-                          <button class="sm" onclick={() => (editingCommentId = null)}>{$t("drawer.cancel")}</button>
-                          <button class="primary sm" onclick={saveEditComment}>{$uiText("ui.save")}</button>
+                          <button disabled={projectReadOnly} class="sm" onclick={() => (editingCommentId = null)}>{$t("drawer.cancel")}</button>
+                          <button disabled={projectReadOnly} class="primary sm" onclick={saveEditComment}>{$uiText("ui.save")}</button>
                         </div>
                       {:else if confirmDeleteId === c.id}
-                        <ConfirmBar
+                        <ConfirmBar confirmDisabled={projectReadOnly}
                           inline
                           role="alertdialog"
                           ariaLabel={$uiText("ui.deleteComment")}
@@ -2826,14 +2916,14 @@
                               {#if qs.options.length}
                                 <div class="q-options">
                                   {#each qs.options as opt, i}
-                                    <button class="q-opt-btn" class:chosen={i === chosen} disabled={answerBusy} onclick={() => saveAnswerEdit(c.id, optionAnswer(i))}>
+                                    <button class="q-opt-btn" class:chosen={i === chosen} disabled={projectReadOnly || (answerBusy)} onclick={() => saveAnswerEdit(c.id, optionAnswer(i))}>
                                       {opt}
                                     </button>
                                   {/each}
                                 </div>
                               {/if}
                               <div class="q-freetext">
-                                <AutoTextarea class="full" rows="2" aria-label={$uiText("ui.editAnswer")} bind:value={answerEditDraft}
+                                <AutoTextarea disabled={projectReadOnly} class="full" rows="2" aria-label={$uiText("ui.editAnswer")} bind:value={answerEditDraft}
                                   onsubmit={() => submitAnswerTextEdit(c.id)}
                                   oncancel={() => (editingAnswerId = null)}
                                   onpaste={(e) => handleImageDrop(e, "editAnswer")}
@@ -2841,8 +2931,8 @@
                                   ondrop={(e) => handleImageDrop(e, "editAnswer")}
                                 />
                                 <div class="btn-row">
-                                  <button class="sm" onclick={() => (editingAnswerId = null)}>{$t("drawer.cancel")}</button>
-                                  <button class="primary sm" disabled={answerBusy || !(answerEditDraft || "").trim()} onclick={() => submitAnswerTextEdit(c.id)}>
+                                  <button disabled={projectReadOnly} class="sm" onclick={() => (editingAnswerId = null)}>{$t("drawer.cancel")}</button>
+                                  <button class="primary sm" disabled={projectReadOnly || (answerBusy || !(answerEditDraft || "").trim())} onclick={() => submitAnswerTextEdit(c.id)}>
                                     {$uiText(answerBusy ? "detail.saving" : "detail.saveAnswer")}
                                   </button>
                                 </div>
@@ -2871,7 +2961,7 @@
                                   {qs.answeredBy ? $uiText("detail.answeredBy", {author: qs.answeredBy}) : $uiText("detail.answered")}
                                 </span>
                                 {#if qs.editable && me}
-                                  <button class="link sm q-edit-answer" disabled={answerBusy} onclick={() => startEditAnswer(c)}>{$uiText("ui.changeAnswer")}</button>
+                                  <button class="link sm q-edit-answer" disabled={projectReadOnly || (answerBusy)} onclick={() => startEditAnswer(c)}>{$uiText("ui.changeAnswer")}</button>
                                 {/if}
                               </div>
                             {/if}
@@ -2881,7 +2971,7 @@
                             {#if qs.options.length}
                               <div class="q-options">
                                 {#each qs.options as opt, i}
-                                  <button class="q-opt-btn" disabled={answerBusy} onclick={() => pickOption(c.id, i)}>
+                                  <button class="q-opt-btn" disabled={projectReadOnly || (answerBusy)} onclick={() => pickOption(c.id, i)}>
                                     {opt}
                                   </button>
                                 {/each}
@@ -2894,14 +2984,14 @@
                                   focus
                                   message={$uiText("detail.answer", {answer:qs.options[pendingOption.index]})}
                                   confirmLabel={$uiText("ui.yesAnswer")}
-                                  confirmDisabled={answerBusy}
+                                  confirmDisabled={projectReadOnly || (answerBusy)}
                                   onconfirm={confirmOption}
                                   oncancel={() => (pendingOption = null)}
                                 />
                               {/if}
                             {/if}
                             <div class="q-freetext">
-                              <AutoTextarea
+                              <AutoTextarea disabled={projectReadOnly}
                                 class="full"
                                 rows="2"
                                 aria-label={$uiText("ui.ownAnswer")}
@@ -2916,12 +3006,31 @@
                               <div class="btn-row">
                                 <button
                                   class="primary sm"
-                                  disabled={answerBusy || !(answerDrafts[c.id] || "").trim()}
+                                  disabled={projectReadOnly || (answerBusy || !(answerDrafts[c.id] || "").trim())}
                                   onclick={() => submitTextAnswer(c.id)}
                                 >
                                   {$uiText(answerBusy ? "detail.sending" : "detail.sendAnswer")}
                                 </button>
+                                {#if canDismissTriageQuestion(c, me)}
+                                  <button class="ghost sm" disabled={projectReadOnly || (answerBusy)} onclick={() => { pendingOption = null; dismissQuestionId = c.id; }}>
+                                    {$uiText("detail.notRelevant")}
+                                  </button>
+                                {/if}
                               </div>
+                              {#if dismissQuestionId === c.id && canDismissTriageQuestion(c, me)}
+                                <ConfirmBar
+                                  inline
+                                  role="alertdialog"
+                                  ariaLabel={$uiText("detail.notRelevant")}
+                                  focus
+                                  message={$uiText("detail.notRelevantConfirm")}
+                                  confirmLabel={$uiText("detail.notRelevant")}
+                                  cancelLabel={$t("drawer.cancel")}
+                                  confirmDisabled={projectReadOnly || (answerBusy)}
+                                  onconfirm={() => dismissTriageQuestion(c.id)}
+                                  oncancel={() => (dismissQuestionId = null)}
+                                />
+                              {/if}
                             </div>
                           </div>
                         {/if}
@@ -3014,6 +3123,7 @@
                kind van .dw-main. Zo is het sticky-bottom-anker de volledige
                kolom i.p.v. de (korte) tijdlijn-sectie onderaan — daardoor blijft
                de composer altijd in beeld zonder naar beneden te scrollen. -->
+          {#if !projectReadOnly}
           <div class="composer" class:compact={composerCompact} onfocusin={() => (composerFocused = true)} onfocusout={onComposerFocusOut}>
               <MarkdownEditor
                 bind:textareaRef={textarea}
@@ -3040,7 +3150,7 @@
                     <li class="pending-image">
                       <img src={img.url} alt={img.filename} />
                       <span class="pending-image-name">{img.filename}</span>
-                      <button
+                      <button disabled={projectReadOnly}
                         type="button"
                         class="icon-btn pending-image-remove"
                         onclick={() => removeCommentImage(img.id)}
@@ -3053,7 +3163,7 @@
                   {/each}
                 </ul>
               {/if}
-              <input
+              <input disabled={projectReadOnly}
                 bind:this={commentFileInput}
                 type="file"
                 accept="image/*,text/*,application/json,application/pdf,.log,.md,.csv"
@@ -3067,7 +3177,7 @@
                   <button
                     class="sm img-upload-btn"
                     type="button"
-                    disabled={uploading}
+                    disabled={projectReadOnly || (uploading)}
                     title={$uiText("ui.addImage")}
                     onclick={() => commentFileInput?.click()}
                   >
@@ -3075,11 +3185,12 @@
                   </button>
                   <span class="muted upload-hint">{uploading ? $uiText("detail.uploadBusy") : $uiText("detail.drop")}</span>
                 </div>
-                <button class="primary sm" onclick={submitComment} disabled={commentBusy}>
+                <button class="primary sm" onclick={submitComment} disabled={projectReadOnly || (commentBusy)}>
                   {commentBusy ? $uiText("detail.postBusy") : $uiText("detail.post")}
                 </button>
               </div>
             </div>
+          {/if}
         </div>
       </div>
     </div>

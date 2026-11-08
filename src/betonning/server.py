@@ -15,13 +15,14 @@ from .config import ai_language, env, installation_language
 import asyncio
 import json
 import os
+import sqlite3
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
-from .api_error_codes import localized_http_error, localized_validation_error
+from .api_error_codes import localized_http_error, localized_validation_error, database_integrity_error
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -368,6 +369,7 @@ def create_app(
     )
     app.add_exception_handler(StarletteHTTPException, localized_http_error)
     app.add_exception_handler(RequestValidationError, localized_validation_error)
+    app.add_exception_handler(sqlite3.IntegrityError, database_integrity_error)
     app.include_router(api_router)
 
     # Body-size-limiet (BETON-380): weigert een te grote body vóór de app hem

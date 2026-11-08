@@ -4,6 +4,7 @@ import copy
 import pytest
 
 from betonning import config, decompose, llm, server, triage, triage_chat_engine, wiki_compiler
+from betonning.outbound import outbound
 
 
 @pytest.fixture(autouse=True)
@@ -55,6 +56,7 @@ def test_alle_promptpaden_selecteren_taal_en_behouden_invoer(monkeypatch, path):
         system = messages[0]['content']
         assert f'OUTPUT LANGUAGE: Write newly generated natural-language text in {name}' in system
         assert system.count('OUTPUT LANGUAGE:') == 1
+        assert outbound('human_comment_references', language=code) in system
         assert 'in het Nederlands' not in system
         assert '(Nederlands)' not in system
         assert 'JSON' in system
@@ -64,3 +66,10 @@ def test_alle_promptpaden_selecteren_taal_en_behouden_invoer(monkeypatch, path):
         results[code] = messages[1:]
     assert results['en'] == results['nl']
     assert (item, comment, image) == before
+
+
+def test_mcp_instructions_explain_human_comment_references():
+    from betonning import mcp_server
+
+    assert outbound('human_comment_references', language='nl') in mcp_server.SERVER_INSTRUCTIONS
+    assert 'auteur, datum of een kort citaat' in mcp_server.comment_item.__doc__

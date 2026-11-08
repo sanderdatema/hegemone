@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Add opt-in execution handoff with fenced claims, deduplicated blockers and explicit recovery; native runtime activation remains separate.
+
+- Keep archived projects read-only across UI, API and background writes until restored.
+
+- Search project codes and names directly in the project picker, including quiet projects.
+- Correct board pagination when quick filters hide already loaded cards or a page is exhausted.
+- Let humans mark open triage questions as not relevant while retaining their history.
+- Guide AI-generated explanations toward readable comment references instead of internal IDs.
+- Add an English user guide for daily workflows, configuration and troubleshooting.
+- Make wiki context-budget tests deterministic when page timestamps are equal.
+
 ## 0.1.0 — 2026-11-06
 
 Initial public source release.

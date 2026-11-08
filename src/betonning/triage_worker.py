@@ -26,6 +26,7 @@ from .repo import attachments as attachments_repo
 from .repo import comments as comments_repo
 from .repo import events as events_repo
 from .repo import items as items_repo
+from .repo import projects as projects_repo
 from .repo import labels as labels_repo
 from .repo import states as states_repo
 from .repo import users as users_repo
@@ -233,7 +234,7 @@ def evaluate_answer_once(
     ):
         return  # al verwerkt
     item = items_repo.get(conn, question["item_id"])
-    if item is None:
+    if item is None or projects_repo.is_archived(conn, item["project_id"]):
         return
     # BETON-487: de exacte toets naast de LIKE in de finder. Marker vooruit, zoals
     # `apply_answer_eval` hem zet (`_touch` schrijft alleen als hij NULL is).
@@ -371,7 +372,7 @@ def ask_stale_once(
     de vraag is zelf een comment en telt dus mee in `last_activity_at`; andersom
     zou de her-vraag-conditie meteen weer waar zijn."""
     item = items_repo.get(conn, item_id)
-    if item is None:
+    if item is None or projects_repo.is_archived(conn, item["project_id"]):
         return
     handle, needs_mention = _stale_addressee(conn, item)
     if not handle:
@@ -478,7 +479,7 @@ def ask_guardrail_review_once(
     Vraag + marker in één transactie, en de marker NÁ de vraag — dezelfde
     valkuil die `039_item_stale.sql` documenteert."""
     item = items_repo.get(conn, item_id)
-    if item is None:
+    if item is None or projects_repo.is_archived(conn, item["project_id"]):
         return
     human = users_repo.first_human(conn)
     if human is None:
@@ -612,7 +613,7 @@ def respond_to_assignment_once(
     De marker wordt door `apply_assign_eval` gezet (samen met de reactie, in één
     transactie) — ook bij een noop, zodat dit item niet elke ronde terugkomt."""
     item = items_repo.get(conn, item_id)
-    if item is None or item["assignee_id"] != triage_user_id:
+    if item is None or item["assignee_id"] != triage_user_id or projects_repo.is_archived(conn, item["project_id"]):
         return
     event = latest_assign_event(conn, item_id, triage_user_id)
     if event is None or (
@@ -680,7 +681,7 @@ def evaluate_comment_once(
     if comment["author_id"] == triage_user_id:  # eigen comment → nooit beoordelen
         return
     item = items_repo.get(conn, comment["item_id"])
-    if item is None:
+    if item is None or projects_repo.is_archived(conn, item["project_id"]):
         return
     # BETON-487: alleen een comment die triage aanspreekt. De finder filtert al
     # met LIKE; dit is de exacte toets (geen `@triage-bot` o.i.d.).
@@ -869,7 +870,7 @@ def triage_once(
 ) -> None:
     """Triage één item: context + kandidaten → LLM → toepassen."""
     item = items_repo.get(conn, item_id)
-    if item is None or item["triaged_at"] is not None:
+    if item is None or item["triaged_at"] is not None or projects_repo.is_archived(conn, item["project_id"]):
         return
     context = _project_context(conn, item["project_id"])
     candidates = _candidates(conn, item, embeddings, top_k=top_k)
@@ -951,9 +952,12 @@ def _record_failure(
 ) -> int:
     """Boek een mislukte LLM-poging: verhoog de teller + zet error-timestamp.
     Geeft het nieuwe pogingsaantal terug (voor quarantaine-logging)."""
+    owner = "items.id" if table == "items" else "comments.item_id"
     row = conn.execute(
         f"UPDATE {table} SET {attempts_col} = {attempts_col} + 1, "
         f"{error_col} = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ? "
+        f"AND EXISTS (SELECT 1 FROM items owner JOIN projects p ON p.id = owner.project_id "
+        f"WHERE owner.id = {owner} AND p.archived_at IS NULL) "
         f"RETURNING {attempts_col}",
         (row_id,),
     ).fetchone()

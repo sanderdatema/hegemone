@@ -4,6 +4,7 @@
   import { api, subscribe, getKey, setKey, clearKey } from "./api.js";
   import {
     buildColumns,
+    appendColumnPage,
     boardWindow,
   columnCount,
     orderColumns,
@@ -434,6 +435,7 @@
 
   let currentProject = $derived(projects.find((p) => p.key === current) || null);
   let currentName = $derived(currentProject?.name || current);
+  let projectReadOnly = $derived(Boolean(currentProject?.archived_at));
 
   // BETON-345: het huidige project in de browser-tab-titel, zodat meerdere
   // open tabbladen (verschillende projecten) uit elkaar te houden zijn.
@@ -450,7 +452,7 @@
   // BETON-224: vaste horizontale state-volgorde — werk-kolommen eerst, dan de
   // rust-rail (done/cancelled/deferred), Archief altijd absoluut laatste.
   let columns = $derived(
-    orderColumns(buildColumns(states, sortItems(filteredItems, sortBy), stateCounts))
+    orderColumns(buildColumns(states, sortItems(filteredItems, sortBy), stateCounts, items))
   );
 
   // BETON-362: vorige/volgende in de drawer volgt de volgorde die de
@@ -486,7 +488,7 @@
       onboarding = me.kind === "human" ? await api.onboarding().catch(() => null) : null;
       if (onboarding?.required) setLocale(onboarding.locale);
       users = await api.users();
-      projects = await api.projects();
+      projects = await api.projects(true);
       if (projects.length) {
         // Kies het project uit de beginroute (deep-link), anders het eerste.
         current = resolveProject(projects, initialRoute.project);
@@ -509,9 +511,11 @@
   // één keer meekrijgt — een kolom met er méér toont "toon meer" (col.hasMore,
   // via stateCounts).
   const CLOSED_LIMIT = 25;
+  let boardRevision = 0;
 
   async function loadBoard() {
     if (!current) return;
+    boardRevision += 1;
     error = "";
     loading = true;
     try {
@@ -536,7 +540,7 @@
         }),
         // Niet kritiek voor het bord zelf — bij een fout blijft hasMore
         // overal false (exact het oude gedrag).
-        wantCounts ? api.stateCounts(current, { archived: showArchived }).catch(() => ({})) : {},
+        wantCounts ? api.stateCounts(current).catch(() => ({})) : {},
       ]);
       items = fetchedItems;
       stateCounts = counts;
@@ -554,17 +558,22 @@
   async function loadMoreColumn(stateName) {
     if (colBusy.has(stateName)) return;
     colBusy = new Set(colBusy).add(stateName);
+    const project = current;
+    const revision = boardRevision;
+    const pageSize = 50;
     try {
       const alreadyLoaded = items.filter((i) => i.state === stateName && !i.archived_at).length;
-      const more = await api.items(current, {
+      const more = await api.items(project, {
         state: stateName,
         offset: alreadyLoaded,
-        limit: 50,
+        limit: pageSize,
       });
-      const existingRefs = new Set(items.map((i) => i.ref));
-      items = [...items, ...more.filter((i) => !existingRefs.has(i.ref))];
+      if (current !== project || revision !== boardRevision) return;
+      const next = appendColumnPage(items, stateCounts, stateName, more, pageSize);
+      items = next.items;
+      stateCounts = next.counts;
     } catch (e) {
-      error = `Meer laden mislukt (${e.message}).`;
+      if (current === project && revision === boardRevision) error = `Meer laden mislukt (${e.message}).`;
     } finally {
       const next = new Set(colBusy);
       next.delete(stateName);
@@ -733,6 +742,7 @@
     // De open drawer luistert op liveTick — altijd tikken, óók als het board
     // zelf niet wijzigt (de drawer kan een cross-project ticket tonen).
     liveTick += 1;
+    if (event?.type?.startsWith("project.")) api.projects(true).then((all) => { projects = all; }).catch(() => {});
     if (event && sideEffectRelevant(event.type)) refreshSideEffectsSoon();
 
     if (canApplyIncremental()) {
@@ -877,7 +887,7 @@
     recentBusy = true;
     try {
       const lists = await Promise.all(
-        projects.map((p) => api.items(p.key).catch(() => []))
+        projects.filter((p) => !p.archived_at).map((p) => api.items(p.key).catch(() => []))
       );
       if (seq !== recentSeq) return; // ouder antwoord: negeren
       recentAcrossProjects = annotateSearchResults(mergeRecentItems(lists), projects);
@@ -1077,6 +1087,7 @@
     if (isTypingTarget(e.target)) return; // niet kapen tijdens typen
     const action = shortcutAction(e, { chord: gChord ? "g" : null });
     if (!action) return;
+    if (projectReadOnly && ["new-item", "toggle-select", "quick-assign", "quick-state", "quick-label", "edit-card"].includes(action.type)) return;
     switch (action.type) {
       case "palette":
         e.preventDefault();
@@ -1221,6 +1232,7 @@
   });
 
   async function move(ref, stateName) {
+    if (projectReadOnly) return;
     const item = items.find((i) => i.ref === ref);
     if (!item || item.state === stateName) return;
     items = applyMove(items, ref, stateName); // optimistisch
@@ -1233,6 +1245,7 @@
   }
 
   function onDrop(colName) {
+    if (projectReadOnly) return;
     const ref = dragRef;
     dragRef = null;
     dragoverCol = null;
@@ -1241,6 +1254,7 @@
 
   // --- Multi-select (BETON-14) ---------------------------------------------
   function toggleSelectMode() {
+    if (projectReadOnly) return;
     selectMode = !selectMode;
     selectedRefs = [];
     lastAnchor = null;
@@ -1281,6 +1295,7 @@
   }
 
   async function bulkMove(stateName) {
+    if (projectReadOnly) return;
     if (!stateName || !selectedRefs.length || bulkBusy) return;
     const refs = refsToMove(items, selectedRefs, stateName);
     if (!refs.length) return;
@@ -1298,6 +1313,7 @@
   }
 
   async function bulkArchive() {
+    if (projectReadOnly) return;
     if (!selectedRefs.length || bulkBusy) return;
     const refs = [...selectedRefs];
     bulkBusy = true;
@@ -1315,6 +1331,7 @@
   }
 
   async function bulkAssign(handle) {
+    if (projectReadOnly) return;
     if (!selectedRefs.length || bulkBusy) return;
     const refs = [...selectedRefs];
     bulkBusy = true;
@@ -1333,6 +1350,7 @@
   // BETON-360: label/milestone/werklast in bulk — zelfde optimistisch-dan-
   // Promise.all-dan-rollback-patroon als bulkMove/bulkAssign/bulkArchive.
   async function bulkLabel(name, add) {
+    if (projectReadOnly) return;
     if (!name || !selectedRefs.length || bulkBusy) return;
     const refs = [...selectedRefs];
     bulkBusy = true;
@@ -1351,6 +1369,7 @@
   }
 
   async function bulkMilestone(name) {
+    if (projectReadOnly) return;
     if (!name || !selectedRefs.length || bulkBusy) return;
     const refs = [...selectedRefs];
     bulkBusy = true;
@@ -1367,6 +1386,7 @@
   }
 
   async function bulkWorkload(value) {
+    if (projectReadOnly) return;
     if (!value || !selectedRefs.length || bulkBusy) return;
     const refs = [...selectedRefs];
     bulkBusy = true;
@@ -1388,6 +1408,7 @@
   }
 
   function openNew(colName = "", initial = {}) {
+    if (projectReadOnly) return;
     newColumn = colName;
     newItemInitial = initial || {};
     openOverlay("new");
@@ -1417,14 +1438,14 @@
   // Nieuw project aangemaakt → lijst verversen en er meteen naartoe switchen.
   async function onProjectCreated(created) {
     closeOverlayNamed("newProject");
-    projects = await api.projects();
+    projects = await api.projects(true);
     if (created?.key) await switchProject(created.key);
   }
 
   // Archiveren/herstellen in de manager → selector verversen; als het huidige
   // project net verdween, naar het eerste overgebleven project (of empty-state).
   async function onProjectsChanged() {
-    projects = await api.projects();
+    projects = await api.projects(true);
     if (!projects.some((p) => p.key === current)) {
       if (projects.length) await switchProject(projects[0].key);
       else {
@@ -1481,6 +1502,8 @@
       </div>
       <Select
         class="tb-project"
+        searchable
+        searchLabel={$t("project.search")}
         ariaLabel={$t("nav.project")}
         value={projectPickerValue(activeView, current)}
         options={projectPickerOptions(projects, current, undefined, $locale)}
@@ -1667,7 +1690,7 @@
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
 
-      <button class="primary tb-new" onclick={() => openNew()} aria-label={$t("nav.newTicket")} title={$t("nav.newTicket")}>
+      <button disabled={projectReadOnly} class="primary tb-new" onclick={() => openNew()} aria-label={$t("nav.newTicket")} title={$t("nav.newTicket")}>
         <Plus size={16} /> <span class="tb-label">{$t("nav.newTicket")}</span>
       </button>
 
@@ -1937,11 +1960,13 @@
     </div>
   {/if}
 
+  {#if projectReadOnly && activeView !== "wiki"}<p class="project-readonly-note" role="status">{$t("api.project_archived_readonly")}</p>{/if}
   {#if activeView === "wiki"}
     <Wiki
       {liveTick}
       project={current}
       projectName={currentName}
+      projectArchived={projectReadOnly}
       {me}
       onclose={() => setActiveView("board")}
       onopenref={(r) => { setActiveView("board"); navigateRef(r); }}
@@ -2030,7 +2055,7 @@
       items={filteredItems}
       preferenceKey={`betonning-list-columns:${me?.handle ?? ""}`}
       stateOptions={states.map((s) => ({ value: s.name, label: s.name }))}
-      onstatechange={move}
+      onstatechange={projectReadOnly ? undefined : move}
       {selectMode}
       {selectedRefs}
       {stateColors}
@@ -2112,6 +2137,7 @@
             {/if}
             {#if !col.closed}
               <button
+                disabled={projectReadOnly}
                 class="col-add"
                 title={$uiText("ui.newHere")}
                 aria-label={$uiText("board.newIn", {column: col.name})}
@@ -2132,7 +2158,7 @@
               class:card-guardrail={item.has_guardrail}
               role="listitem"
               data-ref={item.ref}
-              draggable={canDrag && !selectMode && !item.archived_at}
+              draggable={!projectReadOnly && canDrag && !selectMode && !item.archived_at}
               ondragstart={() => (dragRef = item.ref)}
               ondragend={endDrag}
               onclick={(e) => onCardClick(item.ref, e)}
@@ -2292,7 +2318,7 @@
               disabled={colBusy.has(col.name)}
               onclick={() => loadMoreColumn(col.name)}
             >
-              {colBusy.has(col.name) ? $uiText("ui.loading") : $uiText("board.more", {count: col.total - col.items.length})}
+              {colBusy.has(col.name) ? $uiText("ui.loading") : $uiText("board.more", {count: col.remaining})}
             </button>
           {/if}
           {/if}
@@ -2351,6 +2377,7 @@
       <div class="settings-panel">
         <ProjectSettings
           projectKey={current}
+          readOnly={projectReadOnly}
           projectName={currentName}
           projectDescription={currentProject.description}
           triageEnabled={currentProject.triage_enabled}
@@ -2373,7 +2400,7 @@
   {#if hasOverlay(overlays, "installation") && canManageInstallation(me)}
     <DrawerDialog label={$t("installation.title")} width="min(760px, 92vw)" onclose={() => closeOverlayNamed("installation")}>
       <InstallationSettings onback={() => closeOverlayNamed("installation")} onchanged={async () => {
-        [users, projects] = await Promise.all([api.users(), api.projects()]);
+        [users, projects] = await Promise.all([api.users(), api.projects(true)]);
         if (!current && projects.length) await switchProject(projects[0].key);
         else await loadBoard();
       }} />

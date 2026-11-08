@@ -134,7 +134,7 @@ def serialize(
     read-state is per user en zonder user niet te bepalen.
     """
     project = conn.execute(
-        "SELECT key FROM projects WHERE id = ?", (row["project_id"],)
+        "SELECT key, archived_at FROM projects WHERE id = ?", (row["project_id"],)
     ).fetchone()
     ref = f"{project['key']}-{row['seq']}"
 
@@ -181,6 +181,7 @@ def serialize(
         "id": row["id"],
         "ref": ref,
         "project": project["key"],
+        "project_archived_at": project["archived_at"],
         "seq": row["seq"],
         "title": row["title"],
         "description_md": row["description_md"],

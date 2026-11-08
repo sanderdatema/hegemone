@@ -2471,3 +2471,13 @@ button.danger-quiet:hover {
     bottom: calc(16px + env(safe-area-inset-bottom));
   }
 }
+
+/* Shared archive notice keeps navigation available while content is read-only. */
+.project-readonly-note {
+  margin: var(--space-3);
+  padding: var(--space-3);
+  color: var(--text-secondary);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}

@@ -149,10 +149,13 @@ def validate(conn: sqlite3.Connection, command: Command) -> list[str]:
         return [outbound('commands.validate.1', p0=(command.verb))]
 
     project = conn.execute(
-        "SELECT id FROM projects WHERE id = ?", (command.project_id,)
+        "SELECT id, archived_at FROM projects WHERE id = ?", (command.project_id,)
     ).fetchone()
     if project is None:
         return [outbound('commands.validate.2')]
+
+    if project["archived_at"] is not None:
+        return [outbound("project_readonly")]
 
     if command.verb == "create_item":
         if not command.params.get("title", "").strip():

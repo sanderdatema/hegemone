@@ -40,11 +40,19 @@ def record(
     payload: dict | None = None,
 ) -> sqlite3.Row:
     """Log een event. Geeft de opgeslagen rij terug."""
+    if not conn.in_transaction:
+        from .. import db
+        with db.transaction(conn):
+            return record(conn, type=type, item_id=item_id, actor_id=actor_id, payload=payload)
     cur = conn.execute(
         "INSERT INTO events (type, item_id, actor_id, payload) VALUES (?, ?, ?, ?)",
         (type, item_id, actor_id, json.dumps(payload or {})),
     )
-    return conn.execute("SELECT * FROM events WHERE id = ?", (cur.lastrowid,)).fetchone()
+    event = conn.execute("SELECT * FROM events WHERE id = ?", (cur.lastrowid,)).fetchone()
+    if item_id is not None and not type.startswith("execution.") and type not in ("question.answered", "question.withdrawn"):
+        from . import execution
+        execution.observe_item(conn, item_id)
+    return event
 
 
 def serialize(conn: sqlite3.Connection, row: sqlite3.Row) -> dict:

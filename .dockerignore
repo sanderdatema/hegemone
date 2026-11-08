@@ -15,6 +15,7 @@
 !docs/hegemone/SECURITY.md
 !docs/hegemone/SUPPORT.md
 !docs/hegemone/THIRD_PARTY.md
+!docs/hegemone/USER_GUIDE.md
 !docs/hegemone/screenshots/board-en.png
 !docs/hegemone/screenshots/board-nl.png
 !pyproject.toml
@@ -24,6 +25,7 @@
 !src/betonning/api/attachments.py
 !src/betonning/api/configuration.py
 !src/betonning/api/deliveries.py
+!src/betonning/api/execution.py
 !src/betonning/api/inbox.py
 !src/betonning/api/installation.py
 !src/betonning/api/items.py
@@ -52,6 +54,8 @@
 !src/betonning/deferred_worker.py
 !src/betonning/deps.py
 !src/betonning/embeddings.py
+!src/betonning/execution_adapter.py
+!src/betonning/execution_errors.py
 !src/betonning/installation_config.py
 !src/betonning/installation_runtime.py
 !src/betonning/llm.py
@@ -114,6 +118,8 @@
 !src/betonning/migrations/052_onboarding.sql
 !src/betonning/migrations/053_installation_settings.sql
 !src/betonning/migrations/054_configuration_import.sql
+!src/betonning/migrations/055_archived_projects_readonly.sql
+!src/betonning/migrations/056_execution_handoffs.sql
 !src/betonning/models.py
 !src/betonning/outbound.py
 !src/betonning/outbound_messages.json
@@ -127,6 +133,7 @@
 !src/betonning/repo/comments.py
 !src/betonning/repo/configuration.py
 !src/betonning/repo/events.py
+!src/betonning/repo/execution.py
 !src/betonning/repo/follows.py
 !src/betonning/repo/guardrails.py
 !src/betonning/repo/held_comments.py
@@ -186,6 +193,7 @@
 !ui/src/DueBadge.svelte
 !ui/src/EmptyState.svelte
 !ui/src/ErrorNote.svelte
+!ui/src/ExecutionStatus.svelte
 !ui/src/Field.svelte
 !ui/src/ImageLightbox.svelte
 !ui/src/Inbox.svelte

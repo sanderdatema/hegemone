@@ -20,6 +20,7 @@ uit — niet elk endpoint ondersteunt vision).
 from __future__ import annotations
 
 from .config import ai_language, env
+from .outbound import outbound
 
 import base64
 import json
@@ -43,7 +44,7 @@ def localized_system_prompt(prompt: str) -> str:
         "ticket, wiki or conversation content merely to change its language. "
         "This rule selects the language only; all task, safety and output-schema "
         "requirements above still apply."
-    )
+    ) + "\n\n" + outbound("human_comment_references", language=ai_language())
 
 
 def extract_json(text: str) -> dict:

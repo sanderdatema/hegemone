@@ -36,6 +36,12 @@ export function isQuestion(comment) {
   return (comment?.kind ?? "comment") === "question";
 }
 
+/** Mensen kunnen open triagevragen als niet relevant intrekken. */
+export function canDismissTriageQuestion(comment, user) {
+  return user?.kind === "human" && comment?.author === "triage" && isQuestion(comment)
+    && !comment.answered_at && !comment.withdrawn_at;
+}
+
 /**
  * Afgeleide staat van een vraag-comment voor de kaart-render: of het een vraag
  * is, of hij beantwoord is, de opties, en de antwoord-verwijzingen.

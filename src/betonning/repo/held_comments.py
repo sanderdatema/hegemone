@@ -44,7 +44,9 @@ def hold(
                 VALUES (?, ?, ?, {NOW_SQL})""",
             (item_id, author_id, body_md),
         )
-    except sqlite3.IntegrityError:
+    except sqlite3.IntegrityError as exc:
+        if str(exc) == "archived_project_readonly":
+            raise
         return None
     return get(conn, item_id) if cur.lastrowid else None
 

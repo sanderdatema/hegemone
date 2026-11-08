@@ -30,6 +30,8 @@ from urllib.parse import quote
 import httpx
 from mcp.server.fastmcp import Context
 
+from .outbound import outbound
+
 # Gepubliceerde protocolvolgorde; pariteit met de API wordt in tests bewaakt.
 _WORK_CLASS_ORDER = ("routine", "standaard", "complex")
 # Transportbudget voor inline base64; de HTTP-API valideert ook per MIME-type.
@@ -523,6 +525,9 @@ async def move_item(ref: str, state: str, ctx: Context | None = None) -> dict:
 async def comment_item(ref: str, body_md: str, ctx: Context | None = None) -> dict:
     """Plaats een comment (markdown) onder een ticket, bv. een afsluit-comment bij
     ``done`` (wat, welke bestanden, tests). ``@handle`` notificeert die persoon.
+    Mensen zien comment-ID’s niet: verwijs naar auteur, datum of een kort citaat,
+    zo nodig met de ticketref; gebruik interne ID’s alleen in toolargumenten.
+
     De antwoord kan een ``warning`` bevatten (eerste comment zonder plan,
     BETON-301) of een samenvattingshint (BETON-469); de comment wordt altijd
     geplaatst.
@@ -1307,6 +1312,9 @@ vraag achterhaald is (ook die van een ander)? Trek hem in met \
 `withdraw_question` en zeg in de reden waar het antwoord staat; laat hem niet \
 open staan. Afsluiten met een open vraag geeft een 409 (BETON-454, BETON-481).
 """
+
+
+SERVER_INSTRUCTIONS += "\n\n" + outbound("human_comment_references", language="nl")
 
 
 def build_server():

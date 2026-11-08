@@ -6,6 +6,7 @@ from fastapi import APIRouter
 from . import (
     attachments,
     deliveries,
+    execution,
     inbox,
     installation,
     configuration,
@@ -34,6 +35,7 @@ router.include_router(onboarding.router)
 router.include_router(users.router)
 router.include_router(projects.router)
 router.include_router(items.router)
+router.include_router(execution.router)
 router.include_router(search.router)
 router.include_router(stream.router)
 router.include_router(attachments.router)

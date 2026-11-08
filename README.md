@@ -174,6 +174,8 @@ repository contains a new source history; private development history is exclude
 
 ## Project documentation
 
+- [User guide](USER_GUIDE.md): everyday workflows, questions, wiki, agents and troubleshooting.
+
 - [Agent setup](AGENT_SETUP.md): identities, permissions, MCP, REST and webhooks.
 - [Contributing](CONTRIBUTING.md): development workflow, review and AI assistance.
 - [Support and compatibility](SUPPORT.md): targets, verified scope and limitations.

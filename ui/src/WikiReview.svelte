@@ -3,7 +3,7 @@
   import { api } from './api.js';
   import DiffView from './DiffView.svelte';
   import { lineDiff } from './lib/diff.js';
-  let { project = null, liveTick = 0, onchanged = () => {} } = $props();
+  let { readOnly = false, project = null, liveTick = 0, onchanged = () => {} } = $props();
   let proposals = $state([]), error = $state(''), busy = $state(false);
   let seq = 0;
   async function load() {
@@ -13,6 +13,7 @@
   }
   $effect(() => { void project; void liveTick; load(); });
   async function review(id, approve) {
+    if (readOnly) return;
     busy = true; error = '';
     try { await api.wikiReview(id, approve); await load(); onchanged(); }
     catch (e) { error = e.message; }
@@ -28,8 +29,8 @@
         <summary>{proposal.title} — {$tr("wiki.by")} @{proposal.author}</summary>
         <p>{$tr("wiki.reviewNote", {slug: proposal.slug})}</p>
         <DiffView segments={lineDiff(proposal.current_body, proposal.body_md)} variant="bordered" ariaLabel={$tr("wiki.reviewChange")} />
-        <button class="primary" disabled={busy} onclick={() => review(proposal.id, true)}>{$tr("wiki.approve")}</button>
-        <button disabled={busy} onclick={() => review(proposal.id, false)}>{$tr("wiki.reject")}</button>
+        <button class="primary" disabled={readOnly || busy} onclick={() => review(proposal.id, true)}>{$tr("wiki.approve")}</button>
+        <button disabled={readOnly || busy} onclick={() => review(proposal.id, false)}>{$tr("wiki.reject")}</button>
       </details>
     {/each}
   </aside>

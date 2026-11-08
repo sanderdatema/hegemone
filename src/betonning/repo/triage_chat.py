@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from typing import Literal, overload
 
 
 def serialize_message(row: sqlite3.Row) -> dict:
@@ -30,9 +31,17 @@ def serialize_message(row: sqlite3.Row) -> dict:
     }
 
 
-def active_session(conn: sqlite3.Connection, project_id: int | None) -> sqlite3.Row:
+@overload
+def active_session(conn: sqlite3.Connection, project_id: int | None, *, create: Literal[True] = True) -> sqlite3.Row: ...
+
+
+@overload
+def active_session(conn: sqlite3.Connection, project_id: int | None, *, create: bool) -> sqlite3.Row | None: ...
+
+
+def active_session(conn: sqlite3.Connection, project_id: int | None, *, create: bool = True) -> sqlite3.Row | None:
     """De nieuwste niet-gearchiveerde sessie voor deze scope; lui aangemaakt als
-    er nog geen is."""
+    er nog geen is. ``create=False`` leest alleen en geeft dan eventueel None."""
     if project_id is None:
         row = conn.execute(
             "SELECT * FROM triage_chat_sessions "
@@ -46,7 +55,7 @@ def active_session(conn: sqlite3.Connection, project_id: int | None) -> sqlite3.
             "ORDER BY id DESC LIMIT 1",
             (project_id,),
         ).fetchone()
-    if row is not None:
+    if row is not None or not create:
         return row
     cur = conn.execute(
         "INSERT INTO triage_chat_sessions (project_id) VALUES (?)", (project_id,)

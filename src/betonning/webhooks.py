@@ -1294,6 +1294,8 @@ def build_instructions(
     instructions = verbs[action]
     if action != "stand_down":
         instructions = outbound('build_instructions.9', p0=(instructions), p1=(reply['how']))
+    if action not in ("none", "stand_down"):
+        instructions += "\n\n" + outbound("human_comment_references")
     return {
         "instructions": instructions,
         "expected_action": action,
@@ -1436,6 +1438,29 @@ def instruction_context(
     return item_row, agent_policy, trigger, slim_item, access_level
 
 
+def _execution_instructions(conn, user, item_row, instructions):
+    """Managed agents receive a notification, never a webhook execution grant."""
+    if instructions is None or instructions['expected_action'] not in ('pick_up','acknowledge'):
+        return instructions
+    from .repo import execution
+    if execution.binding(conn,user['id']) is None:
+        return instructions
+    result = dict(instructions)
+    result['expected_action'] = 'none'
+    result['instructions'] = outbound('execution.notification_only')
+    result['do'] = outbound('execution.wait_for_executor')
+    result['do_not'] = [*instructions['do_not'],outbound('execution.no_receipt')]
+    result['read'] = []
+    request = execution.latest(conn,item_row['id']) if item_row is not None else None
+    if request is not None and request['user_id']==user['id']:
+        result['execution'] = {
+            'id':request['id'],'status':request['status'],
+            'context_api_url':f"{_public_url()}/api/v1/items/{instructions['reply']['ref']}/executions/{request['id']}",
+        }
+    result['reply'] = None
+    return result
+
+
 def build_agent_instructions(
     conn: sqlite3.Connection, event: sqlite3.Row, user: sqlite3.Row
 ) -> dict | None:
@@ -1449,7 +1474,7 @@ def build_agent_instructions(
     )
     if slim_item is None:
         return None
-    return build_instructions(
+    instructions = build_instructions(
         user,
         slim_item,
         trigger,
@@ -1460,6 +1485,8 @@ def build_agent_instructions(
             conn, event["item_id"], user["handle"]
         ),
     )
+    return _execution_instructions(conn,user,_item_row,instructions)
+
 
 
 def test_target_fingerprint(user) -> str:
@@ -1513,6 +1540,7 @@ def build_delivery_payload(
             ),
         )
 
+    instr = _execution_instructions(conn,user,_item_row,instr)
     payload: dict = {}
     if instr is not None:
         # Plat op topniveau (instructions / expected_action / do / do_not / read /
@@ -1524,6 +1552,8 @@ def build_delivery_payload(
         payload["do_not"] = instr["do_not"]
         payload["read"] = instr["read"]
         payload["reply"] = instr["reply"]
+        if "execution" in instr:
+            payload["execution"] = instr["execution"]
     payload["trigger"] = trigger
     payload["agent_policy"] = agent_policy
     payload["event"] = events_repo.serialize(conn, event)

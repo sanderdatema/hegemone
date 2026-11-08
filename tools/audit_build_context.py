@@ -12,6 +12,7 @@ import tempfile
 
 DOCS = [
     "README.md",
+    "USER_GUIDE.md",
     "SECURITY.md",
     "CONTRIBUTING.md",
     "SUPPORT.md",

@@ -1,6 +1,7 @@
 // Projectbeheer: alleen presentatie, geen hernoeming van gebruikersdata.
 export const projectMessages = {
   "en": {
+    "project.search": "Search projects…",
     "projectSettings.title": "settings",
     "projectSettings.loadFailed": "Could not load project settings. Please try again.",
     "projectSettings.name": "Project name",
@@ -82,6 +83,7 @@ export const projectMessages = {
     "template.saved": "Template saved"
   },
   "nl": {
+    "project.search": "Zoek projecten…",
     "projectSettings.title": "instellingen",
     "projectSettings.loadFailed": "Kon projectinstellingen niet laden — probeer opnieuw.",
     "projectSettings.name": "Projectnaam",

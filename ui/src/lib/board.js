@@ -34,9 +34,10 @@ import { dueMeta, todayISO } from "./dueDate.js";
  *   voor kolommen die de server begrensd heeft (`closed_limit`, dus altijd
  *   `closed`-kolommen); zonder counts (of een count die niet hoger is dan wat
  *   al binnen is) is `hasMore` gewoon false, exact het oude gedrag.
- * @returns {Array<{name: string, group: ?string, color: ?string, closed: boolean, items: Array, archived?: boolean, total: number, hasMore: boolean}>}
+ * @param {Array} [loadedItems] alle geladen items vóór client-side filtering
+ * @returns {Array<{name: string, group: ?string, color: ?string, closed: boolean, items: Array, archived?: boolean, total: number, remaining: number, hasMore: boolean}>}
  */
-export function buildColumns(states, items, counts = {}) {
+export function buildColumns(states, items, counts = {}, loadedItems = items) {
   const columns = states.map((s) => ({
     name: s.name,
     group: s.group ?? null,
@@ -65,12 +66,28 @@ export function buildColumns(states, items, counts = {}) {
   }
   if (orphans.items.length > 0) columns.push(orphans);
   if (archived.items.length > 0) columns.push(archived);
+  // Snelfilters verbergen kaarten zonder ze uit de geladen pagina te halen.
+  const loadedCounts = new Map();
+  for (const item of loadedItems) {
+    if (!item.archived_at) loadedCounts.set(item.state, (loadedCounts.get(item.state) || 0) + 1);
+  }
   for (const col of columns) {
-    const known = counts[col.name];
-    col.total = typeof known === "number" ? Math.max(known, col.items.length) : col.items.length;
-    col.hasMore = col.total > col.items.length;
+    const loaded = col.archived ? col.items.length : Math.max(col.items.length, loadedCounts.get(col.name) || 0);
+    const known = col.archived ? undefined : counts[col.name];
+    col.total = typeof known === "number" ? Math.max(known, loaded) : loaded;
+    col.remaining = col.total - loaded;
+    col.hasMore = col.remaining > 0;
   }
   return columns;
+}
+
+/** Voeg een vervolgpagina toe; een korte pagina corrigeert een verouderde telling. */
+export function appendColumnPage(items, counts, stateName, page, pageSize) {
+  const existing = new Set(items.map((item) => item.ref));
+  const merged = [...items, ...page.filter((item) => !existing.has(item.ref))];
+  if (page.length >= pageSize) return { items: merged, counts };
+  const loaded = merged.filter((item) => item.state === stateName && !item.archived_at).length;
+  return { items: merged, counts: { ...counts, [stateName]: loaded } };
 }
 
 /**
@@ -789,7 +806,7 @@ export function resolveProject(projects, wanted) {
     const hit = (projects || []).find((p) => p.key.toUpperCase() === wanted);
     if (hit) return hit.key;
   }
-  return projects?.[0]?.key ?? null;
+  return (projects || []).find((p) => !p.archived_at)?.key ?? projects?.[0]?.key ?? null;
 }
 
 /**

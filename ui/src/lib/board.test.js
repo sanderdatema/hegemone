@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildColumns,
+  appendColumnPage,
   boardWindow,
   columnCount,
   orderColumns,
@@ -142,6 +143,49 @@ describe("buildColumns", () => {
       expect(cols.find((c) => c.name === "todo")).toMatchObject({ total: 1, hasMore: false });
       expect(cols.find((c) => c.name === "done")).toMatchObject({ total: 40, hasMore: true });
     });
+  });
+});
+
+describe("column pagination with hidden cards", () => {
+  const loaded = [
+    { ref: "S-1", state: "done", has_unread: true },
+    { ref: "S-2", state: "done", has_unread: false },
+    { ref: "S-3", state: "done", archived_at: "2026-01-01" },
+  ];
+
+  it("does not offer more when a quick filter hides already loaded cards", () => {
+    const visible = filterItems(loaded.slice(0, 2), { unread: true });
+    const done = buildColumns(states, visible, { done: 2 }, loaded).find(c => c.name === "done");
+    expect(done.items).toHaveLength(1);
+    expect(done).toMatchObject({ total: 2, remaining: 0, hasMore: false });
+  });
+
+  it("counts only unloaded active cards as remaining", () => {
+    const cols = buildColumns(states, loaded.slice(0, 1), { done: 5 }, loaded);
+    expect(cols.find(c => c.name === "done")).toMatchObject({ remaining: 3, hasMore: true });
+  });
+
+  it("does not apply state counts to the separate archive column", () => {
+    const cols = buildColumns(states, loaded, { done: 2, Archief: 20 }, loaded);
+    expect(cols.find(c => c.archived)).toMatchObject({ total: 1, remaining: 0, hasMore: false });
+  });
+
+  it("reconciles a stale count on an empty page instead of offering more forever", () => {
+    const next = appendColumnPage(loaded, { done: 20, todo: 7 }, "done", [], 50);
+    expect(next.counts).toEqual({ done: 2, todo: 7 });
+    expect(buildColumns(states, next.items, next.counts).find(c => c.name === "done").hasMore).toBe(false);
+  });
+
+  it("merges short pages without duplicating cards and ends pagination", () => {
+    const next = appendColumnPage(loaded, { done: 20 }, "done", [loaded[0], { ref: "S-4", state: "done" }], 50);
+    expect(next.items.map(i => i.ref)).toEqual(["S-1", "S-2", "S-3", "S-4"]);
+    expect(next.counts.done).toBe(3);
+  });
+
+  it("preserves the remaining count while a full page can have a successor", () => {
+    const counts = { done: 100 };
+    const next = appendColumnPage(loaded, counts, "done", [{ ref: "S-4", state: "done" }], 1);
+    expect(next.counts).toBe(counts);
   });
 });
 
@@ -1217,4 +1261,11 @@ describe("describeEvent wiki.compiled (BETON-463)", () => {
     expect(describeEvent({ type: "wiki.compiled", payload: { pages: ["sessies"] } })).toBe("wiki bijgewerkt: sessies");
     expect(describeEvent({ type: "wiki.compiled", payload: { skipped: true, pages: [] } })).toBe("wiki-compilatie overgeslagen");
   });
+});
+
+
+it("prefers an active project by default while retaining explicit archive deep links", () => {
+  const projects = [{ key: "OLD", archived_at: "2026-01-01" }, { key: "LIVE" }];
+  expect(resolveProject(projects, null)).toBe("LIVE");
+  expect(resolveProject(projects, "OLD")).toBe("OLD");
 });

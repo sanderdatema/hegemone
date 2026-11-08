@@ -25,6 +25,7 @@ from ..deps import (
     require_media_access,
 )
 from ..repo import attachments as attachments_repo
+from ..repo import projects as projects_repo
 
 router = APIRouter(tags=["attachments"])
 
@@ -60,6 +61,7 @@ async def upload_attachment(
 
     sha = storage.sha256_hex(data)
     with db_module.transaction(conn):
+        projects_repo.require_writable(conn, item["project_id"])
         reason = attachments_repo.quota_error(
             conn, user["id"], item["project_id"], len(data)
         )

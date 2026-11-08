@@ -20,6 +20,55 @@ DEFAULT_STATES = [
 ]
 
 
+READONLY_ERROR = "archived_project_readonly"
+
+
+def is_archived(conn: sqlite3.Connection, project_id: int | None) -> bool:
+    if project_id is None:
+        return False
+    row = conn.execute("SELECT archived_at FROM projects WHERE id = ?", (project_id,)).fetchone()
+    return row is not None and row["archived_at"] is not None
+
+
+def require_writable(conn: sqlite3.Connection, project_id: int | None) -> None:
+    """Vroege controle; databasetriggers bewaken ook races onder de schrijf-lock."""
+    if is_archived(conn, project_id):
+        raise sqlite3.IntegrityError(READONLY_ERROR)
+
+
+def write_target_project_ids(
+    conn: sqlite3.Connection, *, key: str | None = None, ref: str | None = None,
+    comment_id: int | str | None = None, message_id: int | str | None = None,
+    proposal_id: int | str | None = None,
+) -> set[int]:
+    """Los route-identiteiten op zonder bestaande 404/validatiepaden te veranderen."""
+    ids: set[int] = set()
+    if key:
+        project = get_by_key(conn, key)
+        if project is not None:
+            ids.add(project["id"])
+    if isinstance(ref, str) and "-" in ref:
+        project_key, seq = ref.rsplit("-", 1)
+        if seq.isascii() and seq.isdecimal():
+            row = conn.execute(
+                "SELECT i.project_id FROM items i JOIN projects p ON p.id = i.project_id "
+                "WHERE p.key = ? COLLATE NOCASE AND i.seq = ?",
+                (project_key, seq),
+            ).fetchone()
+            if row is not None:
+                ids.add(row["project_id"])
+    for identifier, sql in (
+        (comment_id, "SELECT i.project_id FROM comments c JOIN items i ON i.id = c.item_id WHERE c.id = ?"),
+        (message_id, "SELECT s.project_id FROM triage_chat_messages m JOIN triage_chat_sessions s ON s.id = m.session_id WHERE m.id = ?"),
+        (proposal_id, "SELECT project_id FROM wiki_proposals WHERE id = ?"),
+    ):
+        if identifier is not None:
+            row = conn.execute(sql, (identifier,)).fetchone()
+            if row is not None and row["project_id"] is not None:
+                ids.add(row["project_id"])
+    return ids
+
+
 def serialize(row: sqlite3.Row) -> dict:
     return {
         "id": row["id"],
