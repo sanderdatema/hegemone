@@ -25,9 +25,11 @@ import os
 import re
 import time
 from pathlib import Path
+from typing import Annotated
 from urllib.parse import quote
 
 import httpx
+from pydantic import Field
 from mcp.server.fastmcp import Context
 
 from .outbound import outbound
@@ -458,7 +460,7 @@ async def update_item(
     deferred_until: str | None = None,
     due_date: str | None = None,
     plan_md: str | None = None,
-    handover_md: str | None = None,
+    handover_md: Annotated[str, Field(min_length=1, max_length=300)] | None = None,
     ctx: Context | None = None,
 ) -> dict:
     """Werk velden van een ticket bij; alleen meegegeven velden wijzigen.
@@ -470,7 +472,9 @@ async def update_item(
     ``due_date``/``plan_md``.
 
     Agent → mens: geef ``handover_md`` mee (één alinea, max 300 tekens) of stel
-    eerst een ``ask_question``. Na de eerste comment liggen ``description_md`` en
+    eerst een ``ask_question`` met een expliciete ``@handle`` van die mens.
+    Zonder zo’n mention richt de vraag zich op de huidige assignee.
+    Na de eerste comment liggen ``description_md`` en
     ``plan_md`` vast voor agents (409, BETON-301).
     """
     body: dict = {}
@@ -1038,7 +1042,10 @@ async def ask_question(
 
     Alleen voor mensen; voor een agent gebruik je ``comment_item`` met
     ``@handle``. ``question_md`` is de vraag (``@handle`` richt hem aan een
-    mens); ``options`` zijn optionele meerkeuze-antwoorden (max 6, uniek) die bij
+    mens). Staat het ticket nog bij een agent, noem de mens expliciet met
+    ``@handle``. Je kunt ook eerst ``update_item(assignee=..., handover_md=...)``
+    doen en daarna een vraag aan de menselijke assignee stellen.
+    ``options`` zijn optionele meerkeuze-antwoorden (max 6, uniek) die bij
     deze ene vraag horen. Precies ÉÉN vraag per aanroep: meerdere vragen = meerdere
     aanroepen (BETON-304).
 

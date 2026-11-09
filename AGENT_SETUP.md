@@ -60,6 +60,17 @@ Do not expose a standalone adapter on a public listening address without the
 corresponding transport/authentication setup. The built-in HTTP endpoint above
 is the container integration path.
 
+When updating a separately installed stdio adapter, reinstall it from this
+checkout with its `mcp` extra. A native application deployment does not update an
+older `uv tool` installation. Existing MCP processes and clients may retain their
+previous tool schema; reconnect the MCP server after upgrading the adapter.
+
+For an agent-to-human handoff, use `update_item` with both `assignee` and a
+concrete, single-paragraph `handover_md` of at most 300 characters. You can then
+ask the human assignee a question. To ask before reassignment, explicitly mention
+the human's `@handle`; without a mention the question targets the current assignee.
+`plan_md` remains the implementation plan and does not replace the short handoff.
+
 ## REST and webhooks
 
 REST uses `/api/v1` and the same Bearer identity. A basic identity check is:

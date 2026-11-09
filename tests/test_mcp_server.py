@@ -1137,10 +1137,20 @@ def test_human_lange_comment_geen_samenvattingshint(agent_env):
 
 def test_update_item_geeft_handover_door(agent_env, monkeypatch):
     monkeypatch.setenv("HEGEMONE_LANGUAGE", "nl")
+    server = mcp_server.build_server()
+    tool = next(tool for tool in _run(server.list_tools()) if tool.name == "update_item")
+    field = tool.inputSchema["properties"]["handover_md"]
+    assert any(option.get("maxLength") == 300 for option in field.get("anyOf", [field]))
     ref = _run(mcp_server.create_item("SOS", "Test", plan_md="Plan"))["ref"]
+    with pytest.raises(RuntimeError, match="handover_md"):
+        _run(mcp_server.update_item(ref, assignee="person"))
+    with pytest.raises(RuntimeError, match="422"):
+        _run(mcp_server.update_item(ref, assignee="person", handover_md="x" * 301))
     item = _run(mcp_server.update_item(ref, assignee="person", handover_md="Wil je de knop testen?"))
     assert item["assignee"] == "person"
     assert _run(mcp_server.get_item(ref))["comments"][0]["body_md"] == "**Nodig van @person:** Wil je de knop testen?"
+    question = _run(mcp_server.ask_question(ref, "Werkt de knop?"))
+    assert question["kind"] == "question"
 
 
 def test_plan_en_samenvattingshint_blijven_beide_bewaard(agent_env):
