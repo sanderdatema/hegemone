@@ -682,5 +682,9 @@
   "execution.no_receipt": {
     "en": "Do not change the ticket to in-progress or post capability/receipt comments merely because this notification arrived.",
     "nl": "Zet het ticket niet op in-progress en plaats geen capability- of ontvangstcomments alleen omdat deze melding binnenkomt."
+  },
+  "session_updates.notice": {
+    "en": "Session update: a human replied on {tickets}. Read those tickets with get_item before continuing the related work.",
+    "nl": "Sessiemelding: er is een menselijke reactie op {tickets}. Lees die tickets met get_item voordat je het betreffende werk vervolgt."
   }
 }

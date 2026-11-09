@@ -806,5 +806,9 @@
   "execution_owner_active": {
     "en": "Stop the execution owner before deleting this ticket",
     "nl": "Stop de uitvoerder voordat dit ticket wordt verwijderd"
+  },
+  "session_updates_invalid": {
+    "en": "Invalid session notification cursors",
+    "nl": "Ongeldige sessiemeldingscursors"
   }
 }

@@ -71,6 +71,20 @@ ask the human assignee a question. To ask before reassignment, explicitly mentio
 the human's `@handle`; without a mention the question targets the current assignee.
 `plan_md` remains the implementation plan and does not replace the short handoff.
 
+### Session-local reply hints
+
+MCP follows only tickets opened with `get_item` or addressed by `ask_question`
+in that MCP session (up to 32 recently used tickets). A later successful tool
+result includes a short hint for new human comments or answers on those tickets.
+Structured results also carry `_session_updates` and `_session_notice`; their
+ordinary result data is unchanged. Read the named ticket before continuing its work.
+
+Tracking belongs to the MCP connection, not the shared agent inbox. Two sessions
+using the same identity keep independent cursors and do not mark each other's
+messages read. No background polling or worker is started: an idle harness cannot
+be woken, and hints arrive only with a subsequent Betonning tool call. After an
+MCP restart/reconnection, reopen relevant tickets with `get_item` to follow them.
+
 ## REST and webhooks
 
 REST uses `/api/v1` and the same Bearer identity. A basic identity check is:

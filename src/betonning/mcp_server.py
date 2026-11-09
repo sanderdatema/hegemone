@@ -1321,20 +1321,24 @@ open staan. Afsluiten met een open vraag geeft een 409 (BETON-454, BETON-481).
 """
 
 
+SERVER_INSTRUCTIONS += "\n\nSessiemeldingen volgen alleen tickets die je in deze MCP-sessie met get_item opent of waarover je ask_question gebruikt. Nieuwe menselijke reacties verschijnen bij een volgende geslaagde toolaanroep als _session_updates/_session_notice en teksthint. Lees het genoemde ticket; er wordt niets globaal als gelezen gemarkeerd. Een stilstaande sessie wordt niet gewekt."
+
 SERVER_INSTRUCTIONS += "\n\n" + outbound("human_comment_references", language="nl")
 
 
 def build_server():
     """Bouw de FastMCP-server met alle memory-tools geregistreerd."""
-    from mcp.server.fastmcp import FastMCP
+    from .mcp_session_updates import SessionUpdatesMCP
     from mcp.server.transport_security import TransportSecuritySettings
 
     # DNS-rebinding-bescherming staat standaard alleen localhost als Host toe,
     # waardoor de dienst achter een LAN-IP/hostname 421 Misdirected Request geeft.
     # Dit is een LAN-only, auth-vereiste dienst (elke call heeft een geldige
     # Bearer-key nodig), dus we zetten die hostcheck uit.
-    mcp = FastMCP(
+    mcp = SessionUpdatesMCP(
         "Betonning memory",
+        notification_client=_client,
+        notification_key=_resolve_key,
         instructions=SERVER_INSTRUCTIONS,
         session_idle_timeout=300,
         max_sessions=128,

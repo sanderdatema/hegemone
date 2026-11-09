@@ -262,9 +262,11 @@ def get_item(
 ) -> dict:
     _reactivate_due(conn)
     item = _require_item(conn, ref)
+    observed_event_id = item_reads_repo.last_event_id(conn, item["id"])
     # BETON-294: has_unread is per user — serialiseer t.o.v. de aanroeper. Het
     # ophalen markeert bewust niets als gelezen; dat doet POST /items/{ref}/read.
     data = items_repo.serialize(conn, item, user["id"])
+    data["last_event_id"] = observed_event_id
     execution_request = execution_repo.latest(conn, item["id"])
     if execution_request is not None:
         data["execution"] = execution_repo.serialize(conn, execution_request)

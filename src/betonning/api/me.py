@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import sqlite3
+import json
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from .. import webhooks, credential_policy
 from ..deps import current_user, get_db
 from ..repo import users as users_repo
+from ..repo import items as items_repo, session_updates
 
 router = APIRouter(tags=["me"])
 
@@ -86,3 +88,26 @@ def update_me_settings(
     users_repo.update_settings(conn, user["id"], updates)
     fresh = users_repo.get_required(conn, user["id"])
     return users_repo.serialize_settings(fresh)
+
+
+@router.get("/me/session-updates")
+def get_session_updates(
+    cursors: str = Query(max_length=6000),
+    conn: sqlite3.Connection = Depends(get_db),
+    user: sqlite3.Row = Depends(current_user),
+) -> dict:
+    try:
+        raw = json.loads(cursors)
+        if not isinstance(raw, dict) or len(raw) > session_updates.MAX_WATCHED:
+            raise ValueError
+        normalized = {}
+        for ref, after in raw.items():
+            if not isinstance(ref, str) or len(ref) > 80:
+                raise ValueError
+            key, seq = items_repo.parse_ref(ref)
+            if (after is not None and (type(after) is not int or not 0 <= after <= 2**63-1)) or seq > 2**63-1:
+                raise ValueError
+            normalized[f"{key.upper()}-{seq}"] = after
+    except (ValueError, TypeError):
+        raise HTTPException(422, "Ongeldige sessiemeldingscursors") from None
+    return session_updates.read_updates(conn, user, normalized)

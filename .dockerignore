@@ -60,6 +60,7 @@
 !src/betonning/installation_runtime.py
 !src/betonning/llm.py
 !src/betonning/mcp_server.py
+!src/betonning/mcp_session_updates.py
 !src/betonning/mcp_stats.py
 !src/betonning/media_headers.py
 !src/betonning/mentions.py
@@ -152,6 +153,7 @@
 !src/betonning/repo/projects.py
 !src/betonning/repo/relations.py
 !src/betonning/repo/resource_usage.py
+!src/betonning/repo/session_updates.py
 !src/betonning/repo/states.py
 !src/betonning/repo/triage_chat.py
 !src/betonning/repo/users.py
