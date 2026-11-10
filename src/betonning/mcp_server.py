@@ -1045,6 +1045,8 @@ async def ask_question(
     mens). Staat het ticket nog bij een agent, noem de mens expliciet met
     ``@handle``. Je kunt ook eerst ``update_item(assignee=..., handover_md=...)``
     doen en daarna een vraag aan de menselijke assignee stellen.
+    Houd de vraag kort: één alinea, maximaal 300 tekens inclusief opties.
+    Noem de reden en het verwachte antwoord/besluit; achtergrond hoort in een aparte comment.
     ``options`` zijn optionele meerkeuze-antwoorden (max 6, uniek) die bij
     deze ene vraag horen. Precies ÉÉN vraag per aanroep: meerdere vragen = meerdere
     aanroepen (BETON-304).
@@ -1324,6 +1326,7 @@ open staan. Afsluiten met een open vraag geeft een 409 (BETON-454, BETON-481).
 SERVER_INSTRUCTIONS += "\n\nSessiemeldingen volgen alleen tickets die je in deze MCP-sessie met get_item opent of waarover je ask_question gebruikt. Nieuwe menselijke reacties verschijnen bij een volgende geslaagde toolaanroep als _session_updates/_session_notice en teksthint. Lees het genoemde ticket; er wordt niets globaal als gelezen gemarkeerd. Een stilstaande sessie wordt niet gewekt."
 
 SERVER_INSTRUCTIONS += "\n\n" + outbound("human_comment_references", language="nl")
+SERVER_INSTRUCTIONS += "\n\n" + outbound("agent_handoff_and_status", language="nl")
 
 
 def build_server():

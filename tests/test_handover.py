@@ -112,3 +112,45 @@ def test_overdrachtsnotitie_telt_mee_voor_commentdrempel(client, auth, project, 
     assert response.status_code == 200
     assert response.json()["locked_at"] is not None
     assert response.json()["previous_assignee"] == "claude"
+
+
+@pytest.mark.parametrize("question,options", [
+    ("@person " + "x" * 293, None),
+    ("@person Kies?", ["x" * 300]),
+    ("@person Eerst\nDaarna?", None),
+    ("   ", None),
+])
+def test_agent_question_rejected_before_assignment(client, auth, project, agent, question, options):
+    ref = _create(client, auth, project, assignee="claude").json()["ref"]
+    response = client.post(f"/api/v1/items/{ref}/comments", headers=agent,
+                           json={"kind": "question", "body_md": question, "options": options})
+    assert response.status_code == 422
+    assert response.json()["error_code"] == "agent_question_concise"
+    item = client.get(f"/api/v1/items/{ref}", headers=auth).json()
+    assert item["assignee"] == "claude"
+    assert item["comments"] == []
+
+
+def test_agent_question_limit_includes_options_and_edits(client, auth, project, agent):
+    ref = _create(client, auth, project, assignee="claude").json()["ref"]
+    text = "@person " + "x" * 289
+    response = client.post(f"/api/v1/items/{ref}/comments", headers=agent,
+                           json={"kind": "question", "body_md": text, "options": ["Yes"]})
+    assert response.status_code == 201  # 297 + 3 = 300
+    question = response.json()
+    response = client.patch(f"/api/v1/items/{ref}/comments/{question['id']}", headers=agent,
+                            json={"body_md": text + "x"})
+    assert response.status_code == 422
+    item = client.get(f"/api/v1/items/{ref}", headers=auth).json()
+    assert item["assignee"] == "person"
+    assert item["comments"][0]["body_md"] == text
+    assert client.patch(f"/api/v1/items/{ref}/comments/{question['id']}", headers=agent,
+                        json={"body_md": "@person Approve this so deployment can proceed?"}).status_code == 200
+
+
+def test_human_questions_and_agent_background_are_not_limited(client, auth, project, agent):
+    ref = _create(client, auth, project, assignee="claude").json()["ref"]
+    for headers, kind in [(auth, "question"), (agent, "comment")]:
+        response = client.post(f"/api/v1/items/{ref}/comments", headers=headers,
+                               json={"kind": kind, "body_md": "Context\n" + "x" * 400})
+        assert response.status_code == 201

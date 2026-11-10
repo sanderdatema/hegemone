@@ -1296,6 +1296,7 @@ def build_instructions(
         instructions = outbound('build_instructions.9', p0=(instructions), p1=(reply['how']))
     if action not in ("none", "stand_down"):
         instructions += "\n\n" + outbound("human_comment_references")
+        instructions += "\n\n" + outbound("agent_handoff_and_status")
     return {
         "instructions": instructions,
         "expected_action": action,

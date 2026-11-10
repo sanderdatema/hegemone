@@ -214,6 +214,21 @@ def _validate_question(
     return trimmed
 
 
+def _require_concise_agent_question(body_md: str, options: list[str] | None) -> None:
+    """Houd de menselijke vraag inclusief antwoordopties kort, vóór elke write."""
+    text = body_md.strip()
+    if (
+        not text or "\n" in text or "\r" in text
+        or len(text) + sum(len(o) for o in options or []) > 300
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=("Stel één korte vraag in één alinea (max 300 tekens inclusief "
+                    "antwoordopties), met de reden en wat je van de mens nodig hebt. "
+                    "Zet achtergrondinformatie in een aparte comment."),
+        )
+
+
 def _require_human_addressee(
     conn: sqlite3.Connection, item: sqlite3.Row, body_md: str
 ) -> None:
@@ -1221,6 +1236,7 @@ def add_comment(
     # een mens die vraagt blijft ongemoeid, ook zonder mention/human-assignee.
     options = _validate_question(body.kind, body.options, body.body_md)
     if body.kind == "question" and user["kind"] == "agent":
+        _require_concise_agent_question(body.body_md, options)
         _require_human_addressee(conn, item, body.body_md)
     # Idempotency-vangnet (BETON-217): een double-submit (key-repeat op
     # Cmd+Enter, client-retry) plaatste dezelfde comment 4× binnen 12ms — elke
@@ -1868,6 +1884,10 @@ def update_comment(
     # Géén `body_md` meegeven: een edit is geen nieuw bericht en hoort niet in
     # de wachtrij.
     _require_unlocked(item, user, kind=comment["kind"])
+    if user["kind"] == "agent" and comment["kind"] == "question":
+        _require_concise_agent_question(
+            body.body_md, json.loads(comment["question_options"] or "null")
+        )
 
     with db_module.transaction(conn):
         row = comments_repo.update(conn, comment_id, body.body_md)

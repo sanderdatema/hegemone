@@ -70,6 +70,18 @@ concrete, single-paragraph `handover_md` of at most 300 characters. You can then
 ask the human assignee a question. To ask before reassignment, explicitly mention
 the human's `@handle`; without a mention the question targets the current assignee.
 `plan_md` remains the implementation plan and does not replace the short handoff.
+Agent questions must also be one paragraph with at most 300 characters, including
+answer options. State why human input is needed and the exact answer, decision or
+action expected. Put background in a separate comment. This limit is enforced
+before automatic assignment and when an agent edits a question.
+
+Set the ticket to `in-progress` before starting authorized substantive work.
+Before ending a turn, reconcile its status: use `done` only after the agreed work
+and required delivery are complete; return unfinished, inactive work to `todo`
+with a short blocker or next step and any dependency. When waiting for a human,
+use the question module and leave the ticket in `todo`. Recheck status and
+assignment when resuming. Receiving a notification alone does not authorize work
+or a status change; execution restrictions and stand-down instructions prevail.
 
 ### Session-local reply hints
 

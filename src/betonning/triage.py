@@ -987,12 +987,8 @@ def format_stale_question(days: int, mention: str | None = None) -> str:
     mention de énige manier waarop de vraag hem bereikt. Is de aangesprokene wél
     de assignee, dan is de mention overbodig en blijft hij weg."""
     wie = f"@{mention} " if mention else ""
-    return "\n".join(
-        [
-            STALE_QUESTION_MARKER,
-            "",
-            outbound('format_stale_question.1', p0=(wie), p1=(days)),
-        ]
+    return STALE_QUESTION_MARKER + " " + outbound(
+        'format_stale_question.1', p0=wie, p1=days
     )
 
 

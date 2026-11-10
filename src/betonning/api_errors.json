@@ -810,5 +810,9 @@
   "session_updates_invalid": {
     "en": "Invalid session notification cursors",
     "nl": "Ongeldige sessiemeldingscursors"
+  },
+  "agent_question_concise": {
+    "nl": "Stel één korte vraag in één alinea (max 300 tekens inclusief antwoordopties), met de reden en wat je van de mens nodig hebt. Zet achtergrondinformatie in een aparte comment.",
+    "en": "Ask one short question in one paragraph (maximum 300 characters including answer options), explaining why and what you need from the person. Put background information in a separate comment."
   }
 }
