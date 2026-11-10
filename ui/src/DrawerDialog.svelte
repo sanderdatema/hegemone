@@ -14,6 +14,15 @@
   // sluit-veto te omzeilen — de sluiting loopt dan gewoon via onOpenChange.
   import { Dialog } from "bits-ui";
 
+  const opener = typeof document !== "undefined" ? document.activeElement : null;
+
+  function restoreFocus(event) {
+    // De trigger kan door nieuwe activiteit elders in de kolom staan.
+    // Herstel toetsenbordfocus zonder de huidige bordpositie te verplaatsen.
+    event.preventDefault();
+    if (opener?.isConnected) opener.focus({ preventScroll: true });
+  }
+
   let {
     onclose,
     label,
@@ -38,6 +47,7 @@
       style={width ? `--drawer-w: ${width}` : undefined}
       {onEscapeKeydown}
       {onInteractOutside}
+      onCloseAutoFocus={restoreFocus}
     >
       <Dialog.Title class="sr-only">{label}</Dialog.Title>
       {@render children?.()}
