@@ -1132,7 +1132,7 @@ button.danger-quiet:hover {
   min-width: 0;
   background: var(--surface-2);
   border-radius: var(--radius-lg);
-  padding: 6px 8px 8px;
+  padding: 0 8px 8px;
   /* BETON-486: bord-top is gemeten (lib/boardTop.js), niet geraden — een vaste
      aftrek liet de pagina een stukje scrollen zodra er een rij filters boven
      het bord stond. 2 × --space-5 = de padding boven en onder het bord. */
@@ -1148,10 +1148,13 @@ button.danger-quiet:hover {
   position: sticky;
   top: 0;
   z-index: var(--z-raised);
+  /* De bovenruimte hoort bij de kop, zodat kaarten niet door een strook
+     kolompadding boven de vastgezette kop zichtbaar blijven. */
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 6px 4px 8px;
+  padding: 12px 4px 8px;
   margin: 0 -2px 2px;
   background: var(--surface-2);
 }
