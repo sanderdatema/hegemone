@@ -886,44 +886,21 @@ export function nextTheme(current) {
   return THEMES[(i + 1) % THEMES.length];
 }
 
-/**
- * Naam van de kolom die uitgeklapt moet worden zodat `ref` zichtbaar is op het
- * bord (BETON-200): een zoekresultaat/deep-link kan in een standaard-
- * ingeklapte gesloten kolom (done/cancelled/archief) zitten, waar de kaart
- * anders onzichtbaar blijft. `null` als het item onbekend is, geen state heeft,
- * of al in een open kolom zit — dan hoeft er niets uitgeklapt te worden.
- *
- * @param {Array<{ref: string, state: string|null}>} items
- * @param {Array<{name: string, closed?: boolean}>} states
- * @param {string} ref
- * @returns {string|null}
- */
+/** Kolom van een genavigeerd ticket, ook voor handmatig ingeklapte werk-kolommen. */
 export function columnToExpandFor(items, states, ref) {
   const item = items.find((i) => i.ref === ref);
   if (!item || !item.state) return null;
   const state = states.find((s) => s.name === item.state);
-  return state && state.closed ? state.name : null;
+  return state ? state.name : null;
 }
 
-/**
- * Of kolom `col` ingeklapt moet blijven (BETON-230). Gesloten kolommen
- * (done/cancelled/archief) starten ingeklapt en blijven dat tot de gebruiker
- * ze zelf uitklapt (`expandedCols`) — BEHALVE tijdens een actieve zoek/filter
- * met treffers in die kolom: dan zou een matchend ticket anders onzichtbaar
- * blijven (zelfde probleem als BETON-200, maar dan voor de hele resultaatset
- * i.p.v. één genavigeerd item). Lege kolommen worden niet geforceerd
- * uitgeklapt — dat zou alleen ruis toevoegen.
- *
- * @param {{name: string, closed?: boolean, items?: Array}} col
- * @param {Set<string>} expandedCols
- * @param {boolean} hasActiveFilter
- * @returns {boolean}
+/** Gesloten kolommen starten dicht; werk-kolommen alleen na handmatig inklappen.
+ * Zoekresultaten blijven zichtbaar zonder de handmatige keuze te verliezen.
  */
-export function isColumnCollapsed(col, expandedCols, hasActiveFilter) {
-  if (!col || !col.closed) return false;
-  if (expandedCols && expandedCols.has(col.name)) return false;
+export function isColumnCollapsed(col, expandedCols, hasActiveFilter, collapsedCols = new Set()) {
+  if (!col) return false;
   if (hasActiveFilter && (col.items || []).length > 0) return false;
-  return true;
+  return col.closed ? !expandedCols?.has(col.name) : collapsedCols.has(col.name);
 }
 
 // State-groep → kleur-token voor het stipje vóór een kolomnaam/state-chip.

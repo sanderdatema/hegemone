@@ -103,7 +103,9 @@ person should not have to reconstruct the request from a long conversation.
 ## Board, list, filters and search
 
 On the board, tickets appear in state columns. Open a card to inspect it or drag
-it to another column to change its state. Closed columns can be expanded. Large
+it to another column to change its state. Every column can be collapsed or expanded
+using the arrow in its heading. Closed columns start collapsed. Search matches
+and navigation to a ticket reveal its column automatically. Large
 closed columns initially load a limited number of tickets; **Show more** retrieves
 the next page. The remaining count concerns unloaded tickets, not cards hidden
 by a quick filter. With a filter active, the column heading counts visible cards.

@@ -183,23 +183,30 @@
   // Gesloten kolommen (done/cancelled) starten ingeklapt; hier houden we bij
   // welke de gebruiker heeft uitgeklapt (BETON-10). Set → nieuwe ref bij wijziging.
   let expandedCols = $state(new Set());
+  let collapsedCols = $state(new Set());
   // BETON-230: tijdens een actieve zoek/filter mag geen treffer verborgen
   // blijven achter een standaard-ingeklapte kolom (done/cancelled/archief) —
   // isColumnCollapsed forceert dan uitklappen voor kolommen mét resultaten.
   function isCollapsed(col) {
-    return isColumnCollapsed(col, expandedCols, activeFilterCount > 0);
+    return isColumnCollapsed(col, expandedCols, activeFilterCount > 0, collapsedCols);
   }
   function toggleCollapse(name) {
-    const s = new Set(expandedCols);
+    const col = columns.find((col) => col.name === name);
+    if (!col) return;
+    const s = new Set(col.closed ? expandedCols : collapsedCols);
     s.has(name) ? s.delete(name) : s.add(name);
-    expandedCols = s;
+    if (col.closed) expandedCols = s;
+    else collapsedCols = s;
   }
   // BETON-200: klap de kolom van een genavigeerd item (zoekresultaat/deep-link)
   // uit als die standaard ingeklapt is, anders blijft de kaart onzichtbaar.
   function expandColumnFor(refStr) {
     const name = columnToExpandFor(items, states, refStr);
-    if (name && !expandedCols.has(name)) {
+    if (name) {
       expandedCols = new Set(expandedCols).add(name);
+      const collapsed = new Set(collapsedCols);
+      collapsed.delete(name);
+      collapsedCols = collapsed;
     }
   }
 
@@ -2104,16 +2111,15 @@
           ondrop={() => (col.archived ? null : onDrop(col.name))}
         >
           <div class="col-head">
-            {#if col.closed}
-              <button
-                class="col-collapse"
-                onclick={() => toggleCollapse(col.name)}
-                aria-expanded={!isCollapsed(col)}
-                title={isCollapsed(col) ? "Uitklappen" : "Inklappen"}
-              >
-                {#if isCollapsed(col)}<ChevronRight size={15} />{:else}<ChevronDown size={15} />{/if}
-              </button>
-            {/if}
+            <button
+              class="col-collapse"
+              onclick={() => toggleCollapse(col.name)}
+              aria-expanded={!isCollapsed(col)}
+              title={$uiText(isCollapsed(col) ? "board.expandColumn" : "board.collapseColumn", {column: col.name})}
+              aria-label={$uiText(isCollapsed(col) ? "board.expandColumn" : "board.collapseColumn", {column: col.name})}
+            >
+              {#if isCollapsed(col)}<ChevronRight size={15} />{:else}<ChevronDown size={15} />{/if}
+            </button>
             <span class="col-dot" style:background={dotColor(col)}></span>
             <span class="col-name">{col.name}</span>
             <span class="col-count">{columnCount(col, activeFilterCount > 0)}</span>

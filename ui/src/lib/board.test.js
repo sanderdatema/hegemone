@@ -1080,8 +1080,8 @@ describe("columnToExpandFor (BETON-200)", () => {
     expect(columnToExpandFor(closedItems, closedStates, "SOS-3")).toBe("cancelled");
   });
 
-  it("geeft null als de kolom al open is", () => {
-    expect(columnToExpandFor(closedItems, closedStates, "SOS-1")).toBe(null);
+  it("geeft ook een werk-kolom terug voor navigatie", () => {
+    expect(columnToExpandFor(closedItems, closedStates, "SOS-1")).toBe("todo");
   });
 
   it("geeft null bij een onbekende ref of item zonder state", () => {
@@ -1097,9 +1097,18 @@ describe("isColumnCollapsed (BETON-230)", () => {
   const closedColWithMatch = { name: "done", closed: true, items: [{ ref: "SOS-2" }] };
   const closedColEmpty = { name: "cancelled", closed: true, items: [] };
 
-  it("een open kolom is nooit ingeklapt", () => {
+  it("een werk-kolom start uitgeklapt", () => {
     expect(isColumnCollapsed(openCol, new Set(), false)).toBe(false);
     expect(isColumnCollapsed(openCol, new Set(), true)).toBe(false);
+  });
+
+  it("een werk-kolom kan dicht en toont zoekresultaten tijdelijk", () => {
+    const collapsed = new Set(["todo"]);
+    expect(isColumnCollapsed(openCol, new Set(), false, collapsed)).toBe(true);
+    expect(isColumnCollapsed(openCol, new Set(), true, collapsed)).toBe(false);
+    expect(isColumnCollapsed({ ...openCol, items: [] }, new Set(), true, collapsed)).toBe(true);
+    expect(isColumnCollapsed(openCol, new Set(), false, collapsed)).toBe(true);
+    expect(isColumnCollapsed(openCol, new Set(), false, new Set())).toBe(false);
   });
 
   it("een gesloten kolom is standaard ingeklapt zonder actieve filter", () => {

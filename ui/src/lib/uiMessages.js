@@ -36,6 +36,8 @@ export const uiMessages = {
     "detail.changeCount": "{count} changes",
 
     "board.selectColumn": "Select all in {column}",
+    "board.expandColumn": "Expand {column}",
+    "board.collapseColumn": "Collapse {column}",
     "board.locked": "Locked: agents stop responding",
     "board.guardrail": "Guardrail: read this ticket before working on it",
     "board.openQuestion": "There is an open question",
@@ -358,6 +360,8 @@ export const uiMessages = {
     "detail.changeCount": "{count} wijzigingen",
 
     "board.selectColumn": "Selecteer alles in {column}",
+    "board.expandColumn": "{column} uitklappen",
+    "board.collapseColumn": "{column} inklappen",
     "board.locked": "Op slot: agents reageren niet meer",
     "board.guardrail": "Guardrail: lees het ticket vóór je hieraan werkt",
     "board.openQuestion": "Er staat een open vraag",
