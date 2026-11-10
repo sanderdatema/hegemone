@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { applyEvent, closedCountDeltas, applyCountDeltas } from "./liveEvents.js";
 import {
   buildColumns,
   appendColumnPage,
@@ -36,9 +37,22 @@ import {
   pageTitle,
 } from "./board.js";
 
-const states = [{ name: "backlog" }, { name: "todo" }, { name: "done" }];
+const states = [{ name: "backlog" }, { name: "todo" }, { name: "done", closed: true }];
 
 describe("buildColumns", () => {
+  it("toont geen extra pagina na een live verplaatsing uit een volledig geladen kolom", () => {
+    const states = [{ name: "todo", closed: false }, { name: "done", closed: true }];
+    const before = [{ ref: "DEMO-1", state: "todo" }, { ref: "DEMO-2", state: "todo" }];
+    const event = { type: "item.updated", project: "DEMO", item: { ref: "DEMO-1", state: "done" } };
+    const after = applyEvent({ items: before, project: "DEMO" }, event);
+    const counts = applyCountDeltas({ todo: 2, done: 40 }, closedCountDeltas(before, after, ["done"]));
+    const [todo, done] = buildColumns(states, after, counts);
+    expect(todo).toMatchObject({ total: 1, remaining: 0, hasMore: false });
+    expect(todo.items.map((item) => item.ref)).toEqual(["DEMO-2"]);
+    expect(done).toMatchObject({ total: 41, remaining: 40, hasMore: true });
+    expect(buildColumns(states, [], counts)[0]).toMatchObject({ total: 0, remaining: 0, hasMore: false });
+  });
+
   it("groepeert items per state in kolomvolgorde", () => {
     const items = [
       { ref: "S-1", state: "todo" },

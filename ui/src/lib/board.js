@@ -73,7 +73,9 @@ export function buildColumns(states, items, counts = {}, loadedItems = items) {
   }
   for (const col of columns) {
     const loaded = col.archived ? col.items.length : Math.max(col.items.length, loadedCounts.get(col.name) || 0);
-    const known = col.archived ? undefined : counts[col.name];
+    // Alleen gesloten kolommen worden gepagineerd. Open kolommen zijn volledig
+    // geladen; hun servertelling kan na een live statuswissel achterlopen.
+    const known = col.closed && !col.archived ? counts[col.name] : undefined;
     col.total = typeof known === "number" ? Math.max(known, loaded) : loaded;
     col.remaining = col.total - loaded;
     col.hasMore = col.remaining > 0;
