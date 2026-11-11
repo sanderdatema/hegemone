@@ -224,3 +224,24 @@ def test_shutdown_during_worker_switch_does_not_start_replacement(monkeypatch):
         await asyncio.wait_for(task,1)
         assert len(starts) == 1
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize('name', ['llm', 'embedding'])
+def test_disabled_provider_can_be_tested_without_activation(client, auth, monkeypatch, name):
+    calls = []
+    def post(url, **kwargs):
+        calls.append(url)
+        body = {'choices': [{'message': {'content': 'OK'}}]} if name == 'llm' else {'data': [{'embedding': [0.1, 0.2]}]}
+        return httpx.Response(200, json=body, request=httpx.Request('POST', url))
+    monkeypatch.setattr(llm.httpx, 'post', post)
+    settings = {**provider(), 'enabled': False}
+    assert save(client, auth, {name: settings}).status_code == 200
+    snapshot = client.app.state.installation_runtime
+    response = client.post(f'{PATH}/providers/{name}/test', headers=auth)
+    assert response.status_code == 200
+    assert response.json()['ok'] is True
+    assert len(calls) == 1
+    assert client.app.state.installation_runtime is snapshot
+    assert snapshot.status[name]['enabled'] is False
+    assert (snapshot.llm if name == 'llm' else snapshot.embedding) is None
+    assert client.get(PATH, headers=auth).json()['settings'][name]['enabled'] is False

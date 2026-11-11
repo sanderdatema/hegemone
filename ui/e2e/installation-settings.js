@@ -52,7 +52,7 @@ export default async function installationSettings(page, base = 'http://127.0.0.
   await page.locator('.installation-settings').getByRole('heading',{name:'Installation settings',exact:true}).waitFor();
   const group=page.getByRole('group',{name:'Language model provider',exact:true});
   if(testCalls) throw new Error('Test startte automatisch');
-  await group.getByLabel('Enable provider',{exact:true}).check();
+  // A saved provider must be testable while disabled.
   await group.getByLabel('API base URL',{exact:true}).fill('https://provider.example/v1');
   await group.getByLabel('Model',{exact:true}).fill('browser-model');
   await group.getByLabel('New API key',{exact:true}).fill(key);
@@ -63,6 +63,7 @@ export default async function installationSettings(page, base = 'http://127.0.0.
   if(stored) throw new Error('Providerkey in browserstorage');
   await group.getByRole('button',{name:'Test saved connection',exact:true}).click();
   await group.getByText('Connection test succeeded',{exact:true}).waitFor();
+  if(data.settings.llm.enabled) throw new Error('Test activated provider');
   if(testCalls!==1||writes!==1) throw new Error('Onverwachte test-/schrijfactie');
   failTest=true;
   await group.getByRole('button',{name:'Test saved connection',exact:true}).click();
@@ -73,6 +74,7 @@ export default async function installationSettings(page, base = 'http://127.0.0.
   await page.getByRole('button',{name:'Reload saved settings',exact:true}).click();
   await page.getByRole('button',{name:'Discard and reload',exact:true}).click();
   await group.getByLabel('Model',{exact:true}).waitFor();
+  await page.waitForFunction(() => [...document.querySelectorAll('input')].some(input => input.value === 'browser-model'));
   if(await group.getByLabel('Model',{exact:true}).inputValue()!=='browser-model') throw new Error('Herladen herstelde model niet');
   conflictNext=true;
   await group.getByLabel('Model',{exact:true}).fill('conflicting-model');
@@ -91,7 +93,7 @@ export default async function installationSettings(page, base = 'http://127.0.0.
   await page.getByRole('button',{name:'Meer acties',exact:true}).click();
   await page.getByRole('menuitem',{name:'Installatie-instellingen',exact:true}).click();
   await page.locator('.installation-settings').getByRole('heading',{name:'Installatie-instellingen',exact:true}).waitFor();
-  await page.getByText('Geconfigureerd — verbinding niet getest',{exact:true}).waitFor();
+  await page.getByRole('group',{name:'Taalmodelprovider',exact:true}).getByText('Uitgeschakeld',{exact:true}).waitFor();
   const dutch=page.getByRole('group',{name:'Taalmodelprovider',exact:true});
   await dutch.getByLabel('Opgeslagen key verwijderen',{exact:true}).check();
   await page.getByRole('button',{name:'Wijzigingen bewaren',exact:true}).click();

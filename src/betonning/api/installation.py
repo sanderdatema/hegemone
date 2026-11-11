@@ -81,15 +81,15 @@ def update_installation(body: InstallationUpdate, request: Request, response: Re
 
 @router.post('/settings/installation/providers/{provider}/test', dependencies=[Depends(llm_rate_limited)])
 def test_provider(provider: Literal['llm', 'embedding'], request: Request, response: Response,
-                  user=Depends(installation_admin)):
+                  user=Depends(installation_admin), conn=Depends(get_db)):
     """Een bewuste, begrensde test met synthetische tekst; geen upstreamdata terug."""
     response.headers['Cache-Control'] = 'no-store'
     if 'llm' not in credential_policy.scopes(user):
         raise HTTPException(403, 'Deze sleutel mist de benodigde scope')
-    snapshot = request.app.state.installation_runtime
+    snapshot = installation_runtime.prepare(request.app, store.get(conn), test_provider=provider)
     client = snapshot.llm if provider == 'llm' else snapshot.embedding
     if client is None:
-        raise HTTPException(409, 'Bewaar en activeer eerst een volledige providerconfiguratie')
+        raise HTTPException(409, 'Bewaar eerst een volledige providerconfiguratie')
     client = copy.copy(client)
     if hasattr(client, '_timeout'):
         client._timeout = min(client._timeout, 10)

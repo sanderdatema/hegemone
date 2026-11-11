@@ -5,7 +5,7 @@
   import ErrorNote from './ErrorNote.svelte';
   import ConfigurationTransfer from './ConfigurationTransfer.svelte';
   import ConfirmBar from './ConfirmBar.svelte';
-  import { installationDraft, installationUpdate, managed, providerStatus, PROVIDERS } from './lib/installationSettings.js';
+  import { installationDraft, installationUpdate, managed, providerStatus, canTestProvider, PROVIDERS } from './lib/installationSettings.js';
 
   let { onback, onchanged, initialData = null } = $props();
   let data = $state(untrack(() => initialData));
@@ -86,7 +86,7 @@
         {@const status = data.runtime?.providers?.[name]}
         <fieldset disabled={blocked}>
           <legend>{$t(`installation.${name}`)}</legend>
-          <p class="provider-status" role="status">{$t(`installation.${providerStatus(status)}`)}</p>
+          <p class="provider-status" class:failed={!dirty && tests[name] === 'testFailed'} role="status">{$t(`installation.${providerStatus(status, !dirty ? tests[name] : null)}`)}</p>
           <label class="check-row"><input type="checkbox" disabled={managed(data, 'enabled', name)} checked={managed(data, 'enabled', name) ? !!status?.enabled : draft[name].enabled} onchange={(e) => draft[name].enabled = e.currentTarget.checked} />{$t('installation.enabled')}</label>
           {#each ['base_url', 'model', 'timeout'] as field}
             <label>{$t(field === 'base_url' ? 'installation.endpoint' : `installation.${field}`)}
@@ -106,9 +106,8 @@
             <label class="check-row"><input type="checkbox" bind:checked={clearKeys[name]} disabled={!data.settings[name].has_api_key || !!keys[name]} />{$t('installation.clearKey')}</label>
           {/if}
           {#if status?.overrides?.length || status?.source === 'injected'}<p class="muted">{$t('installation.managedHint')}</p>{/if}
-          <button type="button" class="sm" disabled={blocked || dirty || !status?.ready} onclick={() => test(name)}>{$t(testing === name ? 'installation.testing' : 'installation.test')}</button>
+          <button type="button" class="sm" disabled={blocked || dirty || !canTestProvider(data, name)} onclick={() => test(name)}>{$t(testing === name ? 'installation.testing' : 'installation.test')}</button>
           <p class="muted">{$t('installation.testHint')}</p>
-          {#if tests[name]}<p role="status" class:failed={tests[name] === 'testFailed'}>{$t(`installation.${tests[name]}`)}</p>{/if}
         </fieldset>
       {/each}
       {#if !data.secret_storage_ready}<p class="storage-note" role="status">{$t('installation.encryptionUnavailable')}</p>{/if}

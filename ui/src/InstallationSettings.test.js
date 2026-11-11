@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { render } from 'svelte/server';
 import InstallationSettings from './InstallationSettings.svelte';
 import { setLocale } from './lib/i18n.js';
-import { installationDraft, installationUpdate, canManageInstallation, providerStatus } from './lib/installationSettings.js';
+import { installationDraft, installationUpdate, canManageInstallation, providerStatus, canTestProvider } from './lib/installationSettings.js';
 
 export function fixture() {
   return { schema_version:1,revision:7,secret_storage_ready:true,settings:{public_url:'https://own.example',language:'en',ai_language:'en',triage_enabled:false,wiki_compile_enabled:false,
@@ -53,4 +53,17 @@ it('onderscheidt geconfigureerd van getest en bewaakt mens/admin', () => {
   expect(canManageInstallation({kind:'human',credential_policy:{scopes:['read','admin']}})).toBe(true);
   expect(canManageInstallation({kind:'human',credential_policy:{scopes:['read']}})).toBe(false);
   expect(canManageInstallation({kind:'agent',credential_policy:{scopes:['admin']}})).toBe(false);
+});
+
+
+it('allows testing complete disabled providers and reports the latest result', () => {
+  const data = fixture();
+  data.settings.llm.enabled = false;
+  data.runtime.providers.llm = { enabled: false, ready: false, overrides: [] };
+  expect(canTestProvider(data, 'llm')).toBe(true);
+  expect(canTestProvider(data, 'embedding')).toBe(false);
+  expect(providerStatus(data.runtime.providers.llm, 'testOk')).toBe('testOk');
+  expect(providerStatus(data.runtime.providers.llm, 'testFailed')).toBe('testFailed');
+  data.settings.llm.has_api_key = false;
+  expect(canTestProvider(data, 'llm')).toBe(false);
 });

@@ -41,7 +41,17 @@ export function installationUpdate(data, draft, keys = {}, clear = {}) {
   return { schema_version: data.schema_version, expected_revision: data.revision, settings };
 }
 
-export function providerStatus(status) {
+export function canTestProvider(data, name) {
+  const status = data.runtime?.providers?.[name];
+  if (status?.ready) return true;
+  if (status?.error) return false;
+  const provider = data.settings[name];
+  return ['base_url', 'model'].every(field => managed(data, field, name) || !!provider[field])
+    && (managed(data, 'api_key', name) || (data.secret_storage_ready && provider.has_api_key));
+}
+
+export function providerStatus(status, testResult = null) {
+  if (testResult) return testResult;
   if (status?.error === 'secret_unavailable') return 'secretUnavailable';
   if (!status?.enabled) return 'disabled';
   return status.ready ? 'configured' : 'incomplete';

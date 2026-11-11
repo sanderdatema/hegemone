@@ -25,7 +25,7 @@ def truth(value):
     return str(value).lower() in {'1', 'true', 'yes', 'on'}
 
 
-def prepare(app, row) -> Snapshot:
+def prepare(app, row, *, test_provider=None) -> Snapshot:
     """Bouw clients zonder netwerk; alleen publieke status komt in de API."""
     settings = InstallationSettings.model_validate(row['settings'] if row else {}).model_dump()
     values = {'BETONNING_AI_LANGUAGE': settings['ai_language'],
@@ -51,7 +51,7 @@ def prepare(app, row) -> Snapshot:
         if injection in app.state.runtime_overrides:
             clients[name] = app.state.runtime_overrides[injection]
             info.update(enabled=clients[name] is not None, ready=clients[name] is not None, source='injected')
-        elif enabled:
+        elif enabled or name == test_provider:
             try:
                 # Een expliciete envkey, ook leeg, mag geen opgeslagen key ontsleutelen.
                 key = config.raw_env(base + 'API_KEY')
