@@ -813,6 +813,10 @@ async def create_state(
     """Maak een state (board-kolom) aan. ``group`` is ``backlog``/``unstarted``/
     ``started``/``completed``/``cancelled``. Optioneel: ``color`` (hex),
     ``sort_order``, ``is_default``, ``closed``, ``blocks_work``.
+
+    Alleen na expliciete menselijke toestemming voor dit project en deze
+    concrete kolomwijziging. Presenteer de wijziging eerst en wacht op akkoord;
+    statusopschoning of een algemene onderhoudsopdracht is geen toestemming.
     """
     body: dict = {"name": name, "group": group}
     if color is not None:
@@ -843,6 +847,10 @@ async def update_state(
     """Werk een bestaande state bij: ``new_name`` (uniek, anders 409), ``color``,
     ``sort_order`` en/of ``blocks_work`` (agents mogen dan alleen reageren).
     ``name`` identificeert de state.
+
+    Alleen na expliciete menselijke toestemming voor dit project en deze
+    concrete kolomwijziging. Presenteer de wijziging eerst en wacht op akkoord;
+    statusopschoning of een algemene onderhoudsopdracht is geen toestemming.
     """
     body: dict = {}
     if new_name is not None:
@@ -868,6 +876,10 @@ async def delete_state(project: str, name: str, ctx: Context | None = None) -> s
     ``project`` is de key, ``name`` de state-naam. 409 als het de laatste kolom
     van het project is, of als er nog items in staan — verplaats die eerst
     naar een andere kolom (``update_item``/``set_state``).
+
+    Alleen na expliciete menselijke toestemming voor dit project en deze
+    concrete kolomwijziging. Presenteer de wijziging eerst en wacht op akkoord;
+    statusopschoning of een algemene onderhoudsopdracht is geen toestemming.
     """
     async with _client(_resolve_key(ctx)) as client:
         await _call(client, "DELETE", f"/api/v1/projects/{project}/states/{name}")
@@ -1327,6 +1339,7 @@ SERVER_INSTRUCTIONS += "\n\nSessiemeldingen volgen alleen tickets die je in deze
 
 SERVER_INSTRUCTIONS += "\n\n" + outbound("human_comment_references", language="nl")
 SERVER_INSTRUCTIONS += "\n\n" + outbound("agent_handoff_and_status", language="nl")
+SERVER_INSTRUCTIONS += "\n\n" + outbound("agent_column_approval", language="nl")
 
 
 def build_server():

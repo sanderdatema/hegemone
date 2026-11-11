@@ -188,3 +188,20 @@ presence of this adapter code. Do not point a worker at an unguarded native card
 The ticket detail view exposes execution state and blockers separately from
 ticket state. Execution metadata and delivery/read bookkeeping can still be
 updated when stopping an archived project; archived ticket content stays read-only.
+
+## Approval for column management
+
+Agents may create, change or delete project columns only after explicit human
+approval for that specific project and proposed change. This includes names,
+order, colors and execution policy. Present the exact change and wait for approval
+before calling the API or MCP tool. API permissions, ticket pickup, status cleanup
+and general maintenance requests do not grant this approval.
+
+Use existing columns while approval is absent. Keep work awaiting human input in
+`todo` with a short question or handoff addressed to the human. Keep work blocked
+by another ticket in `todo` with a `blocked_by` relation. Do not create a waiting
+column or mark unfinished work done to tidy the board.
+
+This is an agent instruction, not a server-side approval verification mechanism.
+Reconnect MCP clients after updating; separately installed stdio adapters need
+updating too.

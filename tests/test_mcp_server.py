@@ -926,6 +926,9 @@ def test_server_advertises_conventions_via_instructions():
     assert "load_memory" in instr
     assert "in-progress" in instr
     assert "witregel" in instr
+    assert "KOLOMBEHEER" in instr
+    assert "statusopschoning" in instr
+    assert "blocked_by" in instr
 
 
 def test_server_instructions_advertise_plan_field(monkeypatch):

@@ -1297,6 +1297,7 @@ def build_instructions(
     if action not in ("none", "stand_down"):
         instructions += "\n\n" + outbound("human_comment_references")
         instructions += "\n\n" + outbound("agent_handoff_and_status")
+        instructions += "\n\n" + outbound("agent_column_approval")
     return {
         "instructions": instructions,
         "expected_action": action,

@@ -1473,6 +1473,7 @@ def test_instructions_use_human_readable_comment_references(monkeypatch, languag
     assert result["expected_action"] == "respond"
     assert outbound("human_comment_references", language=language) in result["instructions"]
     assert outbound("agent_handoff_and_status", language=language) in result["instructions"]
+    assert outbound("agent_column_approval", language=language) in result["instructions"]
     assert result["reply"]["url"].endswith("/api/v1/items/SOS-1/comments")
 
 
