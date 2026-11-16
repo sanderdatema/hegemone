@@ -241,7 +241,9 @@ def preview_effect(conn: sqlite3.Connection, command: Command) -> dict:
         if row is not None:
             value = row["name"]
     elif value and field == "assignee":
-        value = users_repo.get_by_handle(conn, value)["handle"]
+        user = users_repo.get_by_handle(conn, value)
+        assert user is not None  # Command validation resolved this identity.
+        value = user["handle"]
     return {field: value or None}
 
 
@@ -258,10 +260,13 @@ def relevant_snapshot(conn: sqlite3.Connection, command: Command) -> dict:
             if verb == "set_state" and field_name == "state" and row:
                 resources["state_group"] = row["grp"]
     if effect.get("assignee"):
-        resources["assignee"] = users_repo.get_by_handle(conn, effect["assignee"])["id"]
+        assignee = users_repo.get_by_handle(conn, effect["assignee"])
+        assert assignee is not None  # Command validation resolved this identity.
+        resources["assignee"] = assignee["id"]
     relation_target = None
     if verb == "add_relation":
         relation_target = items_repo.get_by_ref(conn, effect["target_ref"])
+        assert relation_target is not None  # Command validation resolved this target.
         resources["target"] = relation_target["id"]
     if verb == "create_item":
         return snapshot

@@ -5,13 +5,15 @@ import sqlite3
 import copy
 import math
 import time
-from typing import Literal
+from typing import Literal, cast
 
 
 from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from pydantic import ValidationError
 
 from .. import credential_policy, db, installation_runtime
+from ..llm import LLMClient
+from ..embeddings import EmbeddingClient
 from ..deps import current_human, get_db, llm_rate_limited
 from ..installation_config import (
     InstallationUpdate, SettingsSecretError, merge_patch, public_settings, settings_cipher,
@@ -98,11 +100,11 @@ def test_provider(provider: Literal['llm', 'embedding'], request: Request, respo
     started = time.monotonic()
     try:
         if provider == 'llm':
-            result = client.complete([{'role': 'user', 'content': 'Hegemone connection test. Reply with OK.'}])
-            valid = isinstance(result, str) and bool(result.strip())
+            text_result = cast(LLMClient, client).complete([{'role': 'user', 'content': 'Hegemone connection test. Reply with OK.'}])
+            valid = isinstance(text_result, str) and bool(text_result.strip())
         else:
-            result = client.embed('Hegemone connection test')
-            valid = isinstance(result, list) and bool(result) and all(type(value) in (int, float) and math.isfinite(value) for value in result)
+            vector_result = cast(EmbeddingClient, client).embed('Hegemone connection test')
+            valid = isinstance(vector_result, list) and bool(vector_result) and all(type(value) in (int, float) and math.isfinite(value) for value in vector_result)
         if not valid:
             raise ValueError('Ongeldig providerantwoord')
     except Exception:

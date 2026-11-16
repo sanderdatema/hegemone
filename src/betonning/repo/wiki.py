@@ -12,6 +12,7 @@ from ..config import env
 
 import re
 import sqlite3
+from typing import cast
 
 _SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
@@ -435,7 +436,7 @@ def compile_snapshot(
                           "\n".join(_index_line(p, blurb_enabled=False) for p in remaining)])
         return "\n\n".join(parts)
 
-    selected = set()
+    selected: set[int] = set()
     for page in ranked:
         candidate = selected | {page["id"]}
         if budget <= 0 or len(render(candidate)) <= budget:
@@ -444,12 +445,12 @@ def compile_snapshot(
     if budget > 0 and len(markdown) > budget:
         # An exceptionally large index may itself exceed the allocation.
         # Keep complete index lines only; no page is eligible for replacement.
-        lines = []
+        lines: list[str] = []
         for line in markdown.splitlines():
             if len("\n".join(lines + [line])) <= budget:
                 lines.append(line)
         markdown = "\n".join(lines)
-    return markdown, {p["slug"]: (p["id"], digest(p)) for p in pages if p["id"] in selected}
+    return markdown, {p["slug"]: (p["id"], cast(str, digest(p))) for p in pages if p["id"] in selected}
 
 
 def compile_context(

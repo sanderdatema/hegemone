@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
+from typing import NotRequired, TypedDict
 from collections.abc import Callable
 
 from . import comments as comments_repo
@@ -462,9 +463,18 @@ def _labels_bulk(conn: sqlite3.Connection, item_ids: list[int]) -> dict[int, lis
     return out
 
 
-def work_signals_bulk(conn, item_ids, viewer_id=None):
+class WorkSignals(TypedDict):
+    blocked_by: list[str]
+    question_for_viewer: bool
+    execution: dict[str, str | None] | None
+    closed: NotRequired[bool]
+
+
+def work_signals_bulk(
+    conn: sqlite3.Connection, item_ids: list[int], viewer_id: int | None = None,
+) -> dict[int, WorkSignals]:
     """Small factual next-action signals, batched for boards and live snapshots."""
-    signals = {i: {"blocked_by": [], "question_for_viewer": False, "execution": None} for i in item_ids}
+    signals: dict[int, WorkSignals] = {i: {"blocked_by": [], "question_for_viewer": False, "execution": None} for i in item_ids}
     viewer = handle_of(conn, viewer_id) if viewer_id is not None else None
     for start in range(0, len(item_ids), 500):
         ids = item_ids[start:start + 500]
