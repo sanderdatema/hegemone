@@ -1103,30 +1103,17 @@ button.danger-quiet:hover {
   box-sizing: content-box;
 }
 
-/* Eén rij, vaste horizontale state-volgorde (BETON-224): werk-kolommen delen
-   de beschikbare breedte gelijk (flex-grow) zolang ze passen — net als het
-   vorige grid — maar wrappen niet meer naar een volgende rij zodra dat niet
-   meer lukt; dan krijgen ze hun vaste minimumbreedte en scrollt het bord zelf
-   horizontaal. Zo blijft de workflow-volgorde altijd van links naar rechts
-   leesbaar, ongeacht schermbreedte (in plaats van kolommen die per breedte
-   van rij wisselen). `columns` komt al in vaste volgorde binnen (JS:
-   orderColumns) — de rust-rail (done/cancelled/deferred) en de Archief-kolom
-   staan dus altijd rechts, ingeklapt smal totdat je ze uitklapt. */
-/* Wrappend grid, GEEN horizontale scroll (BETON-267, keuze A). BETON-224 had
-   het bord een niet-wrappende flex-rij met `overflow-x: auto` gemaakt om een
-   vaste kolomvolgorde te garanderen — dat leverde horizontale scroll op zodra
-   niet alle kolommen pasten. Een grid met `auto-fit` behoudt die vaste volgorde
-   (kolommen staan in bron-/DOM-volgorde) maar laat ze naar een volgende RIJ
-   wrappen i.p.v. horizontaal te scrollen. `auto-fit` (niet `auto-fill`) laat de
-   kolommen de volle breedte vullen — geen dood gat rechts (BETON-76). */
+/* Columns wrap in workflow order. Open columns share the remaining width;
+   collapsed columns keep a compact footprint instead of a full grid track. */
 .board {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-4);
   padding: var(--space-5);
-  align-items: start;
+  align-items: flex-start;
 }
 .column {
+  flex: 1 1 220px;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -1165,6 +1152,8 @@ button.danger-quiet:hover {
   flex: 0 0 auto;
 }
 .col-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: var(--text-sm);
   font-weight: 600;
   text-transform: uppercase;
@@ -1244,7 +1233,8 @@ button.danger-quiet:hover {
    meedelen als gewone kolom binnen dezelfde rij (geen aparte cel/rij). */
 .column.collapsed {
   flex: 0 0 168px;
-  min-width: 168px;
+  min-width: 0;
+  max-width: 100%;
   padding-bottom: 6px;
 }
 /* Archief-kolom (BETON-100): eigen, duidelijk-gescheiden weergave i.p.v.
