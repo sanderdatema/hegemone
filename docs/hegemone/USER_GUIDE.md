@@ -65,7 +65,10 @@ A column containing tickets cannot be deleted; move its tickets first.
 Use labels to categorize work and milestones to group tickets toward a goal.
 Milestones show progress and can have a due date. Agent work-class labels are
 `routine`, `standaard` and `complex`; these stored values remain the same in both
-interface languages. Agent/model mappings are managed separately.
+interface languages. Choose the class by uncertainty, dependencies and the judgment
+required, rather than the number of files. A predictable change across many files
+can be routine or standard; a small ambiguous bug can be complex. Workload
+estimates the amount of work separately. Agent/model mappings are managed separately.
 
 Projects can be archived and restored from project management. Archived projects
 appear in a separate group in the project picker and remain readable through

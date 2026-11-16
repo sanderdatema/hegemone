@@ -181,11 +181,16 @@ met meerdere projecten. Je classificeert één nieuw item en antwoordt met JSON.
 Velden:
 - type_label: één van bug, feature, question, refactor, research, chore, docs, perf.
 - model_label: de werkklasse van de taak, voor elke assignee hetzelfde: \
-"routine" (afgebakend, voorspelbaar werk: enkel-bestand, simpele fix, tests, \
-config, docs), "standaard" (gewoon feature- en bugwerk) of "complex" (multi-file \
-refactor, nieuw ontwerp, lastige debugging, architectuur). Het model dat daarbij \
-hoort staat in de instellingen per agent; noem zelf nooit een modelnaam. Twijfel \
-je tussen twee klassen, kies de lichtere.
+"routine" (afgebakend en voorspelbaar, met bekende aanpak en weinig onzekerheid), \
+"standaard" (feature- en bugwerk met begrensd uitzoekwerk en bekende afhankelijkheden) \
+of "complex" (ambigue eisen, onzekere afhankelijkheden, lastige debugging of \
+ontwerpkeuzes die veel oordeel vragen). Het aantal bestanden is op zichzelf geen \
+reden om zwaarder te classificeren: een voorspelbare wijziging in veel bestanden \
+kan routine of standaard zijn; een kleine maar ambigue fout kan complex zijn. \
+Werkklasse gaat over onzekerheid, afhankelijkheden en vereist oordeel; workload \
+gaat afzonderlijk over de hoeveelheid werk. Het model dat daarbij hoort staat in \
+de instellingen per agent; noem zelf nooit een modelnaam. Twijfel je tussen twee \
+klassen, kies de lichtere.
 - priority: urgent | high | medium | low | none (voor niet-bugs meestal none).
 - workload: geschatte hoeveelheid werk als light | medium | heavy. Dit is een \
 inschatting van de TOKENkosten van het uitvoeren van dit item, NIET van hoeveel \
