@@ -160,7 +160,14 @@ def legacy_fixture(directory):
         human, key = users.create(
             conn, handle="legacy-operator", display_name="Legacy operator", kind="human"
         )
-        project = projects.create(conn, key="LEGACY", name="Legacy fixture")
+        # Historical schemas cannot use serializers that require newer columns.
+        project = conn.execute(
+            "INSERT INTO projects(key,name) VALUES('LEGACY','Legacy fixture') RETURNING *"
+        ).fetchone()
+        for order, (name, group, color, default, closed, blocked) in enumerate(projects.DEFAULT_STATES):
+            states.create(conn, project_id=project["id"], name=name, group=group,
+                          color=color, sort_order=order, is_default=bool(default),
+                          closed=bool(closed), blocks_work=bool(blocked))
         started = states.get_by_name(conn, project["id"], "in-progress")
         item = items.create(
             conn,
