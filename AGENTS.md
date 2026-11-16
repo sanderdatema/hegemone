@@ -13,6 +13,12 @@ retains the name `betonning` for compatibility. Start with [CONTRIBUTING.md](CON
   limits, webhook signing and target validation when changing a flow.
 - Use temporary fixture data for tests. Run targeted checks while implementing;
   report what actually ran. Build and inspect affected UI states when they change.
+- Run local checks only to answer a concrete question about changed behavior or
+  an unresolved risk. Use the smallest relevant check and stop once it is answered.
+  Let GitHub CI run the broad suites and release checks; do not duplicate them
+  locally as a completion ritual. Reuse passing results unless relevant changes
+  or new evidence invalidate them. Inspect CI results and address failures with
+  targeted checks; report pending CI honestly rather than claiming it passed.
 - Never print or commit credentials, local databases, attachments, browser auth
   state or private deployment configuration. Use application APIs for live data.
 - Keep source comments consistent with the surrounding module; older comments
