@@ -1320,6 +1320,7 @@ _UPDATE_TO_SERIALIZED = {
     "state": "state",
     "priority": "priority",
     "workload": "workload",
+    "progress_percent": "progress_percent",
     "assignee": "assignee",
     "parent": "parent",
     "milestone": "milestone",
@@ -1655,7 +1656,7 @@ def apply_item_update(
         )
 
     fields: dict = {}
-    for plain in ("title", "description_md", "priority", "workload"):
+    for plain in ("title", "description_md", "priority", "workload", "progress_percent"):
         if plain in changed:
             fields[plain] = data[plain]
     if "state" in changed:

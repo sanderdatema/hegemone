@@ -250,6 +250,7 @@ class RelationCreate(BaseModel):
 
 
 class ItemUpdate(BaseModel):
+    progress_percent: int | None = Field(default=None, ge=0, le=100, strict=True)
     title: str | None = Field(default=None, min_length=1, max_length=300)
     description_md: str | None = Field(default=None, max_length=60000)
     state: str | None = None

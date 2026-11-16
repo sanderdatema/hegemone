@@ -78,6 +78,10 @@ answer options. State why human input is needed and the exact answer, decision o
 action expected. Put background in a separate comment. This limit is enforced
 before automatic assignment and when an agent edits a question.
 
+Optionally report an estimated `progress_percent` from 0 to 100 using `update_item`
+(or `PATCH /api/v1/items/{ref}`). Omit it to leave it unchanged; use `null` to clear
+it. The board displays a subtle line on the card.
+
 Set the ticket to `in-progress` before starting authorized substantive work.
 Before ending a turn, reconcile its status: use `done` only after the agreed work
 and required delivery are complete; return unfinished, inactive work to `todo`

@@ -1679,3 +1679,16 @@ def test_reactivation_event_without_triage_user_keeps_null_actor(
 def legacy_dutch_system_text(monkeypatch):
     """De bestaande Nederlandstalige oudercomment-contracten blijven getest."""
     monkeypatch.setenv('HEGEMONE_LANGUAGE', 'nl')
+
+
+def test_progress_percent_update_and_compact_list(client, auth, project):
+    assert _create(client, auth, project, title="Progress").json()["progress_percent"] is None
+    url = "/api/v1/items/SOS-1"
+    for value in (0, 42, 100):
+        assert client.patch(url, json={"progress_percent": value}, headers=auth).json()["progress_percent"] == value
+        items = client.get(f"/api/v1/projects/{project}/items", headers=auth).json()
+        assert next(item for item in items if item["ref"] == "SOS-1")["progress_percent"] == value
+    for value in (-1, 101, 1.5, True, "42"):
+        assert client.patch(url, json={"progress_percent": value}, headers=auth).status_code == 422
+    assert client.patch(url, json={"title": "Still progressing"}, headers=auth).json()["progress_percent"] == 100
+    assert client.patch(url, json={"progress_percent": None}, headers=auth).json()["progress_percent"] is None

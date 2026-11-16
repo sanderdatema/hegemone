@@ -1444,3 +1444,15 @@ def test_tool_configuration_is_isolated_from_user_files(tmp_path, monkeypatch):
 
     monkeypatch.setattr(Path, "read_text", only_synthetic_configuration)
     assert mcp_server._config() == {"base_url": "http://test", "api_key": None}
+
+
+def test_update_item_progress_via_mcp(mcp_env):
+    ref = _run(mcp_server.create_item("SOS", "Progress"))["ref"]
+    server = mcp_server.build_server()
+    tool = next(tool for tool in _run(server.list_tools()) if tool.name == "update_item")
+    assert "progress_percent" in tool.inputSchema["properties"]
+    _run(server.call_tool("update_item", {"ref": ref, "progress_percent": 42}))
+    _run(server.call_tool("update_item", {"ref": ref, "title": "Updated"}))
+    assert _run(mcp_server.get_item(ref))["progress_percent"] == 42
+    _run(server.call_tool("update_item", {"ref": ref, "progress_percent": None}))
+    assert _run(mcp_server.get_item(ref))["progress_percent"] is None

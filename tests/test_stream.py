@@ -95,10 +95,11 @@ def test_stream_item_updated_carries_new_state(client, auth, conn, db_path, proj
     # UI de kaart naar de andere kolom kan verplaatsen zonder reload.
     client.post("/api/v1/projects/SOS/items", json={"title": "loop"}, headers=auth)
     last = conn.execute("SELECT MAX(id) AS m FROM events").fetchone()["m"]
-    client.patch("/api/v1/items/SOS-1", json={"state": "in-progress"}, headers=auth)
+    client.patch("/api/v1/items/SOS-1", json={"state": "in-progress", "progress_percent": 42}, headers=auth)
     data = _data_of(_first_frame(db_path, since=last))
     assert data["type"] == "item.updated"
     assert data["item"]["state"] == "in-progress"
+    assert data["item"]["progress_percent"] == 42
 
 
 def test_stream_archived_snapshot_marks_archived(client, auth, conn, db_path, project):

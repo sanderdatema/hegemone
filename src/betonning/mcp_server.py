@@ -30,6 +30,7 @@ from urllib.parse import quote
 
 import httpx
 from pydantic import Field
+from pydantic.experimental.missing_sentinel import MISSING
 from mcp.server.fastmcp import Context
 
 from .outbound import outbound
@@ -460,10 +461,12 @@ async def update_item(
     due_date: str | None = None,
     plan_md: str | None = None,
     handover_md: Annotated[str, Field(min_length=1, max_length=300)] | None = None,
+    progress_percent: int | None | MISSING = MISSING,
     ctx: Context | None = None,
 ) -> dict:
     """Werk velden van een ticket bij; alleen meegegeven velden wijzigen.
 
+    ``progress_percent`` is een optionele schatting van 0 tot 100; null wist deze.
     ``labels`` vervangt de hele set (voor één label: ``add_label``/
     ``remove_label``). ``workload`` = tokenkosten, geen tijd. ``deferred_until``
     en ``due_date`` zijn ISO-datums. ``plan_md`` = plan/handover (lezen: ``get_plan``). Een lege string
@@ -494,6 +497,8 @@ async def update_item(
     ):
         if value is not None:
             body[key] = value
+    if progress_percent is not MISSING:
+        body["progress_percent"] = progress_percent
     async with _client(_resolve_key(ctx)) as client:
         return await _call(client, "PATCH", f"/api/v1/items/{ref}", json=body)
 

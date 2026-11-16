@@ -11,6 +11,7 @@ authors = [
 ]
 dependencies = [
     "fastapi>=0.115",
+    "pydantic>=2.12",
     "uvicorn[standard]>=0.34",
     "httpx>=0.28",
     "python-multipart>=0.0.9",

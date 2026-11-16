@@ -165,6 +165,7 @@ def test_compact_shape(client, auth, seeded):
         "state",
         "priority",
         "workload",
+        "progress_percent",
         "assignee",
         "labels",
         "children_done",

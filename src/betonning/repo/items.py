@@ -192,6 +192,7 @@ def serialize(
         "priority": row["priority"],
         # BETON-311: werklast (hoeveel tokens); leeg = nog niet geschat.
         "workload": row["workload"],
+        "progress_percent": row["progress_percent"],
         "assignee": assignee,
         "previous_assignee": previous["handle"] if previous else None,
         "work_signals": work_signals,
@@ -280,6 +281,7 @@ def _to_compact(m: dict) -> dict:
         "state": m["state"],
         "priority": m["priority"],
         "workload": m.get("workload"),
+        "progress_percent": m.get("progress_percent"),
         "assignee": m["assignee"],
         "labels": m["labels"],
         "children_done": m.get("children_done", 0),
@@ -539,6 +541,7 @@ def _compact_rows(
                 "state": r["state"],
                 "priority": r["priority"],
                 "workload": r["workload"],
+                "progress_percent": r["progress_percent"],
                 "assignee": r["assignee"],
                 "labels": labels_by_item.get(r["id"], []),
                 "children_done": counts_by_item.get(r["id"], (0, 0))[0],
@@ -589,7 +592,7 @@ def list_assigned_open(
     placeholders = _in_clause(ids)
     rows = conn.execute(
         f"""SELECT i.id AS id, i.seq AS seq, i.title AS title, i.priority AS priority,
-                  i.workload AS workload,
+                  i.workload AS workload, i.progress_percent AS progress_percent,
                   ({guardrail_active_sql("i")}) AS has_guardrail,
                   ({GUARDRAIL_PROPOSAL_EXISTS.format(a="i")}) AS has_guardrail_proposal,
                   i.created_at AS created_at, i.updated_at AS updated_at,
@@ -704,6 +707,7 @@ _PATCHABLE = {
     "state_id": "state_id",
     "priority": "priority",
     "workload": "workload",
+    "progress_percent": "progress_percent",
     "assignee_id": "assignee_id",
     "parent_id": "parent_id",
     "milestone_id": "milestone_id",
@@ -836,7 +840,7 @@ _COMPACT_SELECT = (
     # BETON-422: idem voor het openstaande concept — een EXISTS in dezelfde
     # SELECT, dus nul extra query's per kaart.
     f"({GUARDRAIL_PROPOSAL_EXISTS.format(a='items')}) AS has_guardrail_proposal, "
-    "items.priority AS priority, items.workload AS workload, "
+    "items.priority AS priority, items.workload AS workload, items.progress_percent AS progress_percent, "
     "items.created_at AS created_at, "
     "items.updated_at AS updated_at, "
     "items.archived_at AS archived_at, items.locked_at AS locked_at, "

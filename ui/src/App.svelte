@@ -2380,6 +2380,9 @@
                   {/if}
                 </div>
               {/if}
+              {#if item.progress_percent != null}
+                <div class="card-estimate-track" role="progressbar" aria-label={$t("board.estimatedProgress")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={item.progress_percent}><div class="card-estimate-fill" style:width="{item.progress_percent}%"></div></div>
+              {/if}
             </div>
           {:else}
             {#if dragRef}
@@ -2650,6 +2653,18 @@
     color: var(--text);
   }
 
+  .card { position: relative; }
+  .card-estimate-track {
+    position: absolute;
+    bottom: 0;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: var(--border);
+    overflow: hidden;
+    border-radius: var(--radius-full);
+  }
+  .card-estimate-fill { height: 100%; background: var(--accent); opacity: 0.7; }
   /* BETON-50/39: subtaak-voortgang + uitstel-signaal op de kaart. */
   .card-progress {
     margin-top: 6px;
