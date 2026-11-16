@@ -3339,7 +3339,7 @@
   }
   @media (min-width: 1024px) {
     .dw-cols {
-      grid-template-columns: minmax(0, 1fr) 288px;
+      grid-template-columns: minmax(0, var(--dw-content-max)) minmax(288px, 1fr);
       /* De rail spant beide rijen. Zonder expliciete rijmaten zijn beide rijen
          `auto` en verdeelt grid de overhoogte van een rail die langer is dan
          de inhoud over BEIDE gespande rijen — ook over de titelrij, wat een
@@ -3351,13 +3351,11 @@
         "title rail"
         "main  rail";
       column-gap: var(--space-8);
-      /* De contentkolom is op --dw-content-max gekapt (BETON-414), maar de
-         grid-kolom bleef `1fr`: op een breed venster viel die overruimte
-         tússen de content en de rail, wat als een gat leest. Het hele
-         tweekoloms-blok krijgt daarom zelf een maat en wordt gecentreerd, zodat
-         de ruimte naar de buitenmarges gaat — daar leest hij als rust. */
-      max-width: calc(var(--dw-content-max) + 288px + var(--space-8));
-      margin-inline: auto;
+      /* Houd de leeskolom begrensd en geef de overruimte aan de rail,
+         zodat eigenschappen en hun scrollbar de rechterzijde benutten. */
+      width: 100%;
+      max-width: none;
+      margin-inline: 0;
     }
     /* BETON-427: de hele rail blijft staan terwijl de hoofdkolom scrolt.
        Scroll-container is .drawer-dialog; tussen die twee zit geen enkele
