@@ -91,7 +91,7 @@
   import Skeleton from "./Skeleton.svelte";
   import EmptyState from "./EmptyState.svelte";
   import { workloadOptions, stateOptions } from "./lib/segmentedOptions.js";
-  import { relationLabel, RELATION_TYPES } from "./lib/labels.js";
+  import { relationLabel, RELATION_TYPES, splitModelLabels } from "./lib/labels.js";
   import {
     optionAnswer,
     textAnswer,
@@ -129,6 +129,7 @@
   } = $props();
 
   let item = $state(null);
+  const detailLabels = $derived(splitModelLabels(item?.labels));
   let projectReadOnly = $derived(Boolean(item?.project_archived_at));
   let activity = $state([]);
   let attachments = $state([]);
@@ -378,20 +379,6 @@
     descMentionMatches = [];
     descHashMatches = [];
     if (descDraft !== (item.description_md || "")) await patch({ description_md: descDraft });
-  }
-  // Eén edit-idioom (BETON-223): klik op de gerenderde omschrijving = bewerken —
-  // behalve op een ticketref/link (eigen actie) of een actieve tekstselectie
-  // (BETON-415: anders slikt de klik een kopieerpoging op een lange
-  // omschrijving op — het blok klapt om in een textarea en de selectie is weg).
-  function onDescClick(e) {
-    if (!shouldStartEdit(e.target, window.getSelection()?.toString())) return;
-    startDesc();
-  }
-  function onDescEditKeydown(e) {
-    if (e.key !== "Enter") return;
-    if (!shouldStartEdit(e.target, window.getSelection()?.toString())) return;
-    e.preventDefault();
-    startDesc();
   }
   // --- Plan/handover (BETON-218): lazy geladen, standaard ingeklapt ---------
   let showPlan = $state(false);
@@ -1924,9 +1911,10 @@
               />
             </div>
             <div class="rail-seg">
-              <span class="rail-head">{$uiText("ui.workload")}</span>
+              <span class="rail-head">{$t("detail.effort")}</span>
+              <span class="rail-hint">{$t("detail.effortHint")}</span>
               <SegmentedControl
-                ariaLabel={$uiText("ui.workload")}
+                ariaLabel={$t("detail.effort")}
                 options={workloadOpts}
                 value={item.workload}
                 disabled={projectReadOnly || (busy)}
@@ -2069,14 +2057,28 @@
                  klik op een andere rij zou anders een half getypte relatie of
                  een openstaand opknip-voorstel wegklappen. De regel breekt af
                  naar een tweede regel i.p.v. een eigen blok met kop te worden. -->
+            <div class="prop-row work-class">
+              <div class="prop-line static">
+                <span class="prop-label">{$t("detail.workClass")}</span>
+                <div class="prop-val dchips">
+                  {#each detailLabels.models as name (name)}
+                    <Chip tone="label" hue={labelHueOf(name, projectKeyOfRef(item?.ref))} removable={!projectReadOnly} onremove={() => toggleLabel(name)}>{name}</Chip>
+                  {:else}
+                    <span class="prop-empty">—</span>
+                  {/each}
+                </div>
+              </div>
+              <p class="rail-hint">{$t("detail.workClassHint")}</p>
+            </div>
+
             <div class="prop-row">
               <div class="prop-line static">
                 <span class="prop-label">{railProps.get("labels").label}</span>
                 <div class="prop-val dchips">
-                  {#if railProps.get("labels").empty}
+                  {#if !detailLabels.plain.length}
                     <span class="prop-empty">{railProps.get("labels").text}</span>
                   {/if}
-                  {#each item.labels || [] as name (name)}
+                  {#each detailLabels.plain as name (name)}
                     <Chip tone="label" hue={labelHueOf(name, projectKeyOfRef(item?.ref))} removable={!projectReadOnly} onremove={() => toggleLabel(name)}>{name}</Chip>
                   {/each}
                   <button
@@ -2287,22 +2289,6 @@
               </div>
             </div>
 
-            {#if item.created_at}
-              <div class="prop-row">
-                <div class="prop-line static">
-                  <span class="prop-label">{$uiText("detail.created")}</span>
-                  <span class="prop-val" title={absoluteTime(item.created_at, $locale)}>{formatTimestamp(item.created_at, undefined, $locale)}</span>
-                </div>
-              </div>
-            {/if}
-            {#if item.updated_at && item.updated_at !== item.created_at}
-              <div class="prop-row">
-                <div class="prop-line static">
-                  <span class="prop-label">{$uiText("ui.changed")}</span>
-                  <span class="prop-val" title={absoluteTime(item.updated_at, $locale)}>{formatTimestamp(item.updated_at, undefined, $locale)}</span>
-                </div>
-              </div>
-            {/if}
           </div>
         </aside>
 
@@ -2319,7 +2305,7 @@
             {#if !editingDesc && enrichProposal == null}
               <div class="section-actions">
                 <!-- BETON-423: aanmaak- (en wijzig)datum in de lege ruimte links
-                     van de knoppen; de rail onderaan houdt ze ook. -->
+                     van de knoppen. -->
                 {#if item.created_at}
                   <span class="section-meta">
                     <span title={absoluteTime(item.created_at, $locale)}>{$uiText("detail.created")} {formatTimestamp(item.created_at, undefined, $locale)}</span>
@@ -2327,6 +2313,11 @@
                       · <span title={absoluteTime(item.updated_at, $locale)}>{$uiText("detail.modified")} {formatTimestamp(item.updated_at, undefined, $locale)}</span>
                     {/if}
                   </span>
+                {/if}
+                {#if !projectReadOnly}
+                  <button class="ghost sm" type="button" onclick={startDesc}>
+                    <Pencil size={13} /> {$t("detail.editDescription")}
+                  </button>
                 {/if}
                 <button class="sm" onclick={runEnrich} disabled={projectReadOnly || (enriching)} title={$t("drawer.enrich")}>
                   <Sparkles size={13} /> {enriching ? $uiText("detail.enrichBusy") : $uiText("detail.enrich")}
@@ -2437,23 +2428,8 @@
                 </div>
               </div>
             {:else if item.description_md}
-              <!-- eslint-disable-next-line svelte/no-at-html-tags — renderMarkdown escapet -->
-              <!-- BETON-415: geen `title` meer — dat tooltipje verscheen midden
-                   in een alinea omdat het hele blok het hitgebied is. De
-                   bestaande hover-achtergrond (.desc.editable:hover) blijft de
-                   enige affordance. -->
-              {#if projectReadOnly}
-                <div class="desc md" use:lightboxClicks={openLightbox}>{@html renderMarkdown(item.description_md, knownHandles, projectKeys)}</div>
-              {:else}
-                <div
-                  class="desc md editable"
-                  role="button"
-                  tabindex="0"
-                  onclick={onDescClick}
-                  use:lightboxClicks={openLightbox}
-                  onkeydown={onDescEditKeydown}
-                >{@html renderMarkdown(item.description_md, knownHandles, projectKeys)}</div>
-              {/if}
+              <!-- eslint-disable-next-line svelte/no-at-html-tags — renderMarkdown escapes content -->
+              <div class="desc md" use:lightboxClicks={openLightbox}>{@html renderMarkdown(item.description_md, knownHandles, projectKeys)}</div>
             {:else}
               <button disabled={projectReadOnly} class="empty-edit" onclick={startDesc}>{$uiText("ui.emptyDescription")}</button>
             {/if}
@@ -3575,6 +3551,12 @@
     flex-direction: column;
     gap: var(--space-2);
   }
+  .rail-hint {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    line-height: 1.4;
+  }
   .rail-head {
     font-size: var(--text-xs);
     font-weight: 600;
@@ -3752,6 +3734,7 @@
      trekken. */
   .section-actions {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
     align-items: center;
     gap: 6px;
@@ -3764,24 +3747,6 @@
     color: var(--text-tertiary);
   }
 
-  /* Klik-om-te-bewerken veld (omschrijving). Padding ruimer dan de krappe
-     4px/6px van voorheen (BETON-400: tekst stond strak tegen de rand van het
-     grijze .desc-vlak). BETON-400 annuleerde de padding-left met een
-     negatieve margin zodat de TEKST met de kop uitlijnde — gevolg was dat het
-     VLAK zelf 14px naar links uitstak (BETON-401). Het vlak hoort op één
-     lijn met de kop; de tekst mag daarvoor inspringen. */
-  .desc.editable {
-    cursor: text;
-    border-radius: var(--radius-sm);
-    padding: 12px 14px;
-  }
-  /* --surface-2 is al de achtergrond van .desc zelf (app.css) — die kleur
-     op :hover herhalen liet de hover onzichtbaar zijn. --surface-3 is de
-     volgende stap op de tokenschaal en wordt elders al als hover-tint op
-     --surface-2-achtergronden gebruikt. */
-  .desc.editable:hover {
-    background: var(--surface-3);
-  }
   /* BETON-416: het plan krijgt een stillere, dichtere behandeling dan de
      omschrijving — een linkerlijn i.p.v. een gevuld vlak, en iets kleinere
      regelafstand (1.45 t.o.v. de basis 1.5) — zodat het ondergeschikt en
