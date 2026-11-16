@@ -170,7 +170,7 @@ async def _call(client: httpx.AsyncClient, method: str, path: str, **kwargs):
 async def load_memory(
     project: str | None = None, ctx: Context | None = None, *, ticket_ref: str | None = None
 ) -> str:
-    """Laad actuele memory: globaal, of globaal + ``project``. Lees guardrails eerst.
+    """Laad actuele memory: globaal, of globaal + ``project``. Guardrails zijn bindend.
     Optioneel ``ticket_ref`` in dat project prioriteert gerelateerde pagina’s.
     """
     async with _client(_resolve_key(ctx)) as client:
@@ -286,7 +286,7 @@ PLAN_INLINE_MAX = 20_000  # BETON-430: tekens plan_md die get_item inline meegee
 
 async def get_item(ref: str, ctx: Context | None = None) -> dict:
     """Haal ticket, comments, relaties, subtaken en plan op (bv. ``SOS-42``).
-    Lees ``plan_md`` vóór uitvoering; na 20.000 tekens geeft ``get_plan`` de rest.
+    Bij ``has_plan``: lees ``plan_md`` vóór uitvoering; ``get_plan`` geeft de rest.
     ``guardrail_md``/``applicable_guardrails`` zijn bindend; projectregels via
     ``load_memory``. ``model_for_you`` vertaalt de werkklasse naar jouw model,
     of is null zonder mapping.
