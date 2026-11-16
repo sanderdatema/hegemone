@@ -1,6 +1,13 @@
 // Teksten voor de dagelijkse ticket- en bordflow.
 export const dailyMessages = {
   "en": {
+    "ticket.chooseQueue": "Choose queue @{handle}",
+    "ticket.chooseAssignee": "Choose @{handle}",
+    "ticket.selectedQueue": "On creation: assigned to queue @{handle}.",
+    "ticket.selectedAssignee": "On creation: assigned to @{handle}.",
+    "ticket.triageKeepsChoice": "Create ticket saves your choice. Triage fills in labels and effort; execution is separate.",
+    "ticket.triageAfterCreate": "After Create ticket, triage fills in labels, effort and assignment.",
+    "ticket.manualAfterCreate": "Create ticket saves this ticket with your choices. Automatic triage is off.",
     "action.yourAnswer": "Waiting for your answer",
     "action.answer": "Waiting for an answer",
     "action.blockedBy": "Blocked by {refs}",
@@ -147,6 +154,13 @@ export const dailyMessages = {
     "drawer.emptyActivity": "No activity yet."
   },
   "nl": {
+    "ticket.chooseQueue": "Kies wachtrij @{handle}",
+    "ticket.chooseAssignee": "Kies @{handle}",
+    "ticket.selectedQueue": "Bij aanmaken: toegewezen aan wachtrij @{handle}.",
+    "ticket.selectedAssignee": "Bij aanmaken: toegewezen aan @{handle}.",
+    "ticket.triageKeepsChoice": "Ticket aanmaken bewaart je keuze. Triage vult labels en omvang aan; uitvoering staat hier los van.",
+    "ticket.triageAfterCreate": "Na Ticket aanmaken vult triage labels, omvang en toewijzing aan.",
+    "ticket.manualAfterCreate": "Ticket aanmaken bewaart dit ticket met je keuzes. Automatische triage staat uit.",
     "action.yourAnswer": "Wacht op jouw antwoord",
     "action.answer": "Wacht op een antwoord",
     "action.blockedBy": "Geblokkeerd door {refs}",

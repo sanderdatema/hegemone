@@ -84,6 +84,9 @@ Select a project, then choose **New ticket**. Give the ticket a concrete title
 and explain the expected outcome in the description. Set the available workflow
 fields, such as state, assignee, priority, workload, labels, milestone and due
 date, as appropriate. A ticket reference is assigned when the ticket is created.
+Quick assignment buttons select a person or queue for the draft; they do not
+submit it. The selected destination is shown above **Create ticket**. The help
+text explains whether automatic triage will supply the remaining fields.
 
 A useful description states what happens now, what should happen instead and how
 to check the result. For a bug, include reproducible steps and relevant error

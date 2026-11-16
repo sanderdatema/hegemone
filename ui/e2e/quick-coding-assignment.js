@@ -54,9 +54,9 @@ export default async function quickCodingAssignment(page) {
     await settle();
     await page.screenshot({path:`/tmp/beton-507-new-${theme}.png`});
   }
-  await dialog.getByRole('button',{name:'→ coding-agent',exact:true}).click();
+  await dialog.getByRole('button',{name:'Kies wachtrij @coding-agent',exact:true}).click();
   if(created!==null) throw new Error('Sneltoewijzing heeft het formulier verstuurd');
-  await dialog.getByRole('status').filter({hasText:'Toegewezen aan coding-agent'}).waitFor();
+  await dialog.getByRole('status').filter({hasText:'Bij aanmaken: toegewezen aan wachtrij @coding-agent.'}).waitFor();
   if(await more.getAttribute('aria-expanded')!=='false') throw new Error('Sneltoewijzing klapt extra opties open');
   await dialog.getByRole('button',{name:'Ticket aanmaken',exact:true}).click();
   await dialog.waitFor({state:'hidden'});

@@ -52,8 +52,8 @@ export default async function quickAssignmentPreferences(page, base = 'http://12
     await page.getByRole('dialog').waitFor({state: 'hidden'});
     await page.locator('.tb-new').click();
     const dialog = page.getByRole('dialog');
-    await dialog.getByRole('button', {name: '→ receiver', exact: true}).waitFor();
-    if (await dialog.getByRole('button', {name: '→ builder', exact: true}).count()) throw new Error('New ticket ignored preference');
+    await dialog.getByRole('button', {name: language === 'en' ? 'Choose @receiver' : 'Kies @receiver', exact: true}).waitFor();
+    if (await dialog.getByRole('button', {name: language === 'en' ? 'Choose @builder' : 'Kies @builder', exact: true}).count()) throw new Error('New ticket ignored preference');
     await page.keyboard.press('Escape');
     await dialog.waitFor({state: 'hidden'});
     await page.goto(`${base}/DEMO/1?language=${language}`);

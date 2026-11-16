@@ -72,6 +72,7 @@
   let workload = $state(initial.workload ?? "");
   let assignee = $state("");
   let assignShortcuts = $derived(handoffTargets({ assignee }, me, users, quickAssignmentSelection(me?.handle, $quickAssignmentPreferences)));
+  const selectedAssignee = $derived(users.find(user => user.handle === assignee));
   let dueDate = $state("");
   let deferUntil = $state("");
   let selectedLabels = $state([...(initial.labels ?? [])]);
@@ -524,15 +525,20 @@
         {#if assignShortcuts.length}
           <div class="quick-assign" aria-label={$t("ticket.quickAssign")}>
             {#each assignShortcuts as target (target.handle)}
-              <button type="button" class="sm" disabled={busy} onclick={() => (assignee = target.handle)}>{target.label}</button>
+              <button type="button" class="sm" disabled={busy} onclick={() => (assignee = target.handle)}>
+                {$t(users.find(user => user.handle === target.handle)?.is_virtual ? "ticket.chooseQueue" : "ticket.chooseAssignee", {handle:target.handle})}
+              </button>
             {/each}
           </div>
-        {:else if assignee === "coding-agent"}
-          <p class="quick-assign muted" role="status">{$t("ticket.assignedQueue")}</p>
         {/if}
-        {#if defaults.showTriageHint}
-          <p class="hint muted">{$t("ticket.triageHint")}</p>
+        {#if assignee}
+          <p class="hint assignment-choice" role="status">
+            {$t(selectedAssignee?.is_virtual ? "ticket.selectedQueue" : "ticket.selectedAssignee", {handle:assignee})}
+          </p>
         {/if}
+        <p class="hint muted">
+          {$t(defaults.showTriageHint ? (assignee ? "ticket.triageKeepsChoice" : "ticket.triageAfterCreate") : "ticket.manualAfterCreate")}
+        </p>
         <div class="modal-foot">
           <Dialog.Close type="button" class="ghost">{$t("common.cancel")}</Dialog.Close>
           <button class="primary" type="submit" disabled={busy || !title.trim()}>
