@@ -2296,7 +2296,7 @@
                 {/if}
               </div>
               <div class="card-title">{item.title}</div>
-              <ItemAction {item} {virtualHandles} />
+              <ItemAction {item} />
               {#if item.children_total}
                 <div
                   class="card-progress"
