@@ -187,11 +187,10 @@ Third-party licenses and copyright notices are preserved in [THIRD_PARTY.md](THI
 
 ## Screenshots
 
-The board in English and Dutch, using synthetic tickets and a two-column example
-project. New projects start with the six default columns described above.
+The project board and knowledge base, using fictional tickets, pages and people.
 
-![English board with bulk selection](screenshots/board-en.png)
+![Project board with tickets assigned to people and agents](screenshots/board-en.png)
 
-![Dutch board with the same selection](screenshots/board-nl.png)
+![Knowledge base with page navigation, article outline and references](screenshots/wiki-en.png)
 
 For an existing systemd installation, see [native release deployment](NATIVE_DEPLOYMENT.md). Host profiles and secrets stay outside the repository.
