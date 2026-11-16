@@ -3,6 +3,7 @@
   import { t } from './lib/i18n.js';
   import { api } from './api.js';
   import ErrorNote from './ErrorNote.svelte';
+  import { ArrowLeft } from '@lucide/svelte';
   import ConfigurationTransfer from './ConfigurationTransfer.svelte';
   import ConfirmBar from './ConfirmBar.svelte';
   import { installationDraft, installationUpdate, managed, providerStatus, canTestProvider, PROVIDERS } from './lib/installationSettings.js';
@@ -61,8 +62,8 @@
 
 <section class="installation-settings">
   <header>
-    {#if onback}<button class="sm" onclick={onback}>{$t('installation.back')}</button>{/if}
-    <h2>{$t('installation.title')}</h2>
+    {#if onback}<button class="icon-btn" aria-label={$t('installation.back')} title={$t('installation.back')} onclick={onback}><ArrowLeft size={18} /></button>{/if}
+    <h3>{$t('installation.title')}</h3>
   </header>
   <p class="muted">{$t('installation.intro')}</p>
   <ErrorNote message={error} onRetry={!data ? load : undefined} />
@@ -131,12 +132,13 @@
 </section>
 
 <style>
-  .installation-settings { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6); }
+  .installation-settings { display: flex; flex-direction: column; gap: var(--space-4); padding: 0; }
   header, .actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
-  h2, p { margin: 0; }
+  h3, p { margin: 0; }
+  h3 { font-size: var(--text-lg); font-weight: 600; }
   form { display: flex; flex-direction: column; gap: var(--space-6); }
-  fieldset { display: flex; flex-direction: column; gap: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4); min-width: 0; }
-  legend { font-weight: 600; padding: 0 var(--space-2); }
+  fieldset { display: flex; flex-direction: column; gap: var(--space-3); border: 0; border-top: 1px solid var(--border); border-radius: 0; padding: 14px 0; min-width: 0; }
+  legend { font-weight: 600; font-size: var(--text-sm); color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; padding: 0; }
   label { display: flex; flex-direction: column; gap: var(--space-2); }
   input:not([type='checkbox']), select { width: 100%; min-width: 0; }
   .check-row { flex-direction: row; align-items: center; }

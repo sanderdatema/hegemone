@@ -1,6 +1,12 @@
 // Generiek agentbeheer; API-waarden blijven ongewijzigd.
 export const adminMessages = {
   "en": {
+    "preferences.advanced": "Profile and integrations",
+    "preferences.saveBehavior": "Browser notifications and quick assignment apply immediately. Save applies profile, subscription and integration fields. Model mappings have their own Save button.",
+    "agents.actions": "Actions",
+    "agents.webhookDetails": "Webhook connection and test",
+    "agents.showInactive": "Show inactive ({count})",
+    "agents.hideInactive": "Hide inactive ({count})",
     "agents.loadFailed": "Could not load agents and users. Please try again.",
     "common.back": "Back",
     "agents.title": "Agents & users",
@@ -273,6 +279,12 @@ export const adminMessages = {
     "detail.comments": "Comments"
   },
   "nl": {
+    "preferences.advanced": "Profiel en koppelingen",
+    "preferences.saveBehavior": "Browsermeldingen en sneltoewijzing gelden direct. Opslaan geldt voor profiel, volgen en koppelingen. Modelkeuzes hebben een eigen opslagknop.",
+    "agents.actions": "Acties",
+    "agents.webhookDetails": "Webhookverbinding en test",
+    "agents.showInactive": "Toon inactieve ({count})",
+    "agents.hideInactive": "Verberg inactieve ({count})",
     "agents.loadFailed": "Kon agents/users niet laden — probeer opnieuw.",
     "common.back": "Terug",
     "agents.title": "Agents & gebruikers",

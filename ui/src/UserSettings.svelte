@@ -175,55 +175,6 @@
   <ErrorNote message={error} onRetry={load} />
 
   {#if loaded}
-    <!-- Omschrijving -->
-    <section class="us-sec">
-      <div class="us-head"><Info size={14} /> {$t("ticket.description")}</div>
-      <span class="us-note">{$t("preferences.descriptionNote")}</span>
-      <AutoTextarea rows="2" bind:value={draft.description} placeholder={$t("preferences.descriptionHint")} onsubmit={() => { if (dirty && !busy) save(); }} />
-    </section>
-
-    <!-- Webhook -->
-    <section class="us-sec">
-      <div class="us-head"><Webhook size={14} /> Webhook</div>
-      <span class="us-note">
-        {$t("preferences.webhookNote")}
-      </span>
-      <label class="us-field">{$t("agents.webhookUrl")}
-        <input placeholder="https://receiver.example.org/events" bind:value={draft.webhook_url} />
-      </label>
-      <label class="us-field">{$t("preferences.webhookSecret")}
-        <span class="secret-row">
-          <input
-            type={showSecret ? "text" : "password"}
-            placeholder={$t(hasSecret ? "preferences.keepSecret" : "preferences.optionalSecret")}
-            bind:value={draft.webhook_secret}
-            autocomplete="off"
-          />
-          <button
-            type="button"
-            class="icon-btn sm"
-            title={$t(showSecret ? "preferences.hide" : "preferences.show")}
-            aria-label={$t(showSecret ? "preferences.hideSecret" : "preferences.showSecret")}
-            onclick={() => (showSecret = !showSecret)}
-          >
-            {#if showSecret}<EyeOff size={15} />{:else}<Eye size={15} />{/if}
-          </button>
-        </span>
-      </label>
-      <span class="us-hint">
-        {$t("preferences.secretNeverReturned")} {$t(hasSecret ? "preferences.secretSet" : "preferences.secretUnset")}
-      </span>
-    </section>
-
-    <!-- Telegram -->
-    <section class="us-sec">
-      <div class="us-head"><Send size={14} /> Telegram</div>
-      <span class="us-note">{$t("preferences.telegramNote")}</span>
-      <label class="us-field">{$t("preferences.chatId")}
-        <input placeholder="123456789" bind:value={draft.telegram_chat_id} />
-      </label>
-    </section>
-
     <!-- Subscribe all -->
     <section class="us-sec">
       <div class="us-head">{$t("preferences.followAll")}</div>
@@ -284,8 +235,62 @@
         <button type="button" class="sm" disabled={assignmentSelection === null}
           onclick={() => setQuickAssignmentSelection(me?.handle, null)}>{$t("preferences.quickAssignmentReset")}</button>
       </section>
-      <ModelClasses />
     {/if}
+
+    <details class="us-advanced">
+      <summary>{$t("preferences.advanced")}</summary>
+    <!-- Omschrijving -->
+    <section class="us-sec">
+      <div class="us-head"><Info size={14} /> {$t("ticket.description")}</div>
+      <span class="us-note">{$t("preferences.descriptionNote")}</span>
+      <AutoTextarea rows="2" bind:value={draft.description} placeholder={$t("preferences.descriptionHint")} onsubmit={() => { if (dirty && !busy) save(); }} />
+    </section>
+
+    <!-- Webhook -->
+    <section class="us-sec">
+      <div class="us-head"><Webhook size={14} /> Webhook</div>
+      <span class="us-note">
+        {$t("preferences.webhookNote")}
+      </span>
+      <label class="us-field">{$t("agents.webhookUrl")}
+        <input placeholder="https://receiver.example.org/events" bind:value={draft.webhook_url} />
+      </label>
+      <label class="us-field">{$t("preferences.webhookSecret")}
+        <span class="secret-row">
+          <input
+            type={showSecret ? "text" : "password"}
+            placeholder={$t(hasSecret ? "preferences.keepSecret" : "preferences.optionalSecret")}
+            bind:value={draft.webhook_secret}
+            autocomplete="off"
+          />
+          <button
+            type="button"
+            class="icon-btn sm"
+            title={$t(showSecret ? "preferences.hide" : "preferences.show")}
+            aria-label={$t(showSecret ? "preferences.hideSecret" : "preferences.showSecret")}
+            onclick={() => (showSecret = !showSecret)}
+          >
+            {#if showSecret}<EyeOff size={15} />{:else}<Eye size={15} />{/if}
+          </button>
+        </span>
+      </label>
+      <span class="us-hint">
+        {$t("preferences.secretNeverReturned")} {$t(hasSecret ? "preferences.secretSet" : "preferences.secretUnset")}
+      </span>
+    </section>
+
+    <!-- Telegram -->
+    <section class="us-sec">
+      <div class="us-head"><Send size={14} /> Telegram</div>
+      <span class="us-note">{$t("preferences.telegramNote")}</span>
+      <label class="us-field">{$t("preferences.chatId")}
+        <input placeholder="123456789" bind:value={draft.telegram_chat_id} />
+      </label>
+    </section>
+
+      {#if me?.kind === "human"}<ModelClasses />{/if}
+    </details>
+    <p class="us-hint">{$t("preferences.saveBehavior")}</p>
 
     <div class="us-actions">
       <button class="primary sm" onclick={save} disabled={!dirty || busy}>
@@ -299,6 +304,7 @@
 </div>
 
 <style>
+  .us-advanced > summary { cursor: pointer; font-weight: 600; padding: 14px 0; }
   .assignment-option { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
   .assignment-option .us-hint { display: inline; }
   .us-top {

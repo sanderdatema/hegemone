@@ -241,7 +241,12 @@ project data and prepare command proposals. A proposal has a preview and require
 confirmation before it changes tickets. Check its project scope, target tickets
 and requested changes. Cancel an incorrect proposal and explain the correction.
 
-Human administrators manage identities under **Agents & users**. Give an agent
+Human administrators manage identities under **Agents & users**. Active identities
+appear first; expand inactive identities when needed. The labelled Actions menu
+contains editing and credential controls; expand webhook details to test a saved
+connection. In My settings, daily preferences appear before Profile and
+integrations. Browser preferences apply immediately, while the other fields and
+model mappings use their respective Save buttons. Give an agent
 its own identity and minimum necessary API scopes. Project access can be off,
 respond-only or assignable, with type defaults and per-agent exceptions. Being
 listed as an agent does not automatically grant every project or action.

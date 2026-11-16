@@ -30,9 +30,12 @@ export default async function webhookTest(page,base='http://127.0.0.1:8168') {
   await page.getByRole('button',{name:'More actions',exact:true}).click();
   await page.getByRole('menuitem',{name:'Agents & users',exact:true}).click();
   const row=page.locator('.ag-item').filter({has:page.locator('.ag-handle',{hasText:'@receiver'})});
+  await row.locator('.ag-webhook-details summary').click();
   await row.getByRole('button',{name:'Test saved webhook',exact:true}).waitFor();
   if(posts)throw new Error('Test verstuurd bij laden');
+  await page.locator('.inactive-toggle').click();
   const inactive=page.locator('.ag-item').filter({has:page.locator('.ag-handle',{hasText:'@inactive'})});
+  await inactive.locator('.ag-webhook-details summary').click();
   if(await inactive.getByRole('button',{name:'Test saved webhook',exact:true}).isEnabled())throw new Error('Inactieve agent testbaar');
   await row.getByRole('button',{name:'Test saved webhook',exact:true}).click();
   await row.getByText('Test queued — awaiting delivery',{exact:true}).waitFor();
@@ -52,6 +55,7 @@ export default async function webhookTest(page,base='http://127.0.0.1:8168') {
   await page.getByRole('menuitem',{name:/Nederlands/}).click();await page.keyboard.press('Escape');
   await page.getByRole('button',{name:'Meer acties',exact:true}).click();
   await page.getByRole('menuitem',{name:'Agents & gebruikers',exact:true}).click();
+  await row.locator('.ag-webhook-details summary').click();
   mode='delivered';await row.getByRole('button',{name:'Opgeslagen webhook testen',exact:true}).click();
   await row.getByText('Test succesvol afgeleverd',{exact:true}).waitFor();
   await row.screenshot({path:'/tmp/hegemone-webhook-test-nl.png',animations:'disabled'});

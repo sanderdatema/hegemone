@@ -32,6 +32,10 @@
 
   let { onback, canTestWebhooks = false, ondeliveries } = $props();
 
+  let showInactive = $state(false);
+  const inactiveCount = $derived(users.filter(u => !u.active).length);
+  const visibleUsers = $derived([...users].filter(u => u.active || showInactive)
+    .sort((a,b) => Number(!!b.active) - Number(!!a.active) || (a.display_name || a.handle).localeCompare(b.display_name || b.handle)));
   let error = $state("");
   let loading = $state(false);
   let users = $state([]);
@@ -334,7 +338,7 @@
     {:else if !users.length}
       <EmptyState icon={Bot} title={$t("agents.none")} />
     {/if}
-    {#each users as u (u.handle)}
+    {#each visibleUsers as u (u.handle)}
       <div class="ag-item" class:inactive={!u.active}>
         {#if editing === u.handle}
           <div class="ag-edit">
@@ -420,7 +424,9 @@
               <div class="ag-desc muted">{$t("agents.noDescription")}</div>
             {/if}
             {#if canTestWebhooks && u.kind === "agent" && !u.is_virtual && u.has_webhook}
-              <WebhookTest user={u} {ondeliveries} />
+              <details class="ag-webhook-details"><summary>{$t("agents.webhookDetails")}</summary>
+                <WebhookTest user={u} {ondeliveries} />
+              </details>
             {/if}
           </div>
           {#if confirmAction?.handle === u.handle && confirmAction.type === "rotate"}
@@ -440,9 +446,9 @@
               </span>
             </span>
           {:else}
-            <span class="ag-actions">
+            <details class="ag-actions"><summary>{$t("agents.actions")}</summary><div class="ag-action-menu">
               <label class="icon-btn sm avatar-up" title={$t("agents.uploadAvatar")}>
-                <ImageUp size={15} />
+                <ImageUp size={15} /> <span>{$t("agents.uploadAvatar")}</span>
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/gif,image/webp"
@@ -451,37 +457,46 @@
               </label>
               {#if u.avatar_url}
                 <button class="icon-btn sm" title={$t("agents.removeAvatar")} onclick={() => removeAvatar(u.handle)}>
-                  <ImageOff size={15} />
+                  <ImageOff size={15} /> <span>{$t("agents.removeAvatar")}</span>
                 </button>
               {/if}
               <button class="icon-btn sm" title={$t("common.edit")} onclick={() => startEdit(u)}>
-                <Pencil size={15} />
+                <Pencil size={15} /> <span>{$t("common.edit")}</span>
               </button>
               <button class="icon-btn sm" title={$t("agents.rotate")}
                       onclick={() => (confirmAction = { handle: u.handle, type: "rotate" })}>
-                <KeyRound size={15} />
+                <KeyRound size={15} /> <span>{$t("agents.rotate")}</span>
               </button>
               {#if u.active}
                 <button class="icon-btn sm" title={$t("agents.deactivate")}
                         onclick={() => (confirmAction = { handle: u.handle, type: "deactivate" })}>
-                  <Trash2 size={15} />
+                  <Trash2 size={15} /> <span>{$t("agents.deactivate")}</span>
                 </button>
               {:else}
                 <button class="icon-btn sm" title={$t("agents.reactivate")} onclick={() => reactivate(u.handle)}>
-                  <RotateCcw size={15} />
+                  <RotateCcw size={15} /> <span>{$t("agents.reactivate")}</span>
                 </button>
               {/if}
-            </span>
+            </div></details>
           {/if}
         {/if}
       </div>
-    {:else}
-      <span class="muted">{$t("agents.noUsers")}</span>
     {/each}
+    {#if inactiveCount}
+      <button class="ghost sm inactive-toggle" aria-expanded={showInactive} onclick={() => showInactive = !showInactive}>
+        {$t(showInactive ? "agents.hideInactive" : "agents.showInactive", {count:inactiveCount})}
+      </button>
+    {/if}
   </section>
 </div>
 
 <style>
+  .ag-actions > summary, .ag-webhook-details > summary { cursor: pointer; font-size: var(--text-sm); padding: 4px 0; }
+  .ag-action-menu { display: flex; flex-direction: column; align-items: stretch; gap: 6px; max-width: 180px; }
+  .ag-action-menu .icon-btn { width: auto; height: auto; justify-content: flex-start; white-space: normal; }
+  .ag-webhook-details { margin-top: 6px; }
+  .inactive-toggle { margin-top: 12px; }
+  @media (max-width: 640px) { .ag-item { flex-wrap: wrap; } .ag-actions[open] { flex-basis: 100%; } }
   .ag-top {
     display: flex;
     align-items: center;
@@ -516,7 +531,7 @@
     border-bottom: 1px solid var(--border);
   }
   .ag-item.inactive {
-    opacity: 0.55;
+    background: var(--surface-2);
   }
   .ag-main {
     flex: 1;
@@ -603,8 +618,7 @@
     color: var(--text-tertiary);
   }
   .ag-actions {
-    display: inline-flex;
-    gap: 2px;
+    display: block;
     flex: 0 0 auto;
   }
   .ag-confirm {
