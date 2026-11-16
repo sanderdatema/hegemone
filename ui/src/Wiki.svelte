@@ -728,7 +728,7 @@
   .wiki-list-tools { display:flex;justify-content:space-between;align-items:center;gap:6px;margin:15px 0 8px;font-size:var(--text-xs);color:var(--text-secondary); }
   .wiki-list-tools :global(.select-trigger) { min-height:28px;padding:3px 6px;font-size:var(--text-xs);border:none;background:transparent; }
   .wiki-list { overflow:auto;min-height:80px;display:flex;flex-direction:column;gap:2px;flex:1; }
-  .wiki-row { display:flex;justify-content:flex-start;align-items:flex-start;gap:8px;background:none;border:1px solid transparent;border-radius:var(--radius-sm);padding:9px;text-align:left;width:100%;min-width:0;white-space:normal;min-height:38px;line-height:1.4;font-size:var(--text-sm);color:var(--text-secondary); }
+  .wiki-row { flex-shrink:0;display:flex;justify-content:flex-start;align-items:flex-start;gap:8px;background:none;border:1px solid transparent;border-radius:var(--radius-sm);padding:9px;text-align:left;width:100%;min-width:0;white-space:normal;min-height:38px;line-height:1.4;font-size:var(--text-sm);color:var(--text-secondary); }
   .wiki-row>span { min-width:0; }
   .wiki-row :global(svg) { flex:0 0 auto;margin-top:2px; }
   .wiki-row-title { display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere; }
@@ -749,6 +749,7 @@
   .wiki-doc-meta { display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:var(--text-sm);color:var(--text-secondary);margin-top:16px; }
   .wiki-protected { display:inline-flex;align-items:center;gap:5px; }
   .wiki-doc-title-wrap { padding-bottom:28px;border-bottom:1px solid var(--border);margin-bottom:26px; }
+  .wiki-view :global(a[data-wiki]),.wiki-view :global(a[data-ticket]) { cursor:pointer; }
   .wiki-article { font-size:15px;line-height:1.8;color:var(--text);overflow-wrap:anywhere; }
   .wiki-article :global(h1),.wiki-article :global(h2),.wiki-article :global(h3),.wiki-article :global(h4) { scroll-margin-top:84px;line-height:1.35;margin:32px 0 12px;letter-spacing:-.015em; }
   .wiki-article :global(h2) { font-size:23px; }

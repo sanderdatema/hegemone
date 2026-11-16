@@ -1,7 +1,7 @@
 // Long navigation, long document titles and both color schemes.
 export default async function wikiLayout(page,base='http://127.0.0.1:5201') {
   const title='A complete and readable knowledge document with a long title that must remain legible on a small screen';
-  const current={slug:'guide',title,body_md:`# ${title}\n\nA useful introduction.\n\n## Reading\n\n${'A paragraph of useful information. '.repeat(10)}\n\n## Example\n\n\`\`\`\n${'longcode'.repeat(80)}\n\`\`\``,revision:'revision'};
+  const current={slug:'guide',title,body_md:`# ${title}\n\nA useful introduction. See [[page-0]].\n\n## Reading\n\n${'A paragraph of useful information. '.repeat(10)}\n\n## Example\n\n\`\`\`\n${'longcode'.repeat(80)}\n\`\`\``,revision:'revision'};
   const pages=[current,...Array.from({length:100},(_,i)=>({slug:`page-${i}`,title:`Knowledge page ${i} with a longer descriptive title`,body_md:'See [[guide]].',revision:'other'}))];
   await page.addInitScript(()=>{localStorage.setItem('betonning_session','1');localStorage.setItem('hegemone_locale','en');});
   await page.route('**/api/v1/**',async route=>{
@@ -28,6 +28,11 @@ export default async function wikiLayout(page,base='http://127.0.0.1:5201') {
     assert(await page.locator('.wiki-list').evaluate(el=>el.scrollHeight>el.clientHeight),'Long page list not independently scrollable');
     assert(await page.locator('.wiki-search input').evaluate(el=>getComputedStyle(el).borderTopWidth==='0px'),'Double search border');
     assert(await page.locator('.wiki-doc-title').evaluate(el=>el.scrollWidth<=el.clientWidth),'Long title clipped');
+    assert(await page.locator('.wiki-row').evaluateAll(rows=>rows.every(row=>{
+      const r=row.getBoundingClientRect(),t=row.querySelector('.wiki-row-title').getBoundingClientRect();
+      return t.top>=r.top && t.bottom<=r.bottom;
+    })),'Wrapped title extends beyond its row');
+    assert(await page.locator('.wiki-article [data-wiki]').evaluate(el=>getComputedStyle(el).cursor==='pointer'),'Wiki link lacks hand cursor');
     await page.screenshot({path:`/tmp/wiki-layout-${width}-${theme}.png`,animations:'disabled'});
   }
 }
