@@ -26,8 +26,14 @@ move into menus. Hover over icon buttons to see their purpose.
 - Use Wiki for persistent knowledge and Activity for the project event history.
 - Open your account menu for My tickets, My settings, appearance, language and
   sign-out. My tickets collects your open assignments across projects.
-- Open More actions for project management and, when permitted, agent management,
-  installation settings, triage chat and webhook deliveries.
+- More actions separates **Project** actions (selection, project settings and
+  project triage chat) from **Site** actions (project management and, when
+  permitted, installation settings, agent management and webhook deliveries).
+
+In **My settings**, choose which quick assignment buttons appear in New ticket
+and ticket details. This preference applies immediately to your account in this
+browser. Clear all to hide the buttons, or use **Use defaults** to restore the
+standard choices. The full assignment field remains available.
 
 Choose English or Dutch from the account menu. This changes the browser
 interface, not existing tickets, project names or wiki text. Installation language

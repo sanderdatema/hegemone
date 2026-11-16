@@ -167,6 +167,26 @@ def _end_run(conn, request, phase: str, now: float):
                      (phase,now,request['run_id']))
 
 
+def _return_to_queue(conn, request):
+    """An ended execution must not leave its task marked as active work."""
+    item = items.get(conn,request['item_id'])
+    if item is None or item['archived_at'] or projects.is_archived(conn,item['project_id']):
+        return
+    state = conn.execute('SELECT grp FROM states WHERE id=?',(item['state_id'],)).fetchone()
+    # Preserve explicit workflow decisions, including waiting and terminal states.
+    if state is None or state['grp'] != 'started':
+        return
+    target = conn.execute(
+        "SELECT id FROM states WHERE project_id=? AND grp='unstarted' AND blocks_work=0 "
+        'ORDER BY sort_order,id LIMIT 1',(item['project_id'],)).fetchone()
+    if target is None:
+        # Never prevent stop/recovery or invent project columns to repair a workflow.
+        _log(conn,request,'queue_state_missing',from_state_id=item['state_id'])
+        return
+    items.update(conn,item['id'],{'state_id':target['id']})
+    _log(conn,request,'returned_to_queue',from_state_id=item['state_id'],to_state_id=target['id'])
+
+
 def _blocked(conn, request, *, kind: str, reason: str, missing=(), responsible=None,
              resume_condition: str, question_id=None, retry_at=None, now=None):
     value = {'kind':kind,'reason':reason,'missing':sorted(set(missing)),
@@ -178,6 +198,7 @@ def _blocked(conn, request, *, kind: str, reason: str, missing=(), responsible=N
     updated = _update(conn, request, status='blocked', block_kind=kind, reason=reason,
                       missing_requirements=_json(value['missing']), responsible=responsible,
                       resume_condition=resume_condition, block_digest=digest, question_id=question_id, retry_at=retry_at)
+    _return_to_queue(conn,updated)
     _log(conn, updated, 'blocked', kind=kind, reason=reason, missing=value['missing'], responsible=responsible)
     return updated
 
@@ -470,6 +491,7 @@ def stop(conn, request, user, *, nonce: str, fence: int, now=None):
                            resume_condition=message('question_or_policy'),now=now)
         return observe_item(conn,updated['item_id'],now=now)
     updated = _update(conn,request,status='cancelled',reason=message('owner_stopped'))
+    _return_to_queue(conn,updated)
     _log(conn,updated,'stopped',actor_id=user['id'])
     return updated
 
@@ -489,6 +511,7 @@ def resume(conn, request, *, actor_id: int, reason: str, worker_stopped: bool, e
     if gate or item['assignee_id']!=request['user_id'] or comments.open_questions_for_item(conn,item['id']):
         raise ExecutionConflict(gate or 'Assignment or human input prevents resuming')
     _end_run(conn,request,'stopped',time.time())
+    _return_to_queue(conn,request)
     updated = _pending(conn,request,item,config)
     _log(conn,updated,'resumed',actor_id=actor_id,reason=reason)
     return updated

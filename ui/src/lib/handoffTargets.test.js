@@ -63,3 +63,34 @@ it('geeft de vorige configureerbare agent voorrang zonder dubbele knop', () => {
   expect(preferredHandoffTarget(targets, { ...current, assignee: 'someone-else' }, me).handle).toBe('builder');
   expect(preferredHandoffTarget([], current, me)).toBeNull();
 });
+
+import { quickAssignmentSelection, quickAssignmentKey } from './quickAssignment.js';
+
+it('applies explicit selections to active agents while preserving assignment safeguards', () => {
+  const roster = [
+    { handle: 'builder', kind: 'agent', agent_type: 'coding' },
+    { handle: 'receiver', kind: 'agent', agent_type: 'hermes' },
+    { handle: 'sleeping', kind: 'agent', active: false },
+    me,
+  ];
+  const selected = ['receiver', 'sleeping', me.handle, 'missing'];
+  expect(handoffTargets({}, me, roster, selected).map(t => t.handle)).toEqual(['receiver']);
+  expect(handoffTargets({ assignee: 'receiver' }, me, roster, selected)).toEqual([]);
+  expect(handoffTargets(item, me, roster, [])).toEqual([]);
+  expect(handoffTargets({}, { ...me, kind: 'agent' }, roster, selected)).toEqual([]);
+  for (const extra of [{ locked_at: 'now' }, { archived_at: 'now' }]) {
+    expect(handoffTargets(extra, me, roster, selected)).toEqual([]);
+  }
+});
+
+it('loads browser preferences per account and preserves defaults for invalid storage', () => {
+  const storage = { getItem: key => key === quickAssignmentKey('person') ? '["builder"]' : null };
+  expect(quickAssignmentSelection('person', {}, storage)).toEqual(['builder']);
+  expect(quickAssignmentSelection('other', {}, storage)).toBeNull();
+  expect(quickAssignmentSelection('person', { person: [] }, storage)).toEqual([]);
+  expect(quickAssignmentSelection('person', { person: null }, storage)).toBeNull();
+  for (const value of ['invalid', '{}', '[1]']) {
+    expect(quickAssignmentSelection('person', {}, { getItem: () => value })).toBeNull();
+  }
+  expect(quickAssignmentSelection('person', {}, { getItem: () => { throw Error('Unavailable'); } })).toBeNull();
+});

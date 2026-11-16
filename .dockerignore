@@ -279,6 +279,7 @@
 !ui/src/lib/projectMessages.js
 !ui/src/lib/projectPicker.js
 !ui/src/lib/question.js
+!ui/src/lib/quickAssignment.js
 !ui/src/lib/relatedList.js
 !ui/src/lib/routing.js
 !ui/src/lib/segmentedControl.js

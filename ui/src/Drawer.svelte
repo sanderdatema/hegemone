@@ -1,4 +1,5 @@
 <script>
+  import { quickAssignmentPreferences, quickAssignmentSelection } from "./lib/quickAssignment.js";
   import { t as uiText } from "./lib/i18n.js";
   import { t, locale } from "./lib/i18n.js";
   import PickerSuggestions from "./PickerSuggestions.svelte";
@@ -317,7 +318,7 @@
     }
   });
 
-  let quickHandoffs = $derived(handoffTargets(item, me, users));
+  let quickHandoffs = $derived(handoffTargets(item, me, users, quickAssignmentSelection(me?.handle, $quickAssignmentPreferences)));
   let triageNote = $derived(triagePendingNote(item, $locale));
 
   async function patch(body) {

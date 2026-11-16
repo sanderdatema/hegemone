@@ -16,10 +16,23 @@
     hasChanges,
   } from "./lib/userSettings.js";
   import { readPersisted, writePersisted } from "./lib/viewState.js";
+  import {
+    quickAssignmentPreferences, quickAssignmentSelection, setQuickAssignmentSelection,
+    activeAssignmentAgents, defaultQuickAssignmentAgent,
+  } from "./lib/quickAssignment.js";
   import { NOTIFY_STORAGE_KEY } from "./lib/notifications.js";
   import { ArrowLeft, Check, Webhook, Eye, EyeOff, Send, Info, Bell } from "@lucide/svelte";
 
-  let { me, onback } = $props();
+  let { me, users = [], onback } = $props();
+
+  let assignmentAgents = $derived(activeAssignmentAgents(users));
+  let assignmentSelection = $derived(quickAssignmentSelection(me?.handle, $quickAssignmentPreferences));
+  let selectedAssignmentHandles = $derived(assignmentSelection ?? assignmentAgents.filter(defaultQuickAssignmentAgent).map((user) => user.handle));
+
+  function toggleAssignmentAgent(handle, checked) {
+    const handles = selectedAssignmentHandles.filter((value) => value !== handle);
+    setQuickAssignmentSelection(me?.handle, checked ? [...handles, handle] : handles);
+  }
 
   // Browser-meldingen (BETON-368): puur client-side, geen serverveld — de
   // voorkeur staat in localStorage (spiegelt readPersisted/writePersisted uit
@@ -255,7 +268,24 @@
       </div>
     </section>
 
-    {#if me?.kind === "human"}<ModelClasses />{/if}
+    {#if me?.kind === "human"}
+      <section class="us-sec" aria-label={$t("preferences.quickAssignment")}>
+        <div class="us-head">{$t("preferences.quickAssignment")}</div>
+        <span class="us-note">{$t("preferences.quickAssignmentNote")}</span>
+        {#each assignmentAgents as agent (agent.handle)}
+          <label class="assignment-option">
+            <input type="checkbox" checked={selectedAssignmentHandles.includes(agent.handle)}
+              onchange={(event) => toggleAssignmentAgent(agent.handle, event.currentTarget.checked)} />
+            <span>{agent.display_name || agent.handle} <span class="us-hint">@{agent.handle}</span></span>
+          </label>
+        {:else}
+          <p class="us-hint">{$t("preferences.quickAssignmentEmpty")}</p>
+        {/each}
+        <button type="button" class="sm" disabled={assignmentSelection === null}
+          onclick={() => setQuickAssignmentSelection(me?.handle, null)}>{$t("preferences.quickAssignmentReset")}</button>
+      </section>
+      <ModelClasses />
+    {/if}
 
     <div class="us-actions">
       <button class="primary sm" onclick={save} disabled={!dirty || busy}>
@@ -269,6 +299,8 @@
 </div>
 
 <style>
+  .assignment-option { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
+  .assignment-option .us-hint { display: inline; }
   .us-top {
     display: flex;
     align-items: center;

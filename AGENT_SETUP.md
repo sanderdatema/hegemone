@@ -160,6 +160,16 @@ bodies. The returned increasing `fence` rejects old attempts after recovery.
    verified ticket through the existing ticket workflow.
 
 A capability block records what is missing, who must act and the resume condition.
+When a managed execution blocks or acknowledges a stop, a ticket in the `started`
+state group returns to the first nonblocking `unstarted` state in project order.
+Custom column names and tickets already in other state groups are preserved.
+Archived tickets and projects retain their immutable ticket content while the
+execution can still record a stop or recovery block.
+A recovery block also returns the ticket to this queue, but still requires human
+recovery before another worker can claim it. A stop request keeps its current
+state until acknowledged. If the project has no eligible queue state, stopping
+and recovery still take effect and record an `execution.queue_state_missing`
+event; restore an eligible project state before resuming work.
 Unchanged blocks do not add comments or attempts. Transport retries are bounded
 and allowed only before work started. Once work may have run, a lost lease creates
 a recovery block rather than replaying uncertain effects. Human-only

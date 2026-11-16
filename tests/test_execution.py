@@ -400,3 +400,115 @@ def test_human_can_see_and_recover_a_lost_owner_without_an_executor_poll(client,
         'previous_worker_stopped':True,'previous_effects_reviewed':True})
     assert response.status_code==200,response.text
     assert response.json()['status']=='pending'
+
+
+def test_task_block_returns_to_custom_queue_once_without_reclaiming(client,auth,conn,configured):
+    work=configured
+    conn.execute("UPDATE states SET name='Ready for work' WHERE name='todo'")
+    conn.execute("UPDATE states SET name='Working' WHERE name='in-progress'")
+    claimed=claim(client,work).json()
+    assert start(client,work,claimed).status_code==200
+    assert context(client,work)['item']['state']=='Working'
+    for _ in range(2):
+        response=blocked(client,work,kind='task',fence=claimed['fence'],reason='An upstream artifact is required.')
+        assert response.status_code==200,response.text
+        assert poll(client,work).json()['requests'][0]['status']=='blocked'
+    value=context(client,work)
+    assert value['item']['state']=='Ready for work'
+    assert value['execution']['reason']=='An upstream artifact is required.'
+    assert value['execution']['resume_condition']=='Restore access for the existing profile.'
+    assert value['attempts'][0]['ended_at'] is not None
+    assert value['comments']==[]
+    assert conn.execute("SELECT COUNT(*) FROM events WHERE type='execution.returned_to_queue'").fetchone()[0]==1
+    assert conn.execute('SELECT COUNT(*) FROM execution_requests').fetchone()[0]==1
+    assert claim(client,work).status_code==409
+
+
+def test_stopping_keeps_started_until_worker_acknowledges(client,auth,configured):
+    work=configured
+    claimed=claim(client,work).json()
+    assert start(client,work,claimed).status_code==200
+    assert client.patch(f"/api/v1/items/{work['ref']}",headers=auth,json={'title':'Changed task'}).status_code==200
+    assert context(client,work)['execution']['status']=='stopping'
+    assert context(client,work)['item']['state']=='in-progress'
+    response=client.post(path(work,'stop'),headers=work['headers'],json={'fence':claimed['fence']})
+    assert response.status_code==200,response.text
+    assert context(client,work)['item']['state']=='todo'
+    assert context(client,work)['execution']['status']=='pending'
+
+
+def test_explicit_stop_returns_to_queue_without_starting_another_request(client,conn,configured):
+    work=configured
+    claimed=claim(client,work).json()
+    assert start(client,work,claimed).status_code==200
+    for _ in range(2):
+        response=client.post(path(work,'stop'),headers=work['headers'],json={'fence':claimed['fence']})
+        assert response.status_code==200,response.text
+    assert context(client,work)['item']['state']=='todo'
+    assert poll(client,work).json()['requests'][0]['status']=='cancelled'
+    assert conn.execute('SELECT COUNT(*) FROM execution_requests').fetchone()[0]==1
+
+
+def test_recovery_returns_to_queue_but_keeps_prior_owner_fenced(client,auth,conn,configured):
+    work=configured
+    claimed=claim(client,work).json()
+    assert start(client,work,claimed).status_code==200
+    conn.execute('UPDATE execution_runs SET lease_until=0')
+    assert poll(client,work).json()['requests'][0]['block_kind']=='recovery'
+    assert context(client,work)['item']['state']=='todo'
+    assert claim(client,work).status_code==409
+    response=client.post(path(work,'resume'),headers=auth,json={
+        'reason':'Reviewed prior effects after confirming the worker stopped.',
+        'previous_worker_stopped':True,'previous_effects_reviewed':True})
+    assert response.status_code==200,response.text
+    assert context(client,work)['item']['state']=='todo'
+    assert start(client,work,claimed).status_code==409
+    fresh=claim(client,work).json()
+    assert start(client,work,fresh).status_code==200
+    assert context(client,work)['item']['state']=='in-progress'
+
+
+@pytest.mark.parametrize('state',['backlog','done','cancelled'])
+def test_block_preserves_explicit_nonstarted_state(client,auth,configured,state):
+    work=configured
+    claimed=claim(client,work).json()
+    assert start(client,work,claimed).status_code==200
+    changed=client.patch(f"/api/v1/items/{work['ref']}",headers=auth,json={'state':state})
+    assert changed.status_code==200,changed.text
+    response=blocked(client,work,kind='task',fence=claimed['fence'])
+    assert response.status_code==200,response.text
+    assert context(client,work)['item']['state']==state
+
+
+def test_missing_queue_does_not_prevent_recording_stop(client,conn,configured):
+    work=configured
+    claimed=claim(client,work).json()
+    assert start(client,work,claimed).status_code==200
+    conn.execute("UPDATE states SET blocks_work=1 WHERE grp='unstarted'")
+    response=client.post(path(work,'stop'),headers=work['headers'],json={'fence':claimed['fence']})
+    assert response.status_code==200,response.text
+    value=context(client,work)
+    assert value['execution']['status']=='cancelled'
+    assert value['attempts'][0]['ended_at'] is not None
+    assert value['item']['state']=='in-progress'
+    assert conn.execute("SELECT COUNT(*) FROM events WHERE type='execution.queue_state_missing'").fetchone()[0]==1
+
+
+@pytest.mark.parametrize('lost_owner',[False,True])
+def test_archived_project_keeps_task_immutable_without_preventing_stop_or_recovery(client,auth,conn,configured,lost_owner):
+    work=configured
+    claimed=claim(client,work).json()
+    assert start(client,work,claimed).status_code==200
+    assert client.delete('/api/v1/projects/SOS',headers=auth).status_code==204
+    if lost_owner:
+        conn.execute('UPDATE execution_runs SET lease_until=0')
+        response=poll(client,work)
+        assert response.status_code==200,response.text
+        assert response.json()['requests'][0]['block_kind']=='recovery'
+    else:
+        response=client.post(path(work,'stop'),headers=work['headers'],json={'fence':claimed['fence']})
+        assert response.status_code==200,response.text
+        assert response.json()['status']=='blocked'
+    value=context(client,work)
+    assert value['item']['state']=='in-progress'
+    assert value['attempts'][0]['ended_at'] is not None

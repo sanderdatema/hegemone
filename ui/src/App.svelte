@@ -1665,34 +1665,47 @@
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
           <DropdownMenu.Content class="tb-menu" align="end" sideOffset={6}>
-            <DropdownMenu.Item class="tb-menu-item" onSelect={toggleSelectMode}>
-              <ListChecks size={15} /> {$t(selectMode ? "nav.endSelection" : "nav.selectMany")}
-            </DropdownMenu.Item>
-            {#if current}
-              <DropdownMenu.Item class="tb-menu-item" onSelect={() => openOverlaySoon("settings")}>
-                <Settings size={15} /> {$t("nav.projectSettings")}
+            <DropdownMenu.Group>
+              <DropdownMenu.GroupHeading class="tb-menu-head">{$t("nav.projectActions")}</DropdownMenu.GroupHeading>
+              <DropdownMenu.Item class="tb-menu-item" onSelect={toggleSelectMode}>
+                <ListChecks size={15} /> {$t(selectMode ? "nav.endSelection" : "nav.selectMany")}
               </DropdownMenu.Item>
-            {/if}
-            <DropdownMenu.Item class="tb-menu-item" onSelect={() => openOverlaySoon("projects")}>
-              <FolderCog size={15} /> {$t("nav.projects")}
-            </DropdownMenu.Item>
-            {#if canManageInstallation(me)}
-              <DropdownMenu.Item class="tb-menu-item" onSelect={() => openOverlaySoon("installation")}>
-                <Settings size={15} /> {$t("installation.title")}
+              {#if current}
+                <DropdownMenu.Item class="tb-menu-item" onSelect={() => openOverlaySoon("settings")}>
+                  <Settings size={15} /> {$t("nav.projectSettings")}
+                </DropdownMenu.Item>
+                {#if me?.kind === "human"}
+                  <DropdownMenu.Item class="tb-menu-item" onSelect={() => openOverlaySoon("chat")}>
+                    <MessageSquare size={15} /> {$t("nav.triage")}
+                  </DropdownMenu.Item>
+                {/if}
+              {/if}
+            </DropdownMenu.Group>
+            <div class="tb-menu-sep" role="separator"></div>
+            <DropdownMenu.Group>
+              <DropdownMenu.GroupHeading class="tb-menu-head">{$t("nav.siteActions")}</DropdownMenu.GroupHeading>
+              <DropdownMenu.Item class="tb-menu-item" onSelect={() => openOverlaySoon("projects")}>
+                <FolderCog size={15} /> {$t("nav.projects")}
               </DropdownMenu.Item>
-            {/if}
-            {#if me?.kind === "human"}
-              <div class="tb-menu-sep" role="separator"></div>
-              <DropdownMenu.Item class="tb-menu-item" onSelect={() => openOverlaySoon("agents")}>
-                <Bot size={15} /> {$t("nav.agents")}
-              </DropdownMenu.Item>
-              <DropdownMenu.Item class="tb-menu-item" onSelect={() => openOverlaySoon("chat")}>
-                <MessageSquare size={15} /> {$t("nav.triage")}
-              </DropdownMenu.Item>
-              <DropdownMenu.Item class="tb-menu-item" onSelect={() => openOverlaySoon("deliveries")}>
-                <Webhook size={15} /> {$t("nav.deliveries")}
-              </DropdownMenu.Item>
-            {/if}
+              {#if canManageInstallation(me)}
+                <DropdownMenu.Item class="tb-menu-item" onSelect={() => openOverlaySoon("installation")}>
+                  <Settings size={15} /> {$t("installation.title")}
+                </DropdownMenu.Item>
+              {/if}
+              {#if me?.kind === "human"}
+                <DropdownMenu.Item class="tb-menu-item" onSelect={() => openOverlaySoon("agents")}>
+                  <Bot size={15} /> {$t("nav.agents")}
+                </DropdownMenu.Item>
+                {#if !current}
+                  <DropdownMenu.Item class="tb-menu-item" onSelect={() => openOverlaySoon("chat")}>
+                    <MessageSquare size={15} /> {$t("nav.triage")}
+                  </DropdownMenu.Item>
+                {/if}
+                <DropdownMenu.Item class="tb-menu-item" onSelect={() => openOverlaySoon("deliveries")}>
+                  <Webhook size={15} /> {$t("nav.deliveries")}
+                </DropdownMenu.Item>
+              {/if}
+            </DropdownMenu.Group>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
@@ -2418,7 +2431,7 @@
   {#if hasOverlay(overlays, "userSettings") && me}
     <DrawerDialog label={$t("nav.mySettings")} width="min(680px, 92vw)" onclose={() => closeOverlayNamed("userSettings")}>
       <div class="usersettings-panel">
-        <UserSettings {me} onback={() => closeOverlayNamed("userSettings")} />
+        <UserSettings {me} {users} onback={() => closeOverlayNamed("userSettings")} />
       </div>
     </DrawerDialog>
   {/if}

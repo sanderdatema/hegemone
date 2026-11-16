@@ -1,4 +1,5 @@
 <script>
+  import { quickAssignmentPreferences, quickAssignmentSelection } from "./lib/quickAssignment.js";
   import { t, locale } from "./lib/i18n.js";
   import PickerSuggestions from "./PickerSuggestions.svelte";
   import { textPicker, relationPicker, toggleSelection } from "./lib/inputPickers.js";
@@ -70,7 +71,7 @@
   let stateName = $state(defaultState);
   let workload = $state(initial.workload ?? "");
   let assignee = $state("");
-  let assignShortcuts = $derived(handoffTargets({ assignee }, me, users));
+  let assignShortcuts = $derived(handoffTargets({ assignee }, me, users, quickAssignmentSelection(me?.handle, $quickAssignmentPreferences)));
   let dueDate = $state("");
   let deferUntil = $state("");
   let selectedLabels = $state([...(initial.labels ?? [])]);

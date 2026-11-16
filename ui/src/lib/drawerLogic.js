@@ -1,3 +1,4 @@
+import { activeAssignmentAgents, defaultQuickAssignmentAgent } from "./quickAssignment.js";
 // Pure niet-DOM-logica voor Drawer.svelte (BETON-185): relatie-groepering,
 // caret-invoeging en de verrijk-melding. De component houdt de runes/DOM; deze
 // functies krijgen state als argument en geven een nieuwe waarde terug.
@@ -674,13 +675,13 @@ export function followChoiceOps(choice, { following = false, muted = false } = {
 }
 
 // Snelle overdracht gebruikt de ingestelde coding-agents, met legacyqueue-compatibiliteit.
-export function handoffTargets(item, me, users = []) {
+export function handoffTargets(item, me, users = [], selection = null) {
   if (!item || me?.kind !== "human" || !me.handle || item.locked_at || item.archived_at) return [];
-  const activeAgents = users.filter((u) => u.kind === "agent" && u.active !== false && u.active !== 0);
+  const activeAgents = activeAssignmentAgents(users);
   const previous = item.assignee === me.handle ? item.previous_assignee : null;
-  const coding = activeAgents.filter((u) => u.handle !== item.assignee && (u.agent_type === "coding" || u.handle === "coding-agent"));
+  const coding = activeAgents.filter((u) => u.handle !== item.assignee && (selection === null ? defaultQuickAssignmentAgent(u) : selection.includes(u.handle)));
   const targets = coding.map((u) => ({ handle: u.handle, label: u.handle === previous && u.handle !== "coding-agent" ? `↩ @${u.handle}` : `→ ${u.handle}` }));
-  if (previous && !targets.some((t) => t.handle === previous) && activeAgents.some((u) => u.handle === previous)) {
+  if (selection === null && previous && !targets.some((t) => t.handle === previous) && activeAgents.some((u) => u.handle === previous)) {
     targets.push({ handle: previous, label: `↩ @${previous}` });
   }
   return targets;
