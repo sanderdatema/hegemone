@@ -2140,6 +2140,7 @@
               <!-- BETON-360: alles in deze kolom selecteren/deselecteren. -->
               <button
                 class="col-select-all"
+                aria-pressed={col.items.every((i) => selectedRefs.includes(i.ref)) ? true : col.items.some((i) => selectedRefs.includes(i.ref)) ? "mixed" : false}
                 title={$uiText("board.selectColumn", {column: col.name})}
                 aria-label={$uiText("board.selectColumn", {column: col.name})}
                 onclick={(e) => {
@@ -2181,16 +2182,18 @@
               ondragstart={() => (dragRef = item.ref)}
               ondragend={endDrag}
               onclick={(e) => onCardClick(item.ref, e)}
-              onkeydown={(e) => e.key === "Enter" && onCardClick(item.ref, e)}
-              tabindex="0"
+              onkeydown={(e) => e.target === e.currentTarget && e.key === "Enter" && onCardClick(item.ref, e)}
+              tabindex={selectMode ? -1 : 0}
             >
               <div class="card-head">
                 {#if selectMode}
-                  <span
-                    class="card-check"
-                    class:on={selectedRefs.includes(item.ref)}
-                    aria-hidden="true"
-                  ></span>
+                  <input
+                    type="checkbox"
+                    class="selection-checkbox"
+                    checked={selectedRefs.includes(item.ref)}
+                    aria-label={`${$t("list.select")} ${item.ref}`}
+                    onclick={(e) => { e.stopPropagation(); selectWithRange(item.ref, e); }}
+                  />
                 {/if}
                 <span class="ref">{item.ref}</span>
                 {#if item.archived_at}

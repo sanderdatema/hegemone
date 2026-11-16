@@ -103,15 +103,8 @@
   }
   function onRowClick(e, ref) {
     // Een statuskeuze opent niet tegelijkertijd de drawer.
-    if (e.target.closest("button, [role=combobox]")) return;
+    if (e.target.closest("button, input, [role=combobox]")) return;
     selectMode ? ontoggle(ref, e) : onopen(ref);
-  }
-  function onRowKey(e, ref) {
-    if (e.target !== e.currentTarget) return;
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      selectMode ? ontoggle(ref, e) : onopen(ref);
-    }
   }
 </script>
 
@@ -135,6 +128,7 @@
             <span class="sr-only">{$t("list.select")}</span>
             <button
               class="row-check-all"
+              aria-pressed={visibleRows.length > 0 && visibleRows.every((i) => selectedRefs.includes(i.ref)) ? true : visibleRows.some((i) => selectedRefs.includes(i.ref)) ? "mixed" : false}
               title={$t("list.selectPage")}
               aria-label={$t("list.selectPage")}
               onclick={() => ontoggleall(visibleRows.map((i) => i.ref))}
@@ -172,16 +166,14 @@
           class="list-row"
           class:selected={selectMode && selectedRefs.includes(item.ref)}
           class:archived={item.archived_at}
-          tabindex="0"
-          role="button"
           data-ref={item.ref}
-          aria-label={$t("list.openItem", {ref:item.ref,title:item.title})}
           onclick={(e) => onRowClick(e, item.ref)}
-          onkeydown={(e) => onRowKey(e, item.ref)}
         >
           {#if selectMode}
             <td class="sel-col">
-              <span class="row-check" class:on={selectedRefs.includes(item.ref)} aria-hidden="true"></span>
+              <input type="checkbox" class="selection-checkbox" checked={selectedRefs.includes(item.ref)}
+                aria-label={`${$t("list.select")} ${item.ref}`}
+                onclick={(e) => { e.stopPropagation(); ontoggle(item.ref, e); }} />
             </td>
           {/if}
           <td class="ref-cell">
@@ -191,7 +183,13 @@
           <td class="title-cell">
             <!-- BETON-460: iconen inline achter de titel; alleen de titel kapt af. -->
             <div class="title-line">
-              <span class="title-text" title={item.title}>{item.title}</span>
+              {#if selectMode}
+                <span class="title-text" title={item.title}>{item.title}</span>
+              {:else}
+                <button class="title-text title-open" title={item.title}
+                  aria-label={$t("list.openItem", {ref:item.ref,title:item.title})}
+                  onclick={(e) => { e.stopPropagation(); onopen(item.ref); }}>{item.title}</button>
+              {/if}
               <DueBadge due={item.due_date} />
               {#if item.has_open_question}
                 <!-- BETON-275: open-vraag-markering. -->
@@ -514,6 +512,17 @@
     background: var(--accent);
     border-color: var(--accent);
   }
+  .title-open {
+    border: none;
+    background: none;
+    padding: 0;
+    min-height: unset;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    border-radius: 2px;
+  }
+  .title-open:hover { color: var(--accent); }
   .sel-col {
     width: 34px;
     text-align: center;

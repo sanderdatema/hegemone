@@ -82,7 +82,7 @@
 
   --text: light-dark(#161a1e, #e9edf1);
   --text-secondary: light-dark(#56606a, #9aa5b0);
-  --text-tertiary: light-dark(#8a949d, #6b7681);
+  --text-tertiary: light-dark(#58636d, #a0abb6);
 
   /* Accent: warm oranje/rood (BETON-17). Licht #d1441a haalt AA-contrast
      (≈4.6:1) met witte tekst op de primary-knop. Donker: helderder oranje
@@ -2466,4 +2466,15 @@ button.danger-quiet:hover {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+}
+
+/* Native selection controls expose checked state to assistive technology. */
+.selection-checkbox {
+  appearance: auto;
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  margin: 0 6px 0 0;
+  flex: 0 0 auto;
+  cursor: pointer;
 }
