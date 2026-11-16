@@ -52,12 +52,12 @@ export default async function editLayoutSettings(page, base = 'http://127.0.0.1:
     await page.locator('.dw-title-area .primary').click();
     await title.waitFor();
     assert(await title.innerText() === 'Draft title' && writes === 1, 'Explicit title save failed');
-    await page.locator('.desc.editable').click({position:{x:3,y:3}});
+    await page.getByRole('button',{name:language === 'en' ? 'Edit description' : 'Omschrijving bewerken',exact:true}).click();
     await page.locator('.desc-editor textarea').fill('Draft description');
     await title.click();
     assert(await page.locator('.desc-editor textarea').inputValue() === 'Draft description' && writes === 1, 'Description blur saved or closed');
     await page.locator('.desc-editor .primary').click();
-    await page.locator('.desc.editable').waitFor();
+    await page.locator('.desc.md').waitFor();
     assert(writes === 2, 'Explicit description save failed');
     await page.locator('.title-edit').press('Escape');
     const show = page.getByRole('button', {name:language === 'en' ? 'Show' : 'Toon', exact:true});
