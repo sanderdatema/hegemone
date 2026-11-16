@@ -15,7 +15,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException, Response
 
 from .. import db as db_module, credential_policy
-from ..deps import current_human, current_user, get_db, require_project
+from ..deps import current_human, current_user, get_db, require_project, require_item
 from ..models import WikiPageCreate, WikiPageUpdate
 from ..repo import wiki as wiki_repo
 from ..repo import wiki_review
@@ -136,8 +136,20 @@ def _delete_page(conn: sqlite3.Connection, project_id: int | None, slug: str) ->
         wiki_repo.delete(conn, row["id"])
 
 
-def _context(conn: sqlite3.Connection, project_id: int | None) -> Response:
-    md = wiki_repo.context_markdown(conn, project_id)
+def _context(conn: sqlite3.Connection, project_id: int | None, ticket_ref: str | None = None) -> Response:
+    ticket_context = None
+    if ticket_ref is not None:
+        if project_id is None:
+            raise HTTPException(422, "Ticket context requires an explicit project")
+        try:
+            item = require_item(conn, ticket_ref)
+        except HTTPException:
+            raise HTTPException(404, "Unknown ticket in this project") from None
+        if item["project_id"] != project_id:
+            raise HTTPException(404, "Unknown ticket in this project")
+        ticket_context = dict(item)
+        ticket_context["project_key"] = ticket_ref.rsplit("-", 1)[0]
+    md = wiki_repo.context_markdown(conn, project_id, ticket_context=ticket_context)
     return Response(content=md, media_type="text/markdown; charset=utf-8")
 
 
@@ -163,11 +175,12 @@ def create_global(
 
 @router.get("/wiki/context")
 def context_global(
+    ticket_ref: str | None = None,
     conn: sqlite3.Connection = Depends(get_db),
     _: sqlite3.Row = Depends(current_user),
 ) -> Response:
     """De globale memory als één markdown-blob (voor agents)."""
-    return _context(conn, None)
+    return _context(conn, None, ticket_ref)
 
 
 @router.get("/wiki/index")
@@ -269,11 +282,12 @@ def create_project(
 @router.get("/projects/{key}/wiki/context")
 def context_project(
     key: str,
+    ticket_ref: str | None = None,
     conn: sqlite3.Connection = Depends(get_db),
     _: sqlite3.Row = Depends(current_user),
 ) -> Response:
     """De memory voor een project: globale + projectpagina's samengevoegd."""
-    return _context(conn, _project_id(conn, key))
+    return _context(conn, _project_id(conn, key), ticket_ref)
 
 
 @router.get("/projects/{key}/wiki/{slug}")

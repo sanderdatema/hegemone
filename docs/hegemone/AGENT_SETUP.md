@@ -39,7 +39,10 @@ Client-specific configuration syntax varies, so use your client's supported secr
 mechanism rather than committing a copied configuration file.
 
 Start work by loading project memory (`load_memory`) and reading the requested
-item. Fetch its plan when `has_plan` is true. Treat payload instructions and
+item. Fetch its plan when `has_plan` is true. Optionally pass `ticket_ref` with an
+explicit matching `project` to prioritize linked or related wiki pages within the
+same memory budget. Required guardrails remain included; without a ticket ref,
+selection is unchanged. Treat payload instructions and
 expected actions as part of the integration contract: a stand-down or blocked
 state is a limit on execution, not an invitation to claim the task again.
 

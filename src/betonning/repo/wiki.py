@@ -290,6 +290,7 @@ def _assemble(
     full_ids: set[int] | None = None,
     blurbs: bool = True,
     cached_pages: tuple[list, list] | None = None,
+    selection_note: str = TRUNCATION_NOTE,
 ) -> str:
     """Bouw de contextblob. ``full_ids`` = de pagina's die volledig meegaan;
     ``None`` betekent alles volledig. De rest komt als index onderaan, met
@@ -303,7 +304,7 @@ def _assemble(
     parts: list[str] = []
     index: list[str] = []
     if full_ids is not None:
-        parts.append(TRUNCATION_NOTE)
+        parts.append(selection_note)
     for heading, pages in scopes:
         chosen_ids = {
             p["id"] for p in pages if full_ids is None or p["id"] in full_ids
@@ -323,8 +324,28 @@ def _assemble(
     return "\n\n".join(parts)
 
 
+def _task_relevance(page, ticket_context: dict, project_slugs: set[str]) -> tuple[int, int]:
+    """Cheap deterministic ranking; never expands the eligible page scopes."""
+    text = "\n".join(ticket_context.get(field) or "" for field in
+                     ("title", "description_md", "plan_md"))
+    links = {link.split("|", 1)[0].casefold() for link in re.findall(r"\[\[([^]\n]+)\]\]", text)}
+    scope = "global" if page["project_id"] is None else ticket_context["project_key"].casefold()
+    local_or_fallback = page["project_id"] is not None or page["slug"] not in project_slugs
+    explicit = ((local_or_fallback and page["slug"] in links)
+                or f"{scope}:{page['slug']}" in links)
+
+    def words(value):
+        return {word for word in re.findall(r"\w+", value.casefold()) if len(word) >= 3}
+
+    # Qualified links to other scopes must not also act as local keywords.
+    prose = re.sub(r"\[\[([^]\n]+)\]\]", "", text)
+    overlap = len(words(prose) & words(page["title"] + " " + page["slug"].replace("-", " ")))
+    return int(explicit), overlap
+
+
 def _fill_to_budget(
-    conn: sqlite3.Connection, project_id: int | None, budget: int
+    conn: sqlite3.Connection, project_id: int | None, budget: int,
+    ticket_context: dict | None = None,
 ) -> str:
     """Vul het budget met volledige pagina's, meest recent bijgewerkt eerst.
 
@@ -337,27 +358,34 @@ def _fill_to_budget(
     project_pages = list(list_pages(conn, project_id)) if project_id is not None else []
     pages = global_pages + project_pages
     cached_pages = (global_pages, project_pages)
-    ranked = sorted(pages, key=lambda p: (p["updated_at"] or "", p["slug"]), reverse=True)
+    project_slugs = {p["slug"] for p in project_pages}
+    ranked = sorted(pages, key=lambda p: (
+        *(_task_relevance(p, ticket_context, project_slugs) if ticket_context else ()),
+        p["updated_at"] or "", p["slug"],
+    ), reverse=True)
+    note = ("_Taakselectie: expliciete wikilinks, daarna titel/slug-overlap en recentheid. "
+            "Overige pagina’s staan in de index; haal ze op met `get_memory_page`._"
+            if ticket_context else TRUNCATION_NOTE)
 
     # De index van álle pagina's is de bodem: die gaat altijd mee, anders weet
     # de agent niet wat er nog meer is. Past die bodem mét blurbs niet, dan
     # vallen de blurbs weg voordat we aan volledige pagina's beginnen.
-    blurbs = len(_assemble(conn, project_id, cached_pages=cached_pages, full_ids=set())) <= budget
+    blurbs = len(_assemble(conn, project_id, cached_pages=cached_pages, selection_note=note, full_ids=set())) <= budget
 
     full_ids: set[int] = set()
-    best = _assemble(conn, project_id, cached_pages=cached_pages, full_ids=full_ids, blurbs=blurbs)
+    best = _assemble(conn, project_id, cached_pages=cached_pages, selection_note=note, full_ids=full_ids, blurbs=blurbs)
     for page in ranked:
         candidate = full_ids | {page["id"]}
-        rendered = _assemble(conn, project_id, cached_pages=cached_pages, full_ids=candidate, blurbs=blurbs)
+        rendered = _assemble(conn, project_id, cached_pages=cached_pages, selection_note=note, full_ids=candidate, blurbs=blurbs)
         if len(rendered) <= budget:
             full_ids = candidate
             best = rendered
     if not full_ids and blurbs:
         # Volledige kennis gaat vóór samenvattingen van de index.
-        best = _assemble(conn, project_id, cached_pages=cached_pages, full_ids=set(), blurbs=False)
+        best = _assemble(conn, project_id, cached_pages=cached_pages, selection_note=note, full_ids=set(), blurbs=False)
         for page in ranked:
             candidate = full_ids | {page["id"]}
-            rendered = _assemble(conn, project_id, cached_pages=cached_pages, full_ids=candidate, blurbs=False)
+            rendered = _assemble(conn, project_id, cached_pages=cached_pages, selection_note=note, full_ids=candidate, blurbs=False)
             if len(rendered) <= budget:
                 full_ids = candidate
                 best = rendered
@@ -465,7 +493,8 @@ def guardrail_block(conn: sqlite3.Connection, project_id: int | None) -> str:
 
 
 def context_markdown(
-    conn: sqlite3.Connection, project_id: int | None, *, budget: int | None = None
+    conn: sqlite3.Connection, project_id: int | None, *, budget: int | None = None,
+    ticket_context: dict | None = None,
 ) -> str:
     """De samengevoegde wiki-markdown die een agent als memory inlaadt.
 
@@ -485,7 +514,7 @@ def context_markdown(
     if budget <= 0 or len(full) <= budget:
         body = full
     else:
-        body = _fill_to_budget(conn, project_id, budget)
+        body = _fill_to_budget(conn, project_id, budget, ticket_context)
     # BETON-420: het guardrail-blok komt ERVOOR en telt niet mee in de
     # budgetvergelijking hierboven — anders zou een guardrail wiki-pagina's
     # verdringen (of zelf verdrongen worden). Zijn omvang is per constructie

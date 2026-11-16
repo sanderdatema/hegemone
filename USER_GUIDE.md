@@ -212,7 +212,11 @@ keep instructions concise enough to remain useful when loaded as agent context.
 Agents access this knowledge through memory tools. A bounded memory response
 includes complete selected pages and an index of pages not loaded; agents can
 fetch additional pages when needed. The index does not mean that all page bodies
-were included.
+were included. Agents may pass an optional ticket reference together with its
+project to prioritize explicit wiki links, then title/slug word overlap, then
+recent updates. This simple ranking can surface older relevant conventions; it
+does not infer semantic relevance. Required project guardrails remain outside
+the page budget.
 
 The optional wiki compiler can turn completed project work into persistent
 knowledge. Enable it deliberately in project settings after configuring the AI

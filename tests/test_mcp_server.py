@@ -148,6 +148,15 @@ def test_project_memory_merges_global(mcp_env):
     ]
 
 
+
+def test_load_memory_for_ticket(mcp_env):
+    ticket = _run(mcp_server.create_item(project="SOS", title="Cache"))
+    _run(mcp_server.set_memory("cache", "Cache", "Knowledge", project="SOS"))
+    assert "Knowledge" in _run(mcp_server.load_memory(project="SOS", ticket_ref=ticket["ref"]))
+    with pytest.raises(httpx.HTTPStatusError) as error:
+        _run(mcp_server.load_memory(project="SOS", ticket_ref="SOS-9999"))
+    assert error.value.response.status_code == 404
+
 def test_get_memory_page(mcp_env):
     _run(mcp_server.set_memory("weg", "Weg", "tijdelijk"))
     assert _run(mcp_server.get_memory_page("weg"))["title"] == "Weg"

@@ -167,13 +167,18 @@ async def _call(client: httpx.AsyncClient, method: str, path: str, **kwargs):
 # --- Tool-implementaties (async thin wrappers om de REST-API) --------------
 
 
-async def load_memory(project: str | None = None, ctx: Context | None = None) -> str:
+async def load_memory(
+    project: str | None = None, ctx: Context | None = None, *, ticket_ref: str | None = None
+) -> str:
     """Laad je persistente geheugen (wiki) als markdown, aan het begin van een taak.
     Zonder ``project``: globaal; met project-key: globaal + project. Bovenaan
     kunnen bindende GUARDRAILS van het project staan: lees ze vóór je werkt.
+    Optioneel: ``ticket_ref`` binnen het expliciete ``project`` geeft voorrang
+    aan wikilinks en titel/slug-overlap; zonder ref blijft selectie ongewijzigd.
     """
     async with _client(_resolve_key(ctx)) as client:
-        resp = await client.get(f"{_wiki_base(project)}/context")
+        resp = await client.get(f"{_wiki_base(project)}/context",
+                                params={"ticket_ref": ticket_ref} if ticket_ref is not None else None)
         resp.raise_for_status()
         return resp.text
 
