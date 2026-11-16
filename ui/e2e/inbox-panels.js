@@ -1,0 +1,70 @@
+import assert from 'node:assert/strict';
+// Synthetic isolated component flow; the caller supplies a headless browser.
+export default async function inboxPanels(browser, base='http://127.0.0.1:5192') {
+for (const lang of ['en','nl']) {
+ const page=await browser.newPage({viewport:{width:1100,height:900}});
+ await page.route(base+'/',r=>r.fulfill({contentType:'text/html',body:'<html><head><script type="module" src="/@vite/client"></script><link rel="stylesheet" href="/src/app.css"></head><body><div id="fixture"></div></body></html>'}));
+ await page.goto(base+'/');
+ await page.evaluate(async lang=>{
+  const {mount}=await import('/node_modules/.vite/deps/svelte.js');
+  const {default:Inbox}=await import('/src/Inbox.svelte');
+  const {locale}=await import('/src/lib/i18n.js');locale.set(lang);
+  const {api}=await import('/src/api.js');
+  window.calls=[];window.opened=[];window.fail=false;window.empty=false;
+  const entries=[{event_id:1,ref:'DEMO-2',title:'Older notification',reason:'comment',actor:'person',read:false,created_at:'2026-11-16T10:00:00Z'},{event_id:2,ref:'DEMO-1',title:'Newer notification',reason:'comment',actor:'person',read:false,created_at:'2026-11-16T10:01:00Z'}];
+  api.inbox=async()=>({items:structuredClone(entries)});
+  api.openQuestions=async()=>{if(window.fail)throw Error('fixture');if(window.empty)return [];return Array.from({length:27},(_,i)=>({id:i+1,item:{ref:'DEMO-'+(i+1),title:'Question ticket '+(i+1),state:'todo'},body_md:'Which approach should we use? Full question detail.\nSecond line.',question_options:i===26?['Option A','Option B']:[]}));};
+  api.markItemRead=async(ref,id)=>{window.calls.push(['read',ref,id]);entries.forEach(e=>{if(e.ref===ref&&e.event_id<=id)e.read=true});};
+  api.inboxSeen=async id=>{window.calls.push(['all',id]);entries.forEach(e=>{if(e.event_id<=id)e.read=true});};
+  api.answerQuestion=async(id,answer)=>window.calls.push(['answer',id,answer]);
+  api.updateAnswer=async(id,answer)=>window.calls.push(['change',id,answer]);
+  window.props={};window.component=mount(Inbox,{target:document.querySelector('#fixture'),props:{onopen:(...v)=>window.opened.push(v)}});
+  window.reloadFixture=async()=>{const {unmount}=await import('/node_modules/.vite/deps/svelte.js');await unmount(window.component);window.component=mount(Inbox,{target:document.querySelector('#fixture'),props:{onopen:(...v)=>window.opened.push(v)}});};
+ },lang);
+ const notifications=page.getByRole('button',{name:lang==='en'?'Notifications · 2 unread':'Meldingen · 2 ongelezen',exact:true});
+ await notifications.waitFor();
+ assert.equal(await page.locator('.group').count(),2);
+ assert.equal(await page.locator('.oq-row').count(),0);
+ await page.locator('.group').first().locator('.mark').click();
+ assert.deepEqual(await page.evaluate(()=>window.calls),[['read','DEMO-1',2]]);
+ assert.equal(await page.locator('.group.unread').count(),1);
+ await page.evaluate(()=>window.reloadFixture());
+ await page.getByRole('button',{name:lang==='en'?'Notifications · 1 unread':'Meldingen · 1 ongelezen',exact:true}).waitFor();
+ assert.equal(await page.locator('.group.unread').count(),1);
+ const questionButton=page.getByRole('button',{name:lang==='en'?'Open questions · 27':'Open vragen · 27',exact:true});
+ await questionButton.focus();await page.keyboard.press('Enter');
+ assert.equal(await page.locator('.oq-row').count(),27);
+ assert.equal(await page.locator('.oq-detail').count(),0);
+ assert.equal(await page.locator('.group').count(),0);
+ const row=page.locator('.oq-row').first();
+ await row.locator('.oq-item').focus();await page.keyboard.press('Enter');
+ assert.equal(await row.locator('.oq-item').getAttribute('aria-expanded'),'true');
+ await row.getByRole('button',{name:'Option A',exact:true}).click();
+ await row.locator('.oq-answered').waitFor();
+ await row.getByRole('button',{name:lang==='en'?'change':'wijzigen',exact:true}).click();
+ await row.getByRole('button',{name:'Option B',exact:true}).click();
+ await row.getByRole('button',{name:lang==='en'?'Open ticket and question':'Open ticket en vraag',exact:true}).click();
+ assert.deepEqual(await page.evaluate(()=>window.opened),[['DEMO-27',27]]);
+ assert.deepEqual((await page.evaluate(()=>window.calls)).slice(-2),[['answer',27,{option_index:0}],['change',27,{option_index:1}]]);
+ await page.setViewportSize({width:375,height:812});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ console.log('dialogs',await page.locator('[role=dialog]').count());
+ await page.screenshot({path:'/tmp/inbox-'+lang+'-mobile.png'});
+ await page.getByRole('button',{name:lang==='en'?'Notifications · 1 unread':'Meldingen · 1 ongelezen',exact:true}).click();
+ await page.getByRole('button',{name:lang==='en'?'Mark all as read':'Alles gelezen',exact:true}).click();
+ await page.getByRole('button',{name:lang==='en'?'Open questions · 26':'Open vragen · 26',exact:true}).click();
+ assert.equal(await page.locator('.oq-row').count(),27);
+ await page.evaluate(async()=>{window.fail=true;await window.reloadFixture();});
+ await page.getByRole('button',{name:lang==='en'?'Open questions · !':'Open vragen · !',exact:true}).click();
+ await page.getByRole('alert').waitFor();
+ assert.equal(await page.locator('.oq-row').count(),0);
+ await page.getByRole('button',{name:lang==='en'?'Notifications · 0 unread':'Meldingen · 0 ongelezen',exact:true}).click();
+ assert.equal(await page.locator('.group').count(),2);
+ await page.getByRole('button',{name:lang==='en'?'Open questions · !':'Open vragen · !',exact:true}).click();
+ await page.evaluate(()=>{window.fail=false;window.empty=true;});
+ await page.locator('.error-note-retry').click();
+ await page.getByText(lang==='en'?'No open questions':'Geen open vragen',{exact:true}).waitFor();
+ console.log(lang+': PASS read isolation/reload, 27 questions, answer/change/navigation, keyboard, mobile, all-read isolation, error/retry/empty');
+ await page.close();
+}
+}

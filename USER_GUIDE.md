@@ -173,8 +173,12 @@ an answer and no longer counts as an open question. If it was the last open
 question, the normal workflow can return the ticket to its prior assignee.
 Already delivered answers can be locked against editing.
 
-The inbox collects relevant notifications and open questions. Open the linked
-ticket for context, and use the provided read/answer controls as appropriate.
+The inbox has separate **Notifications** and **Open questions** panels with
+explicit counts. Notifications open first; a long question list does not hide
+them. Expand a question for its complete text and answer controls. Reading one
+ticket preserves unread notifications for other tickets and newer unseen events.
+**Mark all as read** affects notifications, not unanswered questions. A question
+load failure has its own retry control and does not hide loaded notifications.
 An inbox entry is a notification, not evidence that an external agent has already
 started or completed work.
 

@@ -47,6 +47,10 @@
   // Open (onbeantwoorde) vragen aan mij (BETON-219) — server levert al gericht.
   let questions = $state([]);
   let loading = $state(false);
+  let questionsLoading = $state(true);
+  let questionsError = $state("");
+  let questionsLoaded = $state(false);
+  let panel = $state("notifications");
   let error = $state("");
   let filter = $state("all"); // 'all' | 'unread'
   let expanded = $state(new Set()); // uitgeklapte groepen, gekeyd op ref
@@ -94,21 +98,39 @@
   let visibleGroups = $derived(filteredGroups.slice(0, visible));
   let hasMore = $derived(filteredGroups.length > visible);
 
-  async function load() {
+  let notificationRequest = 0;
+  let questionRequest = 0;
+  async function loadNotifications() {
+    const request = ++notificationRequest;
     loading = true;
     error = "";
     try {
-      const [data, q] = await Promise.all([
-        api.inbox(INBOX_FETCH_LIMIT),
-        api.openQuestions().catch(() => []),
-      ]);
-      entries = data.items;
-      questions = q;
+      const data = await api.inbox(INBOX_FETCH_LIMIT);
+      if (request === notificationRequest) entries = data.items;
     } catch (e) {
-      error = $t("inbox.loadFailed");
+      if (request === notificationRequest) error = $t("inbox.loadFailed");
     } finally {
-      loading = false;
+      if (request === notificationRequest) loading = false;
     }
+  }
+  async function loadQuestions() {
+    const request = ++questionRequest;
+    questionsLoading = true;
+    questionsError = "";
+    try {
+      const data = await api.openQuestions();
+      if (request === questionRequest) {
+        questions = data;
+        questionsLoaded = true;
+      }
+    } catch (e) {
+      if (request === questionRequest) questionsError = $t("inbox.questionsFailed");
+    } finally {
+      if (request === questionRequest) questionsLoading = false;
+    }
+  }
+  function load() {
+    return Promise.all([loadNotifications(), loadQuestions()]);
   }
 
   // Only the explicit global action advances the inbox watermark.
@@ -208,18 +230,28 @@
       <div class="inbox-title">
         <Bell size={18} />
         <span>Inbox</span>
-        {#if unreadTotal}<span class="unread-pill">{unreadTotal > 99 ? "99+" : unreadTotal}</span>{/if}
       </div>
       <div class="inbox-actions">
-        <button class="link" onclick={markAllRead} disabled={!unreadGroups} title={$t("inbox.markAllTitle")}>
-          <CheckCheck size={15} /> {$t("inbox.markAll")}
-        </button>
         <button class="icon-btn" title={$t("common.close")} aria-label={$t("common.close")} onclick={() => onclose()}>
           <X size={19} />
         </button>
       </div>
     </header>
 
+    <div class="inbox-switch">
+      <SegmentedControl
+        options={[
+          { value: "notifications", label: $t("inbox.notificationsCount", { count: unreadTotal }) },
+          { value: "questions", label: $t("inbox.questionsCount", { count: questionsError ? "!" : !questionsLoaded ? "…" : openTotal }) },
+        ]}
+        value={panel}
+        onchange={(value) => (panel = value)}
+        itemAria="pressed"
+        ariaLabel={$t("inbox.sections")}
+      />
+    </div>
+
+    {#if panel === "notifications"}
     <div class="inbox-filter">
       <SegmentedControl
         options={FILTER_OPTIONS}
@@ -228,6 +260,9 @@
         variant="soft"
         ariaLabel={$t("inbox.filter")}
       />
+      <button class="link" onclick={markAllRead} disabled={!unreadGroups} title={$t("inbox.markAllTitle")}>
+        <CheckCheck size={15} /> {$t("inbox.markAll")}
+      </button>
     </div>
 
     {#if alerts.length}
@@ -247,64 +282,11 @@
       </section>
     {/if}
 
-    {#if openQuestions.length}
-      <section class="open-questions">
-        <div class="oq-head">
-          <MessageCircleQuestion size={15} />
-          <span>{$t("inbox.openQuestions")}</span>
-          <span class="oq-count">{openTotal}</span>
-        </div>
-        <ul class="oq-list">
-          {#each openQuestions as q (q.id)}
-            <li class="oq-row" class:oq-done={q.answeredIndex != null}>
-              <button class="oq-item" onclick={() => openQuestion(q)}>
-                <span class="oq-line">
-                  <span class="row-ref">{q.ref}</span>
-                  <span class="oq-title">{q.title}</span>
-                  {#if q.state}<span class="oq-state">{q.state}</span>{/if}
-                </span>
-              </button>
-              <div class="oq-detail">
-                <div class="oq-body" class:open={bodyOpen.has(q.id)}>{q.body_md}</div>
-                {#if q.body_md.length > 140 || q.body_md.includes("\n")}
-                  <button class="link oq-more" onclick={() => toggleBody(q.id)}>
-                    {$t(bodyOpen.has(q.id) ? "inbox.less" : "inbox.more")}
-                  </button>
-                {/if}
-                {#if !isOptionQuestion(q)}
-                  <button class="link oq-more" onclick={() => openQuestion(q)}>{$t("inbox.answerTicket")}</button>
-                {:else if q.answeredIndex != null && changing !== q.id}
-                  <div class="oq-answered">
-                    <Check size={14} />
-                    <span>{answeredLabel(q, $locale)}</span>
-                    <button class="link oq-more" onclick={() => (changing = q.id)}>{$t("inbox.change")}</button>
-                  </div>
-                {:else}
-                  <div class="oq-options">
-                    {#each q.options as opt, i}
-                      <button
-                        class="oq-opt"
-                        class:chosen={i === q.answeredIndex}
-                        disabled={answerBusy !== 0}
-                        onclick={() => pickOption(q, i)}
-                      >{opt}</button>
-                    {/each}
-                  </div>
-                  <button class="link oq-more" onclick={() => openQuestion(q)}>{$t("inbox.answerText")}</button>
-                {/if}
-                {#if answerError[q.id]}<div class="oq-error">{answerError[q.id]}</div>{/if}
-              </div>
-            </li>
-          {/each}
-        </ul>
-      </section>
-    {/if}
-
-    <div class="inbox-error-wrap"><ErrorNote message={error} onRetry={load} /></div>
+    <div class="inbox-error-wrap"><ErrorNote message={error} onRetry={loadNotifications} /></div>
 
     {#if loading && !entries.length}
       <div class="inbox-loading"><Skeleton preset="rows" count={5} /></div>
-    {:else if !filteredGroups.length}
+    {:else if !error && !filteredGroups.length}
       <div class="inbox-fill">
         <EmptyState
           icon={Bell}
@@ -375,6 +357,69 @@
         </div>
       {/if}
     {/if}
+    {:else}
+      <div class="inbox-error-wrap"><ErrorNote message={questionsError} onRetry={loadQuestions} /></div>
+      {#if questionsLoading && !questionsLoaded}
+        <div class="inbox-loading"><Skeleton preset="rows" count={5} /></div>
+      {:else if !questionsError && !openQuestions.length}
+        <div class="inbox-fill"><EmptyState icon={MessageCircleQuestion} title={$t("inbox.noQuestions")} /></div>
+      {/if}
+    {#if openQuestions.length}
+      <section class="open-questions">
+        <div class="oq-head">
+          <MessageCircleQuestion size={15} />
+          <span>{$t("inbox.openQuestions")}</span>
+          <span class="oq-count">{openTotal}</span>
+        </div>
+        <ul class="oq-list">
+          {#each openQuestions as q (q.id)}
+            <li class="oq-row" class:oq-done={q.answeredIndex != null}>
+              <button class="oq-item" onclick={() => toggleBody(q.id)} aria-expanded={bodyOpen.has(q.id)} aria-controls={`question-body-${q.id}`}>
+                <span class="oq-line">
+                  <span class="row-ref">{q.ref}</span>
+                  <span class="oq-title">{q.title}</span>
+                  {#if q.state}<span class="oq-state">{q.state}</span>{/if}
+                  <span class="chev" class:open={bodyOpen.has(q.id)}><ChevronRight size={15} /></span>
+                </span>
+                <span class="oq-preview">{q.answeredIndex == null ? q.body_md : answeredLabel(q, $locale)}</span>
+              </button>
+              {#if bodyOpen.has(q.id)}
+              <div class="oq-detail" id={`question-body-${q.id}`}>
+                <div class="oq-body open">{q.body_md}</div>
+                {#if isOptionQuestion(q)}
+                  <button class="link oq-more" onclick={() => openQuestion(q)}>{$t("inbox.openTicket")}</button>
+                {/if}
+                {#if !isOptionQuestion(q)}
+                  <button class="link oq-more" onclick={() => openQuestion(q)}>{$t("inbox.answerTicket")}</button>
+                {:else if q.answeredIndex != null && changing !== q.id}
+                  <div class="oq-answered">
+                    <Check size={14} />
+                    <span>{answeredLabel(q, $locale)}</span>
+                    <button class="link oq-more" onclick={() => (changing = q.id)}>{$t("inbox.change")}</button>
+                  </div>
+                {:else}
+                  <div class="oq-options">
+                    {#each q.options as opt, i}
+                      <button
+                        class="oq-opt"
+                        class:chosen={i === q.answeredIndex}
+                        disabled={answerBusy !== 0}
+                        onclick={() => pickOption(q, i)}
+                      >{opt}</button>
+                    {/each}
+                  </div>
+                  <button class="link oq-more" onclick={() => openQuestion(q)}>{$t("inbox.answerText")}</button>
+                {/if}
+                {#if answerError[q.id]}<div class="oq-error">{answerError[q.id]}</div>{/if}
+              </div>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
+
+    {/if}
   </div>
 </DrawerDialog>
 
@@ -398,22 +443,33 @@
     font-weight: 700;
     font-size: var(--text-lg);
   }
-  .unread-pill {
-    background: var(--accent);
-    color: var(--accent-text);
-    border-radius: var(--radius-full);
-    padding: 0 var(--space-3);
-    font-size: var(--text-sm);
-    font-weight: 700;
-    min-width: 20px;
-    text-align: center;
+  .inbox-switch {
+    padding: var(--space-3) var(--space-5);
+    border-bottom: 1px solid var(--border);
   }
+  .oq-preview {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+  }
+  .oq-item[aria-expanded="true"] .oq-title {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .oq-line .chev { flex: none; margin-left: auto; }
   .inbox-actions {
     display: flex;
     align-items: center;
     gap: var(--space-2);
   }
   .inbox-filter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-2);
     padding: var(--space-3) var(--space-5);
     border-bottom: 1px solid var(--border);
   }
@@ -534,7 +590,7 @@
   }
   .oq-row .oq-item {
     border-left: none;
-    padding-bottom: var(--space-1);
+    padding-bottom: var(--space-3);
   }
   .oq-detail {
     display: flex;
