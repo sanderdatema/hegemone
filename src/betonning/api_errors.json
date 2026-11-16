@@ -818,5 +818,17 @@
   "agent_question_concise": {
     "nl": "Stel één korte vraag in één alinea (max 300 tekens inclusief antwoordopties), met de reden en wat je van de mens nodig hebt. Zet achtergrondinformatie in een aparte comment.",
     "en": "Ask one short question in one paragraph (maximum 300 characters including answer options), explaining why and what you need from the person. Put background information in a separate comment."
+  },
+  "provider_settings_incomplete": {
+    "nl": "Bewaar eerst een volledige providerconfiguratie",
+    "en": "Save a complete provider configuration first"
+  },
+  "wiki_context_project_required": {
+    "nl": "Ticketcontext vereist een expliciet project",
+    "en": "Ticket context requires an explicit project"
+  },
+  "wiki_context_ticket_unknown": {
+    "nl": "Onbekend ticket in dit project",
+    "en": "Unknown ticket in this project"
   }
 }

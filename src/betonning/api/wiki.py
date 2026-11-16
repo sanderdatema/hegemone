@@ -142,13 +142,13 @@ def _context(conn: sqlite3.Connection, project_id: int | None, ticket_ref: str |
     ticket_context = None
     if ticket_ref is not None:
         if project_id is None:
-            raise HTTPException(422, "Ticket context requires an explicit project")
+            raise HTTPException(422, "Ticketcontext vereist een expliciet project")
         try:
             item = require_item(conn, ticket_ref)
         except HTTPException:
-            raise HTTPException(404, "Unknown ticket in this project") from None
+            raise HTTPException(404, "Onbekend ticket in dit project") from None
         if item["project_id"] != project_id:
-            raise HTTPException(404, "Unknown ticket in this project")
+            raise HTTPException(404, "Onbekend ticket in dit project")
         ticket_context = dict(item)
         ticket_context["project_key"] = ticket_ref.rsplit("-", 1)[0]
     md = wiki_repo.context_markdown(conn, project_id, ticket_context=ticket_context)

@@ -180,6 +180,7 @@ def test_compact_shape(client, auth, seeded):
         "last_activity_at",
         "has_open_question",
         "has_unread",
+        "work_signals",
         "relations",  # BETON-344
         "parent",  # BETON-344
     }

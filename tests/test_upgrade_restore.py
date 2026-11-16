@@ -29,7 +29,12 @@ def test_upgrade_vanaf_schema_51_behoudt_toegang_en_tickets(tmp_path, monkeypatc
                 conn.executescript(sql)
         conn.execute('PRAGMA user_version = 51')
         human, key = users.create(conn, handle='operator', display_name='Operator', kind='human')
-        project = projects.create(conn, key='UPG', name='Existing project')
+        # Seed the historical schema directly; current serializers require newer columns.
+        project = conn.execute("INSERT INTO projects(key,name) VALUES('UPG','Existing project') RETURNING *").fetchone()
+        for order, (name, group, color, default, closed, blocked) in enumerate(projects.DEFAULT_STATES):
+            states.create(conn, project_id=project['id'], name=name, group=group,
+                          color=color, sort_order=order, is_default=bool(default),
+                          closed=bool(closed), blocks_work=bool(blocked))
         started = states.get_by_name(conn, project['id'], 'in-progress')
         item = items.create(conn, project_id=project['id'], title='Existing ticket',
                             state_id=started['id'], created_by=human['id'], plan_md='Preserve this plan')

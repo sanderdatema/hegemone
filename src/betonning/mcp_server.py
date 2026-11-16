@@ -170,11 +170,8 @@ async def _call(client: httpx.AsyncClient, method: str, path: str, **kwargs):
 async def load_memory(
     project: str | None = None, ctx: Context | None = None, *, ticket_ref: str | None = None
 ) -> str:
-    """Laad je persistente geheugen (wiki) als markdown, aan het begin van een taak.
-    Zonder ``project``: globaal; met project-key: globaal + project. Bovenaan
-    kunnen bindende GUARDRAILS van het project staan: lees ze vóór je werkt.
-    Optioneel: ``ticket_ref`` binnen het expliciete ``project`` geeft voorrang
-    aan wikilinks en titel/slug-overlap; zonder ref blijft selectie ongewijzigd.
+    """Laad actuele memory: globaal, of globaal + ``project``. Lees guardrails eerst.
+    Optioneel ``ticket_ref`` in dat project prioriteert gerelateerde pagina’s.
     """
     async with _client(_resolve_key(ctx)) as client:
         resp = await client.get(f"{_wiki_base(project)}/context",
@@ -288,14 +285,11 @@ PLAN_INLINE_MAX = 20_000  # BETON-430: tekens plan_md die get_item inline meegee
 
 
 async def get_item(ref: str, ctx: Context | None = None) -> dict:
-    """Haal één ticket volledig op (comments, relaties, subtaken, plan).
-
-    ``ref`` is bv. ``SOS-42``. Bij ``has_plan`` komt het plan inline als
-    ``plan_md`` (afgekapt op 20.000 tekens; ``get_plan`` geeft de rest): lees het
-    vóór je begint. ``guardrail_md`` en ``applicable_guardrails`` zijn BINDEND;
-    projectbrede guardrails komen via ``load_memory``. ``model_for_you`` is de
-    werkklasse van het ticket (routine/standaard/complex) vertaald naar het model
-    dat bij jouw harnas hoort; ``null`` als er geen klasse of geen mapping is.
+    """Haal ticket, comments, relaties, subtaken en plan op (bv. ``SOS-42``).
+    Lees ``plan_md`` vóór uitvoering; na 20.000 tekens geeft ``get_plan`` de rest.
+    ``guardrail_md``/``applicable_guardrails`` zijn bindend; projectregels via
+    ``load_memory``. ``model_for_you`` vertaalt de werkklasse naar jouw model,
+    of is null zonder mapping.
     """
     async with _client(_resolve_key(ctx)) as client:
         item = await _call(client, "GET", f"/api/v1/items/{ref}")
