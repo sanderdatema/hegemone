@@ -15,6 +15,7 @@ from __future__ import annotations
 from .outbound import outbound
 
 import sqlite3
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 
 from . import db as db_module
@@ -214,6 +215,79 @@ def validate(conn: sqlite3.Connection, command: Command) -> list[str]:
     return errors
 
 
+def preview_effect(conn: sqlite3.Connection, command: Command) -> dict:
+    """Resolve only the parameters the executor consumes into displayable values."""
+    verb, params = command.verb, command.params
+    if verb in ("archive", "restore"):
+        return {"archived": verb == "archive"}
+    if verb == "create_item":
+        state = conn.execute(
+            "SELECT id, name FROM states WHERE project_id = ? "
+            "ORDER BY is_default DESC, sort_order LIMIT 1", (command.project_id,),
+        ).fetchone()
+        return {"title": params["title"], "description_md": params.get("description_md", ""),
+                "state": state["name"] if state else None,
+                "assignee": None, "milestone": None}
+    if verb == "add_relation":
+        return {"relation_type": params["relation_type"], "target_ref": params["target_ref"]}
+    field = {
+        "set_state": "state", "set_priority": "priority", "set_assignee": "assignee",
+        "add_label": "label", "remove_label": "label", "set_milestone": "milestone",
+    }[verb]
+    value = params.get(field)
+    if value and field in ("state", "label", "milestone"):
+        repo = {"state": states_repo, "label": labels_repo, "milestone": milestones_repo}[field]
+        row = repo.get_by_name(conn, command.project_id, value)
+        if row is not None:
+            value = row["name"]
+    elif value and field == "assignee":
+        value = users_repo.get_by_handle(conn, value)["handle"]
+    return {field: value or None}
+
+
+def relevant_snapshot(conn: sqlite3.Connection, command: Command) -> dict:
+    """Capture identities and only fields affecting this command's reviewed effect."""
+    effect = preview_effect(conn, command)
+    snapshot: dict = {"effect": effect, "targets": [], "resources": {}}
+    verb = command.verb
+    resources = snapshot["resources"]
+    for field_name, repo in (("state", states_repo), ("label", labels_repo), ("milestone", milestones_repo)):
+        if effect.get(field_name):
+            row = repo.get_by_name(conn, command.project_id, effect[field_name])
+            resources[field_name] = row["id"] if row else None
+            if verb == "set_state" and field_name == "state" and row:
+                resources["state_group"] = row["grp"]
+    if effect.get("assignee"):
+        resources["assignee"] = users_repo.get_by_handle(conn, effect["assignee"])["id"]
+    relation_target = None
+    if verb == "add_relation":
+        relation_target = items_repo.get_by_ref(conn, effect["target_ref"])
+        resources["target"] = relation_target["id"]
+    if verb == "create_item":
+        return snapshot
+    for item in resolve_targets(conn, command.project_id, command.selector, include_archived=verb == "restore"):
+        state = {"id": item["id"], "project_id": item["project_id"], "archived_at": item["archived_at"]}
+        column = {"set_state": "state_id", "set_priority": "priority", "set_assignee": "assignee_id", "set_milestone": "milestone_id"}.get(verb)
+        if column:
+            state[column] = item[column]
+        if verb in ("add_label", "remove_label"):
+            state["label_present"] = bool(conn.execute(
+                "SELECT 1 FROM item_labels WHERE item_id = ? AND label_id = ?",
+                (item["id"], resources.get("label")),
+            ).fetchone())
+        if relation_target is not None:
+            state["relations"] = [list(r) for r in conn.execute(
+                "SELECT item_id, related_item_id, type FROM relations WHERE "
+                "((item_id = ? AND related_item_id = ?) OR (item_id = ? AND related_item_id = ?)) "
+                "AND type = ? "
+                "ORDER BY item_id, related_item_id, type",
+                (item["id"], relation_target["id"], relation_target["id"], item["id"],
+                 relations_repo.NORMALIZE[effect["relation_type"]][0]),
+            )]
+        snapshot["targets"].append(state)
+    return snapshot
+
+
 def _project_key(conn: sqlite3.Connection, project_id: int) -> str:
     row = conn.execute("SELECT key FROM projects WHERE id = ?", (project_id,)).fetchone()
     return row["key"]
@@ -303,7 +377,7 @@ def execute(
     """Voer een gevalideerd commando uit. Geeft de refs van de geraakte items
     terug. `fanout=False` bij bulk (>1 item) onderdrukt webhook-deliveries
     (voorkomt meldingsspam) maar events/audit blijven altijd geschreven."""
-    with db_module.transaction(conn):
+    with nullcontext() if conn.in_transaction else db_module.transaction(conn):
         key = _project_key(conn, command.project_id)
         if command.verb == "create_item":
             item = items_repo.create(

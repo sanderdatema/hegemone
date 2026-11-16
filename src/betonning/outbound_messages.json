@@ -1,4 +1,5 @@
 {
+  "triage.preview_changed": {"en": "The reviewed fields changed. Request a new preview before confirming.", "nl": "De beoordeelde velden zijn gewijzigd. Vraag een nieuwe preview voordat je bevestigt."},
   "project_readonly": {
     "en": "Archived projects are read-only. Restore the project to make changes.",
     "nl": "Gearchiveerde projecten zijn alleen-lezen. Herstel het project om wijzigingen te maken."

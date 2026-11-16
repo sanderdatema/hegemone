@@ -450,3 +450,137 @@ def test_run_turn_rejects_negative_round_limit_without_storing_message(conn, set
     with pytest.raises(ValueError, match="max_query_rounds"):
         engine.run_turn(conn, llm, "hoi", setup["person_id"], max_query_rounds=-1)
     assert conn.execute("SELECT COUNT(*) FROM triage_chat_messages").fetchone()[0] == 0
+
+
+def _proposal(conn, setup, commands):
+    result = engine.run_turn(
+        conn, ScriptedLLM([{"kind": "proposal", "summary": "Review changes", "commands": commands}]),
+        "Review changes", setup["person_id"], project_id=setup["project_id"],
+    )
+    assert result["kind"] == "proposal"
+    return result["message"]
+
+
+def test_preview_resolves_consumed_values_and_creation_defaults(conn, setup):
+    item = _make_item(conn, setup["project_id"], "Example", state="todo")
+    selector = {"refs": [f"SOS-{item['seq']}"]}
+    commands = [
+        {"verb": "set_state", "selector": selector, "params": {"state": "DONE"}},
+        {"verb": "set_assignee", "selector": selector, "params": {"assignee": "person"}},
+        {"verb": "add_label", "selector": selector, "params": {"label": "reviewed"}},
+        {"verb": "remove_label", "selector": selector, "params": {"label": "old"}},
+        {"verb": "set_milestone", "selector": selector, "params": {}},
+        {"verb": "add_relation", "selector": selector,
+         "params": {"relation_type": "blocked_by", "target_ref": f"SOS-{item['seq']}"}},
+        {"verb": "create_item", "params": {"title": "New", "description_md": "Details",
+                                             "state": "done", "assignee": "person"}},
+    ]
+    msg = _proposal(conn, setup, commands)
+    effects = [p["effect"] for p in msg["proposal"]["preview"]]
+    assert effects[:6] == [{"state": "done"}, {"assignee": "person"},
+                           {"label": "reviewed"}, {"label": "old"}, {"milestone": None},
+                           {"relation_type": "blocked_by", "target_ref": f"SOS-{item['seq']}"}]
+    default = conn.execute("SELECT name FROM states WHERE project_id = ? ORDER BY is_default DESC, sort_order LIMIT 1",
+                           (setup["project_id"],)).fetchone()["name"]
+    assert effects[6] == {"title": "New", "description_md": "Details", "state": default,
+                          "assignee": None, "milestone": None}
+
+
+@pytest.mark.parametrize("relevant", [True, False])
+def test_confirmation_rechecks_only_relevant_fields(conn, setup, relevant):
+    item = _make_item(conn, setup["project_id"], "Example", state="todo")
+    msg = _proposal(conn, setup, [{"verb": "set_state", "selector": {"refs": [f"SOS-{item['seq']}"]},
+                                  "params": {"state": "done"}}])
+    fields = {"title": "Edited independently"}
+    if relevant:
+        fields["state_id"] = conn.execute("SELECT id FROM states WHERE project_id = ? AND name = 'in-progress'",
+                                          (setup["project_id"],)).fetchone()["id"]
+    items_repo.update(conn, item["id"], fields)
+    result = engine.confirm(conn, msg["id"], setup["person_id"])
+    assert result["kind"] == ("reply" if relevant else "done")
+    assert chat_repo.get_message(conn, msg["id"])["status"] == ("cancelled" if relevant else "confirmed")
+    if relevant:
+        assert not result["executed"]
+        assert "preview" in result["message"]["body_md"]
+    assert items_repo.get(conn, item["id"])["title"] == "Edited independently"
+
+
+def test_create_default_fallback_change_requires_new_preview(conn, setup):
+    conn.execute("UPDATE states SET is_default = 0 WHERE project_id = ?", (setup["project_id"],))
+    msg = _proposal(conn, setup, [{"verb": "create_item", "params": {"title": "New"}}])
+    conn.execute("UPDATE states SET sort_order = -100 WHERE project_id = ? AND name = 'done'",
+                 (setup["project_id"],))
+    assert engine.confirm(conn, msg["id"], setup["person_id"])["executed"] == []
+    assert conn.execute("SELECT count(*) FROM items").fetchone()[0] == 0
+
+
+def test_confirm_rolls_back_all_commands_and_audit_on_execution_error(conn, setup, monkeypatch):
+    a = _make_item(conn, setup["project_id"], "First")
+    b = _make_item(conn, setup["project_id"], "Second")
+    msg = _proposal(conn, setup, [{"verb": "archive", "selector": {"refs": [f"SOS-{i['seq']}"]}}
+                                  for i in (a, b)])
+    original = engine.tc.execute
+    calls = 0
+    def fail_second(*args, **kwargs):
+        nonlocal calls
+        assert conn.in_transaction
+        calls += 1
+        if calls == 2:
+            raise RuntimeError("Execution failed")
+        return original(*args, **kwargs)
+    monkeypatch.setattr(engine.tc, "execute", fail_second)
+    with pytest.raises(RuntimeError, match="Execution failed"):
+        engine.confirm(conn, msg["id"], setup["person_id"])
+    assert items_repo.get(conn, a["id"])["archived_at"] is None
+    assert conn.execute("SELECT count(*) FROM triage_chat_actions").fetchone()[0] == 0
+    assert chat_repo.get_message(conn, msg["id"])["status"] == "pending"
+
+
+def test_frozen_snapshot_survives_unrelated_filter_change(conn, setup):
+    item = _make_item(conn, setup["project_id"], "Example", state="done", days_old=40)
+    msg = _proposal(conn, setup, [{"verb": "archive", "selector": {"filter": {"updated_before_days": 30}}}])
+    items_repo.update(conn, item["id"], {"description_md": "Independent edit"})
+    assert engine.confirm(conn, msg["id"], setup["person_id"])["executed"] == [f"SOS-{item['seq']}"]
+
+
+@pytest.mark.parametrize("verb,params,column,new_value", [
+    ("set_assignee", {}, "assignee_id", "person"),
+    ("set_milestone", {}, "milestone_id", "Release"),
+    ("archive", {}, "archived_at", "2026-01-01"),
+])
+def test_other_reviewed_target_fields_reject_changes(conn, setup, verb, params, column, new_value):
+    item = _make_item(conn, setup["project_id"], "Example")
+    msg = _proposal(conn, setup, [{"verb": verb, "params": params,
+                                  "selector": {"refs": [f"SOS-{item['seq']}"]}}])
+    if column == "assignee_id":
+        new_value = setup["person_id"]
+    elif column == "milestone_id":
+        from betonning.repo import milestones
+        new_value = milestones.create(conn, project_id=setup["project_id"], name=new_value)["id"]
+    conn.execute(f"UPDATE items SET {column} = ? WHERE id = ?", (new_value, item["id"]))
+    assert engine.confirm(conn, msg["id"], setup["person_id"])["executed"] == []
+
+
+@pytest.mark.parametrize("relevant", [True, False])
+def test_label_snapshot_ignores_other_labels(conn, setup, relevant):
+    from betonning.repo import labels
+    item = _make_item(conn, setup["project_id"], "Example")
+    reviewed = labels.create(conn, project_id=setup["project_id"], name="reviewed")
+    other = labels.create(conn, project_id=setup["project_id"], name="other")
+    msg = _proposal(conn, setup, [{"verb": "add_label", "params": {"label": "reviewed"},
+                                  "selector": {"refs": [f"SOS-{item['seq']}"]}}])
+    labels.add_to_item(conn, item["id"], (reviewed if relevant else other)["id"])
+    assert engine.confirm(conn, msg["id"], setup["person_id"])["kind"] == ("reply" if relevant else "done")
+
+
+@pytest.mark.parametrize("relevant", [True, False])
+def test_relation_snapshot_ignores_other_relation_types(conn, setup, relevant):
+    from betonning.repo import relations
+    item = _make_item(conn, setup["project_id"], "Example")
+    target = _make_item(conn, setup["project_id"], "Target")
+    msg = _proposal(conn, setup, [{"verb": "add_relation",
+                                  "params": {"relation_type": "blocks", "target_ref": f"SOS-{target['seq']}"},
+                                  "selector": {"refs": [f"SOS-{item['seq']}"]}}])
+    relations.create(conn, item_id=item["id"], related_item_id=target["id"],
+                     stored_type="blocks" if relevant else "relates_to")
+    assert engine.confirm(conn, msg["id"], setup["person_id"])["kind"] == ("reply" if relevant else "done")

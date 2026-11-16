@@ -1,5 +1,6 @@
 <script>
-  import { t } from "./lib/i18n.js";
+  import { t, locale } from "./lib/i18n.js";
+  import { relationLabel } from "./lib/labels.js";
   import { tick } from "svelte";
   import { api } from "./api.js";
   import AutoTextarea from "./AutoTextarea.svelte";
@@ -198,7 +199,10 @@
           {#each previews as p}
             <li>
               <span class="cmd-verb">{VERB_LABEL[p.verb] ?? p.verb}</span>
-              {#if p.detail}
+              {#each Object.entries(p.effect) as [field, value]}
+                <span class="cmd-detail">{$t(`triage.effect.${field}`)}: {field === "archived" ? $t(value ? "triage.effect.yes" : "triage.effect.no") : field === "relation_type" ? relationLabel(value, $locale) : (value ?? $t("triage.effect.none"))}</span>
+              {/each}
+              {#if p.detail && !Object.keys(p.effect).length}
                 <span class="cmd-detail">{p.detail}</span>
               {:else}
                 <span class="cmd-count">{p.count} item{p.count === 1 ? "" : "s"}</span>
@@ -356,6 +360,10 @@
   .cmd-detail {
     color: var(--text-muted);
     font-size: 0.82rem;
+  }
+  .cmd-detail {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
   .brake {
     display: block;

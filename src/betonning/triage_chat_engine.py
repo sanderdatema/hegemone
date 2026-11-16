@@ -34,6 +34,7 @@ import sqlite3
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from . import db as db_module
 from . import triage_commands as tc
 from .llm import localized_system_prompt, parse_json_result
 from .repo import labels as labels_repo
@@ -315,6 +316,14 @@ def _run_query(conn: sqlite3.Connection, project_id: int | None, query: dict) ->
 def _build_proposal(
     conn: sqlite3.Connection, project_id: int | None, turn: dict
 ) -> tuple[list[dict], list[str], list[dict], int]:
+    # Resolve the reviewed values and their snapshots from one consistent view.
+    with db_module.transaction(conn):
+        return _build_proposal_locked(conn, project_id, turn)
+
+
+def _build_proposal_locked(
+    conn: sqlite3.Connection, project_id: int | None, turn: dict
+) -> tuple[list[dict], list[str], list[dict], int]:
     """Zet de ruwe LLM-commando's om naar gevalideerde commando-dicts + preview.
     Geeft (commands, errors, preview, total_count)."""
     commands: list[dict] = []
@@ -355,14 +364,17 @@ def _build_proposal(
             count = len(refs)
             detail = None
         total += count
-        preview.append({"verb": verb, "refs": refs, "count": count, "detail": detail})
+        preview.append({"verb": verb, "refs": refs, "count": count, "detail": detail,
+                        "effect": tc.preview_effect(conn, cmd)})
         # Bevries de concrete refs in het commando. Bij bevestigen voeren we exact
         # deze items uit — niet wat de filter op dát moment matcht — zodat de mens
         # precies de gepreviewde set krijgt (create_item heeft geen doelen).
         frozen_selector = cmd.selector if verb == "create_item" else {"refs": refs}
         commands.append(
             {"verb": verb, "project_id": pid, "selector": frozen_selector,
-             "params": cmd.params}
+             "params": cmd.params, "snapshot": tc.relevant_snapshot(
+                 conn, tc.Command(verb=verb, project_id=pid,
+                                  selector=frozen_selector, params=cmd.params))}
         )
 
     return commands, errors, preview, total
@@ -456,6 +468,14 @@ class ProposalNotPending(Exception):
 def confirm(
     conn: sqlite3.Connection, message_id: int, actor_id: int, *, typed_count: int | None = None
 ) -> dict:
+    # The write lock covers revalidation, snapshots, effects, audit and status.
+    with db_module.transaction(conn):
+        return _confirm(conn, message_id, actor_id, typed_count=typed_count)
+
+
+def _confirm(
+    conn: sqlite3.Connection, message_id: int, actor_id: int, *, typed_count: int | None = None
+) -> dict:
     """Voer een bevestigd voorstel uit. Mutaties worden geboekt op naam van de
     triage-bot (events/activity), de mens (`actor_id`) staat als opdrachtgever in
     de audit-log. Bulk (>1 item per commando) onderdrukt de webhook-fanout."""
@@ -485,8 +505,11 @@ def confirm(
         for cmd_dict in proposal["commands"]
     ]
     all_errors: list[str] = []
-    for cmd in commands:
-        all_errors.extend(tc.validate(conn, cmd))
+    for cmd, stored in zip(commands, proposal["commands"]):
+        errors = tc.validate(conn, cmd)
+        all_errors.extend(errors)
+        if not errors and ("snapshot" not in stored or tc.relevant_snapshot(conn, cmd) != stored["snapshot"]):
+            all_errors.append(outbound("triage.preview_changed"))
     if all_errors:
         chat_repo.set_message_status(conn, message_id, "cancelled")
         note = outbound('chat.confirm.1') + "; ".join(all_errors)

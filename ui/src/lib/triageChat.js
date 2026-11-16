@@ -27,5 +27,6 @@ export function summarizePreview(command, limit = 8) {
     hidden: Math.max(0, refs.length - limit),
     count: command?.count ?? refs.length,
     detail: command?.detail ?? null,
+    effect: command?.effect ?? {},
   };
 }
