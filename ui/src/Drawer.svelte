@@ -359,6 +359,9 @@
     editingTitle = false;
     if (t && t !== item.title) await patch({ title: t });
   }
+  function cancelTitle() {
+    editingTitle = false;
+  }
 
   function startDesc() {
     if (projectReadOnly) return;
@@ -388,14 +391,6 @@
     e.preventDefault();
     startDesc();
   }
-  // Opslaan op blur — maar niet als de focus naar een knop binnen de editor
-  // springt (Afbeelding/Annuleren/Opslaan), anders klobbert de blur die klik.
-  function onDescBlur(e) {
-    const editor = e.currentTarget.closest(".desc-editor");
-    if (editor && e.relatedTarget && editor.contains(e.relatedTarget)) return;
-    saveDesc();
-  }
-
   // --- Plan/handover (BETON-218): lazy geladen, standaard ingeklapt ---------
   let showPlan = $state(false);
   let planMd = $state(null); // null = nog niet geladen
@@ -440,12 +435,6 @@
     if (!shouldStartEdit(e.target, window.getSelection()?.toString())) return;
     startPlanEdit();
   }
-  function onPlanBlur(e) {
-    const editor = e.currentTarget.closest(".plan-editor");
-    if (editor && e.relatedTarget && editor.contains(e.relatedTarget)) return;
-    savePlan();
-  }
-
   // --- Guardrail (BETON-420) -----------------------------------------------
   //
   // Zetten/wijzigen/opheffen is mens-only (de backend geeft een agent 403);
@@ -1537,9 +1526,7 @@
       case "editingComment":
         editingCommentId = null;
         break;
-      // Draft eerst terugzetten naar de opgeslagen waarde: het verbergen van het
-      // veld kan onderweg een blur afvuren (→ save). Door de draft gelijk te
-      // maken aan de bron slaat die save niets op — Esc annuleert dus echt.
+      // Escape discards the draft and keeps the ticket drawer open.
       case "editingTitle":
         titleDraft = item.title;
         editingTitle = false;
@@ -1894,9 +1881,14 @@
               class="title-edit"
               bind:value={titleDraft}
               autofocus
-              onblur={saveTitle}
-              onkeydown={(e) => e.key === "Enter" && saveTitle()}
+              onkeydown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); saveTitle(); }
+              }}
             />
+            <div class="btn-row">
+              <button class="sm" onclick={cancelTitle}>{$t("drawer.cancel")}</button>
+              <button class="primary sm" onclick={saveTitle}>{$uiText("ui.save")}</button>
+            </div>
           {:else}
             {#if projectReadOnly}
               <h2 class="dw-title">{item.title}</h2>
@@ -2402,7 +2394,6 @@
                   onpaste={(e) => handleImageDrop(e, "desc")}
                   ondragover={(e) => e.preventDefault()}
                   ondrop={(e) => handleImageDrop(e, "desc")}
-                  onblur={onDescBlur}
                   onkeydown={onDescKeydown}
                 >
                   {#snippet dropdown()}
@@ -2705,7 +2696,6 @@
                   {knownHandles}
                   {projectKeys}
                   oninput={(e) => (planDraft = e.currentTarget.value)}
-                  onblur={onPlanBlur}
                   onsubmit={savePlan}
                 />
                 <div class="btn-row">
@@ -4062,20 +4052,13 @@
   .rel-target {
     width: 100%;
   }
-  /* BETON-350: rechts ankeren en naar links laten groeien i.p.v. exact de
-     (in de rail altijd smalle, 288px) input-breedte te matchen — anders
-     klipt elke wat langere tickettitel in de suggestie af tot onleesbaars.
-     Zelfde regel als app.css (twee kopieën door historische groei; hier
-     bewust in sync gehouden i.p.v. ontward — zie BETON-350-commit). Cap
-     alleen op de viewport, niet meer op een vaste 360px — die vaste waarde
-     kapte nog steeds af (live gemeten: titels hier ~770px natuurlijke
-     breedte, en de drawer-hoofdkolom heeft daar ruimschoots plek voor). */
+  /* Match the input width so the scrolling sidebar cannot clip results. */
   .rel-box :global(.mention-list) {
-    left: auto;
+    left: 0;
     right: 0;
-    min-width: 100%;
-    width: max-content;
-    max-width: calc(100vw - 40px);
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
   }
   .rel-suggest-ref {
     font-variant-numeric: tabular-nums;
@@ -4089,9 +4072,10 @@
     overflow: hidden;
   }
   .rel-box :global(.mention-list li .muted) {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
   /* Tijdlijn (BETON-223): comments (kaarten) + events (regels) door elkaar. */

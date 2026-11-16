@@ -1627,26 +1627,13 @@ button.danger-quiet:hover {
 .rel-target {
   width: 100%;
 }
-/* BETON-350: de suggestielijst matchte exact de breedte van het relatie-
-   invoerveld — en dat veld staat altijd in de 288px-brede rail (BETON-248
-   dwingt daar altijd de volle-breedte kolomstapel af, ongeacht schermbreedte),
-   dus elke wat langere tickettitel klipte af tot onleesbaars ("Moeilijkheids-
-   graden als ec…"). Ankeren op de rechterkant en naar links laten groeien:
-   rechts is de rand van de rail (viewportrand dichtbij), links is de bredere
-   hoofdkolom van de drawer — daar is de ruimte. `min-width: 100%` houdt 'm
-   nooit smaller dan het veld zelf.
-   De eerste versie van deze fix capte op 360px — een gok die nog steeds
-   afkapte: live gemeten (BETON-350-vervolg) heeft een gemiddelde tickettitel
-   hier een natuurlijke breedte van ~770px, en het bureaublad-viewport heeft
-   daar ruimschoots plek voor (drawer-hoofdkolom loopt door tot de rechterkant
-   van de rail). Cap daarom alleen op de viewport, niet meer op een vaste
-   waarde — de ellipsis blijft het vangnet voor wat ook dán niet past. */
+/* Keep results inside the scrolling sidebar; wrap long titles below. */
 .rel-box .mention-list {
-  left: auto;
+  left: 0;
   right: 0;
-  min-width: 100%;
-  width: max-content;
-  max-width: calc(100vw - 40px);
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 .rel-suggest-ref {
   font-variant-numeric: tabular-nums;
@@ -1660,9 +1647,10 @@ button.danger-quiet:hover {
   overflow: hidden;
 }
 .rel-box .mention-list li .muted {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 .rel-pending-list {
   list-style: none;
@@ -1819,6 +1807,11 @@ button.danger-quiet:hover {
 }
 .md > :last-child {
   margin-bottom: 0;
+}
+/* Break long URLs and other unspaced prose inside the markdown container.
+   Tables and preformatted code keep their own horizontal scrolling below. */
+.md {
+  overflow-wrap: anywhere;
 }
 /* Koptrap H1–H6 (BETON-129): volledige hiërarchie in de brede wiki-view. */
 .md h1 {

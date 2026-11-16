@@ -34,6 +34,8 @@
     projectDescription = "",
     triageEnabled = false,
     wikiCompileEnabled = false,
+    autoLockEnabled = true,
+    canSetAutoLock = false,
     onback,
     onchanged,
   } = $props();
@@ -45,6 +47,8 @@
   let triage = $state(triageEnabled);
   let triageBusy = $state(false);
   let backfillMsg = $state("");
+  let autoLock = $state(autoLockEnabled);
+  let autoLockBusy = $state(false);
   let wikiCompile = $state(wikiCompileEnabled);
   let wikiBusy = $state(false);
   let wikiBackfillMsg = $state("");
@@ -128,6 +132,16 @@
       descSaved = true;
       setTimeout(() => (descSaved = false), 1500);
     });
+  }
+
+  async function toggleAutoLock() {
+    if (!canSetAutoLock || autoLockBusy) return;
+    autoLockBusy = true;
+    await guard(async () => {
+      const p = await api.setAutoLock(projectKey, !autoLock);
+      autoLock = p.auto_lock_enabled;
+    });
+    autoLockBusy = false;
   }
 
   // --- Triage ---
@@ -366,6 +380,22 @@
         </button>
         {#if descSaved}<span class="ps-ok">{$t("common.saved")}</span>{/if}
       </div>
+    </div>
+  </section>
+
+  <section class="ps-sec">
+    <div class="ps-head"><Info size={15} /> {$t("projectSettings.autoLock")}</div>
+    <div class="ps-row ps-triage">
+      <span class="ps-note">{$t("projectSettings.autoLockNote")}</span>
+      <button
+        class="switch"
+        class:on={autoLock}
+        role="switch"
+        aria-checked={autoLock}
+        aria-label={$t("projectSettings.autoLock")}
+        disabled={autoLockBusy || !canSetAutoLock}
+        onclick={toggleAutoLock}
+      ><span class="knob"></span></button>
     </div>
   </section>
 

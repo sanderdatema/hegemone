@@ -80,7 +80,22 @@ def serialize(row: sqlite3.Row) -> dict:
         "archived_at": row["archived_at"],
         "triage_enabled": bool(row["triage_enabled"]),
         "wiki_compile_enabled": bool(row["wiki_compile_enabled"]),
+        "auto_lock_enabled": bool(row["auto_lock_enabled"]),
     }
+
+
+def auto_lock_enabled(conn: sqlite3.Connection, project_id: int) -> bool:
+    row = conn.execute(
+        "SELECT auto_lock_enabled FROM projects WHERE id = ?", (project_id,)
+    ).fetchone()
+    return bool(row["auto_lock_enabled"])
+
+
+def set_auto_lock_enabled(conn: sqlite3.Connection, project_id: int, enabled: bool) -> None:
+    conn.execute(
+        "UPDATE projects SET auto_lock_enabled = ? WHERE id = ?",
+        (int(enabled), project_id),
+    )
 
 
 def set_triage_enabled(

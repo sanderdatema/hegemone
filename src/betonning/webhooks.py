@@ -1442,7 +1442,11 @@ def instruction_context(
 
 def _execution_instructions(conn, user, item_row, instructions):
     """Managed agents receive a notification, never a webhook execution grant."""
-    if instructions is None or instructions['expected_action'] not in ('pick_up','acknowledge'):
+    if instructions is None:
+        return instructions
+    resumes_assigned_work = (instructions['expected_action'] == 'answered'
+                             and item_row is not None and item_row['assignee_id'] == user['id'])
+    if instructions['expected_action'] not in ('pick_up','acknowledge') and not resumes_assigned_work:
         return instructions
     from .repo import execution
     if execution.binding(conn,user['id']) is None:

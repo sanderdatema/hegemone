@@ -2388,6 +2388,8 @@
           projectDescription={currentProject.description}
           triageEnabled={currentProject.triage_enabled}
           wikiCompileEnabled={currentProject.wiki_compile_enabled}
+          autoLockEnabled={currentProject.auto_lock_enabled}
+          canSetAutoLock={me?.kind === "human"}
           onback={() => closeOverlayNamed("settings")}
           onchanged={onProjectsChanged}
         />

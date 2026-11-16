@@ -323,6 +323,34 @@ def test_managed_mentions_for_advice_still_respond_without_creating_work(client,
     assert context(client,work)['execution']['status']=='pending'
 
 
+def test_managed_human_answer_notifies_without_executing_and_queue_can_resume(client,auth,conn,configured):
+    from betonning import webhooks
+
+    work=configured
+    question=client.post(f"/api/v1/items/{work['ref']}/comments",headers=work['agent_headers'],json={
+        'kind':'question','body_md':'Which synthetic route, @person?'})
+    assert question.status_code==201,question.text
+    assert context(client,work)['execution']['block_kind']=='human'
+    answer=client.post(f"/api/v1/comments/{question.json()['id']}/answer",headers=auth,json={
+        'text':'Use the left route.'})
+    assert answer.status_code==200,answer.text
+    item=items.get_by_ref(conn,work['ref'])
+    event=conn.execute("SELECT * FROM events WHERE item_id=? AND type='question.answered' ORDER BY id DESC LIMIT 1",
+                       (item['id'],)).fetchone()
+    recipient=users.get_by_handle(conn,'worker')
+    push=webhooks.build_delivery_payload(conn,event,recipient)
+    pull=webhooks.build_agent_instructions(conn,event,recipient)
+    assert push['expected_action']==pull['expected_action']=='none'
+    assert push['instructions']==pull['instructions']
+    assert push['execution']['id']==work['id']
+    assert push['execution']['status']=='pending'
+    assert pull['reply'] is None
+    assert pull['read']==[]
+    assert context(client,work)['item']['state']=='todo'
+    assert poll(client,work).json()['requests'][0]['status']=='pending'
+    assert claim(client,work).status_code==200
+
+
 def test_queued_reassignment_creates_a_fresh_intent(client,auth,conn,configured):
     work=configured
     assert client.patch(f"/api/v1/items/{work['ref']}",headers=auth,json={'assignee':'person'}).status_code==200

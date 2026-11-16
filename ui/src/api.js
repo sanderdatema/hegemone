@@ -198,6 +198,7 @@ export const api = {
     req("PATCH", `/projects/${key}/milestones/${encodeURIComponent(name)}`, body),
   deleteMilestone: (key, name) =>
     req("DELETE", `/projects/${key}/milestones/${encodeURIComponent(name)}`),
+  setAutoLock: (key, enabled) => req("PUT", `/projects/${key}/auto-lock`, { enabled }),
   setTriage: (key, enabled) => req("PUT", `/projects/${key}/triage`, { enabled }),
   backfillTriage: (key) => req("POST", `/projects/${key}/triage/backfill`),
   setWikiCompile: (key, enabled) =>

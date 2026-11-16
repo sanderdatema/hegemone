@@ -33,6 +33,37 @@ describe("Drawer.svelte — antwoordmodule confirm-bar markup", () => {
   });
 });
 
+describe("Drawer.svelte — editors stay open until an explicit action", () => {
+  it("keeps the title editor open on blur and offers save and cancel", () => {
+    const title = drawerSource.slice(
+      drawerSource.indexOf('{#if editingTitle}'),
+      drawerSource.indexOf('{:else}', drawerSource.indexOf('{#if editingTitle}')),
+    );
+    expect(title).not.toContain("onblur=");
+    expect(title).toContain("cancelTitle");
+    expect(title).toContain("saveTitle");
+    expect(title).not.toContain('e.key === "Escape"');
+    expect(drawerSource).toContain('case "editingTitle":');
+  });
+
+  it("does not save the description or plan editor when focus leaves", () => {
+    const description = drawerSource.slice(
+      drawerSource.indexOf('{:else if editingDesc}'),
+      drawerSource.indexOf('{:else if item.description_md}'),
+    );
+    const plan = drawerSource.slice(
+      drawerSource.indexOf('{#if editingPlan}'),
+      drawerSource.indexOf('{:else if showPlan && item.has_plan}'),
+    );
+    expect(description).not.toContain("onblur=");
+    expect(description).toContain("onclick={saveDesc}");
+    expect(description).toContain('{$t("drawer.cancel")}');
+    expect(plan).not.toContain("onblur=");
+    expect(plan).toContain("onclick={savePlan}");
+    expect(plan).toContain('{$t("drawer.cancel")}');
+  });
+});
+
 // BETON-403: het bewerken van een bestaande reactie gebruikte een kale
 // <textarea bind:value={editCommentText}> zonder ondrop/onpaste — slepen of
 // plakken van een afbeelding deed daar dus niets. Structurele bron-scan,

@@ -112,6 +112,20 @@ def restore_project(
     return projects_repo.serialize(require_project(conn, key))
 
 
+@router.put("/projects/{key}/auto-lock")
+def set_auto_lock(
+    key: str,
+    body: TriageOptIn,
+    conn: sqlite3.Connection = Depends(get_db),
+    _: sqlite3.Row = Depends(current_human),
+) -> dict:
+    """Human-only control of automatic comment-limit locks; existing locks remain."""
+    project = require_project(conn, key)
+    with db_module.transaction(conn):
+        projects_repo.set_auto_lock_enabled(conn, project["id"], body.enabled)
+    return projects_repo.serialize(require_project(conn, key))
+
+
 @router.put("/projects/{key}/triage")
 def set_triage_optin(
     key: str,

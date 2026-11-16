@@ -121,6 +121,7 @@
 !src/betonning/migrations/054_configuration_import.sql
 !src/betonning/migrations/055_archived_projects_readonly.sql
 !src/betonning/migrations/056_execution_handoffs.sql
+!src/betonning/migrations/057_project_auto_lock.sql
 !src/betonning/models.py
 !src/betonning/outbound.py
 !src/betonning/outbound_messages.json

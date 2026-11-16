@@ -1287,7 +1287,10 @@ def add_comment(
         # BETON-302: de comment die de drempel raakt gaat er nog in — dán klapt
         # het dicht. In dezelfde transactie als de comment: een slot dat niet
         # samen met zijn aanleiding wordt vastgelegd, klopt niet.
-        if comments_repo.count_chatter(conn, item["id"]) >= item["comment_limit"]:
+        if (
+            projects_repo.auto_lock_enabled(conn, item["project_id"])
+            and comments_repo.count_chatter(conn, item["id"]) >= item["comment_limit"]
+        ):
             _lock_item(conn, item, _triage_actor_id(conn), reason="comment_limit")
     return comments_repo.serialize(conn, row)
 
@@ -1762,7 +1765,10 @@ def update_item(
             )
             payload["handover_md"] = handover
             payload["handover_comment_id"] = note["id"]
-            if comments_repo.count_chatter(conn, item["id"]) >= item["comment_limit"]:
+            if (
+                projects_repo.auto_lock_enabled(conn, item["project_id"])
+                and comments_repo.count_chatter(conn, item["id"]) >= item["comment_limit"]
+            ):
                 _lock_item(conn, item, _triage_actor_id(conn), reason="comment_limit")
         event = events_repo.record(
             conn,

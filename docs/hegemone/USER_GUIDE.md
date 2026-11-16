@@ -45,6 +45,10 @@ Project settings contain the project description, columns, labels, milestones,
 automatic triage, wiki compilation and agent access. New projects inherit the
 project template; changing the template does not rewrite existing projects.
 
+Humans can disable the automatic ticket lock for projects that do not need
+comment-loop protection. It is enabled by default. Disabling it preserves
+existing locks and the manual emergency stop.
+
 A column is a workflow state. Its name, order, color, group and execution policy
 are configurable. A closed/collapsed column and a column that blocks agent
 execution are different settings. Closing a column visually does not itself
