@@ -1,6 +1,14 @@
 // Projectbeheer: alleen presentatie, geen hernoeming van gebruikersdata.
 export const projectMessages = {
   "en": {
+    "projectSettings.moveBeforeDelete": "“{name}” contains {count} tickets. Choose where to move them before deleting the column.",
+    "projectSettings.deferredTarget": "Deferred tickets will also return to the selected column.",
+    "projectSettings.destinationColumn": "Destination column",
+    "projectSettings.chooseDestination": "Choose another column…",
+    "projectSettings.defaultTarget": "The selected column becomes the default for new tickets.",
+    "projectSettings.confirmMoveDelete": "Move {count} tickets to “{target}” and delete “{name}”?",
+    "projectSettings.moveAndDelete": "Move tickets and delete",
+    "projectSettings.deleteEmptyColumn": "Delete empty column “{name}”?",
     "project.search": "Search projects…",
     "projectSettings.title": "settings",
     "projectSettings.loadFailed": "Could not load project settings. Please try again.",
@@ -85,6 +93,14 @@ export const projectMessages = {
     "template.saved": "Template saved"
   },
   "nl": {
+    "projectSettings.moveBeforeDelete": "“{name}” bevat {count} tickets. Kies waar ze heen moeten voordat de kolom wordt verwijderd.",
+    "projectSettings.deferredTarget": "Uitgestelde tickets keren ook terug naar de gekozen kolom.",
+    "projectSettings.destinationColumn": "Doelkolom",
+    "projectSettings.chooseDestination": "Kies een andere kolom…",
+    "projectSettings.defaultTarget": "De gekozen kolom wordt de standaard voor nieuwe tickets.",
+    "projectSettings.confirmMoveDelete": "{count} tickets naar “{target}” verplaatsen en “{name}” verwijderen?",
+    "projectSettings.moveAndDelete": "Tickets verplaatsen en verwijderen",
+    "projectSettings.deleteEmptyColumn": "Lege kolom “{name}” verwijderen?",
     "project.search": "Zoek projecten…",
     "projectSettings.title": "instellingen",
     "projectSettings.loadFailed": "Kon projectinstellingen niet laden — probeer opnieuw.",

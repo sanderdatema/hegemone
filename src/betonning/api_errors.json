@@ -830,5 +830,21 @@
   "wiki_context_ticket_unknown": {
     "nl": "Onbekend ticket in dit project",
     "en": "Unknown ticket in this project"
+  },
+  "column_target_invalid": {
+    "nl": "Kies een andere bestaande kolom in dit project",
+    "en": "Choose another existing column in this project"
+  },
+  "column_deferred_target_required": {
+    "nl": "Uitgestelde tickets verwijzen naar deze kolom; kies een doelkolom",
+    "en": "Deferred tickets refer to this column; choose a destination column"
+  },
+  "column_move_human_required": {
+    "nl": "Alleen een mens mag tickets verplaatsen bij het verwijderen van een kolom",
+    "en": "Only a person can move tickets while deleting a column"
+  },
+  "column_count_changed": {
+    "nl": "Het aantal tickets in deze kolom is gewijzigd; controleer de bevestiging opnieuw",
+    "en": "The ticket count changed; review the confirmation again"
   }
 }

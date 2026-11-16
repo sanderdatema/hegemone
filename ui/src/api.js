@@ -184,8 +184,12 @@ export const api = {
   createState: (key, body) => req("POST", `/projects/${key}/states`, body),
   updateState: (key, name, body) =>
     req("PATCH", `/projects/${key}/states/${encodeURIComponent(name)}`, body),
-  deleteState: (key, name) =>
-    req("DELETE", `/projects/${key}/states/${encodeURIComponent(name)}`),
+  deleteState: (key, name, target, expectedCount) => {
+    const query = new URLSearchParams();
+    if (target) query.set("target", target);
+    if (expectedCount != null) query.set("expected_count", String(expectedCount));
+    return req("DELETE", `/projects/${key}/states/${encodeURIComponent(name)}${query.size ? `?${query}` : ""}`);
+  },
   labels: (key) => req("GET", `/projects/${key}/labels`),
   createLabel: (key, body) => req("POST", `/projects/${key}/labels`, body),
   updateProjectLabel: (key, name, body) =>

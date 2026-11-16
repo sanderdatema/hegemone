@@ -3,7 +3,7 @@
   import { api } from "./api.js";
   import AutoTextarea from "./AutoTextarea.svelte";
   import { labelHueOf, setLabelPalette } from "./lib/labelPalette.svelte.js";
-  import { hexToHue } from "./lib/avatar.js";
+  import { labelPickerColor } from "./lib/avatar.js";
   import { stateGroupLabel, agentTypeLabel } from "./lib/labels.js";
   import ErrorNote from "./ErrorNote.svelte";
   import Skeleton from "./Skeleton.svelte";
@@ -328,13 +328,26 @@
   // er nog in staan (409 met aantal) — die foutmelding komt via guard() in
   // `error` terecht, geen client-side gok naar wanneer het mag.
   let confirmDeleteState = $state(null);
-  async function delState(name) {
-    await guard(async () => {
-      await api.deleteState(projectKey, name);
-      states = await api.states(projectKey);
-    });
-    confirmDeleteState = null;
+  let deleteStateTarget = $state("");
+  let deletingState = $state(false);
+  function requestDeleteState(name) {
+    confirmDeleteState = name;
+    deleteStateTarget = "";
   }
+  async function delState(state) {
+    if (deletingState) return;
+    deletingState = true; error = "";
+    try {
+      await api.deleteState(projectKey, state.name, deleteStateTarget || undefined, state.item_count ?? 0);
+      states = await api.states(projectKey);
+      confirmDeleteState = null;
+      await onchanged?.();
+    } catch (e) {
+      error = e.message;
+      states = await api.states(projectKey).catch(() => states);
+    } finally { deletingState = false; }
+  }
+
 </script>
 
 <div class="ps">
@@ -523,7 +536,7 @@
           <input
             type="color"
             class="swatch sm"
-            value={hexToHue(l.color) === null ? "#3498db" : l.color}
+            value={labelPickerColor(l.color, labelHueOf(l.name))}
             title={$t("projectSettings.colorFor", {name: l.name})}
             onchange={(e) => setLabelColor(l, e.currentTarget.value)}
           />
@@ -663,24 +676,28 @@
           class="icon-btn sm"
           title={$t(states.length === 1 ? "projectSettings.lastColumn" : "common.remove")}
           disabled={states.length === 1}
-          onclick={() => (confirmDeleteState = s.name)}
+          onclick={() => requestDeleteState(s.name)}
         >
           <Trash2 size={15} />
         </button>
       </div>
       {#if confirmDeleteState === s.name}
-        <ConfirmBar
-          inline
-          role="alertdialog"
-          ariaLabel={$t("projectSettings.confirmColumn")}
-          focus
-          message={$t("projectSettings.deleteColumn", {name: s.name})}
-          confirmLabel={$t("projectSettings.confirmDelete")}
-            cancelLabel={$t("common.cancel")}
-          danger
-          onconfirm={() => delState(s.name)}
-          oncancel={() => (confirmDeleteState = null)}
-        />
+        {@const requiresTarget = (s.item_count || 0) > 0 || (s.deferred_reference_count || 0) > 0}
+        <div class="state-delete-confirm">
+          {#if requiresTarget}
+            <p>{$t("projectSettings.moveBeforeDelete", {name:s.name,count:s.item_count || 0})}</p>
+            {#if s.deferred_reference_count}<p class="hint">{$t("projectSettings.deferredTarget")}</p>{/if}
+            <Select value={deleteStateTarget} ariaLabel={$t("projectSettings.destinationColumn")}
+              options={[{value:"",label:$t("projectSettings.chooseDestination")},...states.filter(target => target.name !== s.name).map(target => ({value:target.name,label:target.name}))]}
+              disabled={deletingState} onchange={(value) => deleteStateTarget=value} />
+            {#if s.is_default}<p class="hint">{$t("projectSettings.defaultTarget")}</p>{/if}
+          {/if}
+          <ConfirmBar inline role="alertdialog" ariaLabel={$t("projectSettings.confirmColumn")} focus
+            message={$t(requiresTarget ? "projectSettings.confirmMoveDelete" : "projectSettings.deleteEmptyColumn", {name:s.name,count:s.item_count || 0,target:deleteStateTarget})}
+            confirmLabel={$t(requiresTarget ? "projectSettings.moveAndDelete" : "projectSettings.confirmDelete")}
+            confirmDisabled={deletingState || (requiresTarget && !states.some(target => target.name===deleteStateTarget && target.name!==s.name))}
+            cancelLabel={$t("common.cancel")} danger onconfirm={() => delState(s)} oncancel={() => confirmDeleteState=null}/>
+        </div>
       {/if}
     {/each}
     <div class="add-row add-state st-row">
@@ -705,6 +722,9 @@
 
 <style>
   .settings-fields { padding: 0; border: 0; margin: 0; min-width: 0; }
+  .state-delete-confirm { padding:12px;background:var(--danger-soft);border-radius:var(--radius-sm);margin-bottom:12px; }
+  .state-delete-confirm p { margin:0 0 10px; }
+  .state-delete-confirm .hint { color:var(--text-secondary);font-size:var(--text-sm); }
   .ps-top {
     display: flex;
     align-items: center;

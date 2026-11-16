@@ -157,3 +157,15 @@ export function initials(handle) {
   }
   return h.slice(0, 2).toUpperCase();
 }
+
+
+/** Show the chip's resolved hue instead of the legacy gray storage default. */
+export function labelPickerColor(color, hue) {
+  if (color && color.toLowerCase() !== LABEL_DEFAULT_COLOR && hexToHue(color) !== null) return color;
+  const h = ((hue % 360 + 360) % 360) / 60;
+  const chroma = 0.62;
+  const secondary = chroma * (1 - Math.abs(h % 2 - 1));
+  const rgb = [[chroma,secondary,0],[secondary,chroma,0],[0,chroma,secondary],
+    [0,secondary,chroma],[secondary,0,chroma],[chroma,0,secondary]][Math.floor(h)];
+  return "#" + rgb.map(component => Math.round((component + 0.19) * 255).toString(16).padStart(2,"0")).join("");
+}

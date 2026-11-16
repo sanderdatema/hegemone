@@ -153,3 +153,14 @@ describe("hexToHue", () => {
     expect(hexToHue(undefined)).toBeNull();
   });
 });
+
+
+it("shows resolved label hues for unset and legacy gray picker values", async () => {
+  const {labelPickerColor,hexToHue} = await import("./avatar.js");
+  expect(labelPickerColor("#123456", 15)).toBe("#123456");
+  for (const color of [null, "#95a5a6", "#888888"]) {
+    const values = [0,120,240].map(hue=>labelPickerColor(color,hue));
+    expect(new Set(values).size).toBe(3);
+    expect(values.map(hexToHue)).toEqual([0,120,240]);
+  }
+});

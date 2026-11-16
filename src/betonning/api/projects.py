@@ -10,6 +10,7 @@ from ..deps import current_human, current_user, get_db, require_project
 from ..models import (
     AccessLevelUpdate,
     ItemCreate,
+    ItemUpdate,
     LabelCreate,
     LabelUpdate,
     MilestoneCreate,
@@ -33,7 +34,7 @@ from .. import credential_policy
 from .. import db as db_module
 from .. import mentions as mentions_mod
 from .. import webhooks
-from .items import _resolve_label_id, _resolve_state_id, resolve_item_fields
+from .items import _resolve_label_id, _resolve_state_id, resolve_item_fields, apply_item_update, _require_unlocked
 
 from ..repo import model_classes as model_classes_repo
 
@@ -305,35 +306,48 @@ def update_state(
 def delete_state(
     key: str,
     name: str,
+    target: str | None = Query(default=None, min_length=1),
+    expected_count: int | None = Query(default=None, ge=0),
     conn: sqlite3.Connection = Depends(get_db),
-    _: sqlite3.Row = Depends(current_user),
+    user: sqlite3.Row = Depends(current_user),
 ) -> None:
-    """Verwijder een state (kolom) uit een project (BETON-351).
-
-    Twee guards vóór de DELETE: de laatste kolom van een project mag niet weg
-    (een project zonder states kan geen items plaatsen), en een kolom met nog
-    items erin mag niet weg (anders wordt zo'n item onzichtbaar — state_id
-    zonder rij). Verplaats de items eerst naar een andere kolom."""
-    project = require_project(conn, key)
-    state = states_repo.get_by_name(conn, project["id"], name)
-    if state is None:
-        raise HTTPException(status_code=404, detail=f"Onbekende state: {name}")
-    remaining = states_repo.list_for_project(conn, project["id"])
-    if len(remaining) <= 1:
-        raise HTTPException(
-            status_code=409, detail="Laatste kolom van een project kan niet verwijderd worden"
-        )
-    item_count = states_repo.count_items(conn, state["id"])
-    if item_count:
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                f"Kolom '{name}' bevat nog {item_count} item(s) — "
-                "verplaats ze eerst naar een andere kolom"
-            ),
-        )
+    """Delete an empty column, or atomically move its tickets to a chosen column."""
     with db_module.transaction(conn):
+        project = require_project(conn, key)
+        state = states_repo.get_by_name(conn, project["id"], name)
+        if state is None:
+            raise HTTPException(status_code=404, detail=f"Onbekende state: {name}")
+        remaining = states_repo.list_for_project(conn, project["id"])
+        if len(remaining) <= 1:
+            raise HTTPException(status_code=409, detail="Laatste kolom van een project kan niet verwijderd worden")
+        info = next(s for s in remaining if s["id"] == state["id"])
+        if expected_count is not None and expected_count != info["item_count"]:
+            raise HTTPException(409, "Het aantal tickets in deze kolom is gewijzigd; controleer de bevestiging opnieuw")
+        destination = states_repo.get_by_name(conn, project["id"], target) if target else None
+        if target and (destination is None or destination["id"] == state["id"]):
+            raise HTTPException(422, "Kies een andere bestaande kolom in dit project")
+        if info["item_count"] and destination is None:
+            raise HTTPException(409, detail=(
+                f"Kolom '{name}' bevat nog {info['item_count']} item(s) — verplaats ze eerst naar een andere kolom"))
+        if info["deferred_reference_count"] and destination is None:
+            raise HTTPException(409, "Uitgestelde tickets verwijzen naar deze kolom; kies een doelkolom")
+        if destination is not None:
+            if user["kind"] != "human":
+                raise HTTPException(403, "Alleen een mens mag tickets verplaatsen bij het verwijderen van een kolom")
+            refs = states_repo.item_refs(conn, project["id"], state["id"])
+            for ref in refs:
+                item = items_repo.get_by_ref(conn, ref)
+                assert item is not None
+                _require_unlocked(item, user)
+                apply_item_update(conn, ref, ItemUpdate(state=destination["name"]), user, within_transaction=True)
+            states_repo.retarget_column_references(conn, state["id"], destination["id"])
+        elif state["is_default"]:
+            fallback = next(s for s in remaining if s["id"] != state["id"])
+            states_repo.retarget_column_references(conn, state["id"], fallback["id"])
         states_repo.delete(conn, state["id"])
+        events_repo.record(conn, type="state.deleted", item_id=None, actor_id=user["id"],
+                           payload={"project": key, "name": name, "target": destination["name"] if destination else None,
+                                    "moved_count": info["item_count"]})
 
 
 @router.get("/projects/{key}/labels")

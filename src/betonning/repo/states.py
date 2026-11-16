@@ -73,7 +73,13 @@ def list_for_project(conn: sqlite3.Connection, project_id: int) -> list[dict]:
         "SELECT * FROM states WHERE project_id = ? ORDER BY sort_order, id",
         (project_id,),
     ).fetchall()
-    return [serialize(r) for r in rows]
+    counts = {r["state_id"]: r["n"] for r in conn.execute(
+        "SELECT state_id, COUNT(*) AS n FROM items WHERE project_id=? GROUP BY state_id", (project_id,))}
+    references = {r["deferred_from_state_id"]: r["n"] for r in conn.execute(
+        "SELECT deferred_from_state_id, COUNT(*) AS n FROM items WHERE project_id=? "
+        "AND deferred_from_state_id IS NOT NULL GROUP BY deferred_from_state_id", (project_id,))}
+    return [{**serialize(r), "item_count": counts.get(r["id"], 0),
+             "deferred_reference_count": references.get(r["id"], 0)} for r in rows]
 
 
 def get_by_name(conn: sqlite3.Connection, project_id: int, name: str) -> sqlite3.Row | None:
@@ -120,3 +126,16 @@ def update(conn: sqlite3.Connection, state_id: int, fields: dict) -> dict:
         )
     row = conn.execute("SELECT * FROM states WHERE id = ?", (state_id,)).fetchone()
     return serialize(row)
+
+
+def item_refs(conn: sqlite3.Connection, project_id: int, state_id: int) -> list[str]:
+    return [row["ref"] for row in conn.execute(
+        "SELECT p.key || '-' || i.seq AS ref FROM items i JOIN projects p ON p.id=i.project_id "
+        "WHERE i.project_id=? AND i.state_id=? ORDER BY i.id", (project_id, state_id))]
+
+
+def retarget_column_references(conn: sqlite3.Connection, source_id: int, target_id: int) -> None:
+    """Preserve deferred return paths and the default when removing a column."""
+    conn.execute("UPDATE items SET deferred_from_state_id=? WHERE deferred_from_state_id=?", (target_id, source_id))
+    conn.execute("UPDATE states SET is_default=1 WHERE id=? AND EXISTS "
+                 "(SELECT 1 FROM states WHERE id=? AND is_default=1)", (target_id, source_id))

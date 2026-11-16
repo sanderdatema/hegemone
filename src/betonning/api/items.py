@@ -7,6 +7,7 @@ from ..outbound import outbound
 import json
 import re
 import sqlite3
+from contextlib import nullcontext
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Query
 
@@ -1473,6 +1474,14 @@ def update_item(
     user: sqlite3.Row = Depends(current_user),
     if_match: str | None = Header(default=None, alias="If-Match"),
 ) -> dict:
+    return apply_item_update(conn, ref, body, user, if_match=if_match)
+
+
+def apply_item_update(
+    conn: sqlite3.Connection, ref: str, body: ItemUpdate, user: sqlite3.Row,
+    *, if_match: str | None = None, within_transaction: bool = False,
+) -> dict:
+    """Reuse item guards, events and lifecycle inside an enclosing operation."""
     item = _require_item(conn, ref)
     project = conn.execute(
         "SELECT * FROM projects WHERE id = ?", (item["project_id"],)
@@ -1736,7 +1745,7 @@ def update_item(
     if implicit_state_flip and "state" not in payload_keys:
         payload_keys.append("state")
 
-    with db_module.transaction(conn):
+    with nullcontext() if within_transaction else db_module.transaction(conn):
         updated = items_repo.update(conn, item["id"], fields)
         assert updated is not None
         if labels_changed:
