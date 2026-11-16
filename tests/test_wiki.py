@@ -444,7 +444,10 @@ def test_compile_context_falls_back_to_index_above_budget(conn):
         body_md="# Nieuw\n\n" + ("verse tekst " * 40),
     )
     conn.commit()
-    md = wiki_repo.compile_context(conn, p["id"], budget=600)
+    conn.execute("UPDATE wiki_pages SET updated_at='2000-01-01' WHERE slug='oud'")
+    conn.execute("UPDATE wiki_pages SET updated_at='2001-01-01' WHERE slug='nieuw'")
+    md = wiki_repo.compile_context(conn, p["id"], budget=700)
+    assert len(md) <= 700
     assert "verse tekst verse tekst" in md
     assert "OUDE-STAART" not in md
     assert "`oud` — Oud" in md

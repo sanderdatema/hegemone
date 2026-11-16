@@ -134,7 +134,8 @@ def test_apply_compile_updates_existing_page(conn, seeded):
     result = wc.CompileResult(
         skip=False, pages=[wc.WikiPageEdit(slug="conventies", title="Conventies", body_md="nieuw")]
     )
-    wc.apply_compile(conn, item, result, triage_id)
+    _, allowed = wiki_repo.compile_snapshot(conn, project_id)
+    wc.apply_compile(conn, item, result, triage_id, allowed_pages=allowed)
     assert wiki_repo.get_by_slug(conn, project_id, "conventies")["body_md"] == "nieuw"
     # Geen duplicaat.
     assert len(wiki_repo.list_pages(conn, project_id)) == 1
@@ -216,3 +217,53 @@ def test_run_batch_continues_past_poison_and_quarantines(conn, db_path, seeded):
     assert row["wiki_compile_attempts"] == wc.MAX_ATTEMPTS
     assert row["wiki_compile_error_at"] is not None
     assert wc.find_uncompiled(conn, debounce_seconds=60, limit=50) == []  # quarantaine
+
+
+@pytest.mark.parametrize("scenario", ["oversized", "indexed", "changed", "unseen"])
+def test_compiler_refuses_unseen_or_changed_existing_pages(conn, seeded, scenario):
+    project_id, actor, done_id = seeded
+    item = _make_item(conn, project_id, "Knowledge", state_id=done_id)
+    original = "keep-the-entire-body" + ("x" * 21000 if scenario == "oversized" else "")
+    page = wiki_repo.create(conn, project_id=project_id, slug="lesson", title="Lesson", body_md=original)
+    if scenario == "indexed":
+        wiki_repo.create(conn, project_id=project_id, slug="recent", title="Recent", body_md="r" * 19000)
+        wiki_repo.update(conn, page["id"], {"body_md": "o" * 2000})
+        conn.execute("UPDATE wiki_pages SET updated_at='2000-01-01' WHERE id=?", (page["id"],))
+        original = "o" * 2000
+
+    class ChangingLLM(FakeLLM):
+        def complete(self, messages):
+            if scenario == "changed":
+                wiki_repo.update(conn, page["id"], {"body_md": "concurrent knowledge"})
+            return super().complete(messages)
+
+    model = ChangingLLM({"pages": [{"slug": "lesson", "title": "Lesson", "body_md": "replacement"}]})
+    if scenario == "unseen":
+        result = wc.parse_compile(model.reply)
+        assert wc.apply_compile(conn, item, result, actor) == []
+    else:
+        wc.compile_once(conn, item["id"], model, actor_id=actor)
+        prompt = model.last_messages[1]["content"]
+        wiki_block = prompt.split("<wiki-context>\n", 1)[1].split("\n</wiki-context>", 1)[0]
+        assert len(wiki_block) <= 20000
+        if scenario in ("oversized", "indexed"):
+            assert original not in wiki_block
+            assert "`lesson`" in wiki_block
+    expected = "concurrent knowledge" if scenario == "changed" else original
+    assert wiki_repo.get_by_slug(conn, project_id, "lesson")["body_md"] == expected
+
+
+def test_compiler_rejects_oversized_context_instead_of_slicing():
+    with pytest.raises(ValueError, match="whole-page budget"):
+        wc.build_compile_messages({}, [], "x" * 20001, [])
+
+
+def test_compiler_supplies_complete_selected_page(conn, seeded):
+    project_id, actor, done_id = seeded
+    item = _make_item(conn, project_id, "Knowledge", state_id=done_id)
+    body = "start" + "x" * 18000 + "END-OF-KNOWLEDGE"
+    wiki_repo.create(conn, project_id=project_id, slug="lesson", title="Lesson", body_md=body)
+    model = FakeLLM({"pages": [{"slug": "lesson", "title": "Lesson", "body_md": "updated"}]})
+    wc.compile_once(conn, item["id"], model, actor_id=actor)
+    assert body in model.last_messages[1]["content"]
+    assert wiki_repo.get_by_slug(conn, project_id, "lesson")["body_md"] == "updated"

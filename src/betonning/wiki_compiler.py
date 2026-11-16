@@ -68,6 +68,8 @@ Wat NIET: ticket-specifieke status, eenmalige details, "gefixt in commit X", chi
 Regels:
 - Werk bij voorkeur een BESTAANDE pagina bij (zelfde slug) i.p.v. een bijna-duplicaat \
 te maken. De bestaande pagina's staan hieronder.
+- Werk alleen bestaande pagina’s bij die VOLLEDIG in de wiki-context staan.
+Geïndexeerde pagina’s mogen niet worden vervangen.
 - Bij het bijwerken: geef de VOLLEDIGE nieuwe inhoud van de pagina terug (je output \
 vervangt de body), dus behoud wat nog klopt en voeg het nieuwe toe.
 - Slugs zijn kort en kebab-case (a-z, 0-9, koppeltekens), bv. "deploy-gotchas".
@@ -90,10 +92,12 @@ def build_compile_messages(
     item: dict, comments: list[dict], wiki_context: str, existing_slugs: list[str]
 ) -> list[dict]:
     """Bouw de chat-messages voor de wiki-compilatie (pure functie, testbaar)."""
+    if len(wiki_context) > wiki_repo.DEFAULT_COMPILE_BUDGET:
+        raise ValueError("Compiler wiki context exceeds its whole-page budget")
     existing = ", ".join(existing_slugs[:200]) or "(nog geen pagina's)"
     user = (
         fenced("bestaande-paginas", clamp(existing, 3000)) + "\n"
-        + fenced("wiki-context", clamp(wiki_context or "(leeg)", 20000)) + "\n"
+        + fenced("wiki-context", wiki_context or "(leeg)") + "\n"
         + fenced("ticket", clamp(
             f"Ref: {item.get('ref')}\nTitel: {item.get('title')}\n"
             f"State: {item.get('state')}\nBeschrijving: {item.get('description_md') or '(geen)'}", 10000)) + "\n"
@@ -121,6 +125,8 @@ def apply_compile(
     item: sqlite3.Row,
     result: CompileResult,
     actor_id: int,
+    *,
+    allowed_pages: dict[str, tuple[int, str]] | None = None,
 ) -> list[str]:
     """Pas een CompileResult toe: upsert de wiki-pagina's (projectscope) en
     markeer het item als gecompileerd. Eén transactie. Geeft de geraakte slugs."""
@@ -139,6 +145,10 @@ def apply_compile(
                     touched.append(slug)
                     continue
                 if existing is not None:
+                    expected = (allowed_pages or {}).get(slug)
+                    if expected != (existing["id"], wiki_review.digest(existing)):
+                        logger.info("Wiki replacement refused: page was unseen or changed")
+                        continue
                     # BETON-209: de compiler-bot is de auteur van deze revisie.
                     wiki_repo.update(
                         conn, existing["id"],
@@ -146,6 +156,9 @@ def apply_compile(
                         author_id=actor_id,
                     )
                 else:
+                    if slug in (allowed_pages or {}):
+                        # A page deleted during inference must not be resurrected.
+                        continue
                     wiki_repo.create(
                         conn,
                         project_id=project_id,
@@ -218,11 +231,11 @@ def compile_once(
     ]
     # Volledige projectpagina's: apply_compile vervangt hun body, dus de
     # compiler moet zien wat er staat (BETON-352).
-    wiki_context = wiki_repo.compile_context(conn, item["project_id"])
+    wiki_context, allowed_pages = wiki_repo.compile_snapshot(conn, item["project_id"])
     existing_slugs = [p["slug"] for p in wiki_repo.list_pages(conn, item["project_id"])]
     messages = build_compile_messages(data, comments, wiki_context, existing_slugs)
     result = parse_compile(llm.complete(messages))
-    touched = apply_compile(conn, item, result, actor_id)
+    touched = apply_compile(conn, item, result, actor_id, allowed_pages=allowed_pages)
     logger.info(
         "Wiki-compile %s → %s", data["ref"], "skip" if result.skip else ", ".join(touched)
     )

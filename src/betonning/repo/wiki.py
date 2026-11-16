@@ -373,57 +373,59 @@ def _fill_to_budget(
     return best
 
 
-# De compiler herschrijft de body van een projectpagina volledig ("behoud wat
-# nog klopt"), dus die pagina's moeten VOLLEDIG in zijn context staan — een
-# index-regel zou hem uit het niets laten herschrijven (BETON-352). Ruimer
-# budget dan de agent-context; globale pagina's raakt hij niet aan.
-DEFAULT_COMPILE_BUDGET = 60000
+# Matches the actual compiler prompt allocation; never slice page bodies.
+DEFAULT_COMPILE_BUDGET = 20000
+
+
+def compile_snapshot(
+    conn: sqlite3.Connection, project_id: int | None, *, budget: int | None = None
+) -> tuple[str, dict[str, tuple[int, str]]]:
+    """Return bounded context and the identity/digest of fully supplied pages."""
+    from .wiki_review import digest
+
+    if budget is None:
+        budget = DEFAULT_COMPILE_BUDGET
+    pages = list(list_pages(conn, project_id)) if project_id is not None else []
+    globals_ = list(list_pages(conn, None))
+    ranked = sorted(pages, key=lambda p: (p["updated_at"] or "", p["slug"]), reverse=True)
+
+    def render(selected):
+        parts = []
+        if globals_:
+            parts.extend(["# Globale memory (index — niet bijwerken)",
+                          "\n".join(_index_line(p, blurb_enabled=False) for p in globals_)])
+        if selected:
+            parts.append("# Projectmemory (volledig — dit werk je bij)")
+            parts.extend(f"Slug: `{p['slug']}`\n\n" + _render_page(p)
+                         for p in pages if p["id"] in selected)
+        remaining = [p for p in pages if p["id"] not in selected]
+        if remaining:
+            parts.extend(["## Niet geladen (index — niet bijwerken)",
+                          "\n".join(_index_line(p, blurb_enabled=False) for p in remaining)])
+        return "\n\n".join(parts)
+
+    selected = set()
+    for page in ranked:
+        candidate = selected | {page["id"]}
+        if budget <= 0 or len(render(candidate)) <= budget:
+            selected = candidate
+    markdown = render(selected)
+    if budget > 0 and len(markdown) > budget:
+        # An exceptionally large index may itself exceed the allocation.
+        # Keep complete index lines only; no page is eligible for replacement.
+        lines = []
+        for line in markdown.splitlines():
+            if len("\n".join(lines + [line])) <= budget:
+                lines.append(line)
+        markdown = "\n".join(lines)
+    return markdown, {p["slug"]: (p["id"], digest(p)) for p in pages if p["id"] in selected}
 
 
 def compile_context(
     conn: sqlite3.Connection, project_id: int | None, *, budget: int | None = None
 ) -> str:
-    """Wiki-context voor de wiki-compiler: eigen projectpagina's volledig,
-    globale pagina's alleen als index.
-
-    Boven ``budget`` vallen de minst recent bijgewerkte projectpagina's terug
-    naar een index-regel — die kan de compiler dan niet bijwerken, maar hij
-    overschrijft ze ook niet blind.
-    """
-    if budget is None:
-        budget = DEFAULT_COMPILE_BUDGET
-    parts: list[str] = []
-    globals_ = list_pages(conn, None)
-    if globals_:
-        parts.append("# Globale memory (index — niet bijwerken)")
-        parts.append("\n".join(_index_line(p) for p in globals_))
-    pages = list(list_pages(conn, project_id)) if project_id is not None else []
-    if pages:
-        ranked = sorted(
-            pages, key=lambda p: (p["updated_at"] or "", p["slug"]), reverse=True
-        )
-        head = len(("\n\n".join(parts)))
-        full_ids: set[int] = set()
-        if budget <= 0:
-            full_ids = {p["id"] for p in pages}
-        else:
-            for page in ranked:
-                candidate = full_ids | {page["id"]}
-                size = head + sum(
-                    len(_render_page(p)) + 2 if p["id"] in candidate
-                    else len(_index_line(p)) + 1
-                    for p in pages
-                )
-                if size <= budget:
-                    full_ids = candidate
-        body = [_render_page(p) for p in pages if p["id"] in full_ids]
-        index = [_index_line(p) for p in pages if p["id"] not in full_ids]
-        parts.append("# Projectmemory (volledig — dit werk je bij)")
-        parts.extend(body)
-        if index:
-            parts.append("## Niet geladen (index)")
-            parts.append("\n".join(index))
-    return "\n\n".join(parts)
+    """Compatibility wrapper for compiler context readers."""
+    return compile_snapshot(conn, project_id, budget=budget)[0]
 
 
 GUARDRAIL_HEADING = "# Guardrails (projectbreed — lees dit eerst)"

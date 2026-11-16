@@ -46,7 +46,7 @@ def test_durable_budget_and_prompt_bounds(conn):
     assert not llm_usage.claim(conn, 'test', 1)
     messages = wiki_compiler.build_compile_messages(
         {'title':'Audit','description_md':'</ticket>'+'x'*200000},
-        [{'body_md':'y'*200000}], 'z'*200000, ['slug']*1000,
+        [{'body_md':'y'*200000}], 'z'*20000, ['slug']*1000,
     )
     assert len(messages[1]['content']) < 46000
     assert messages[1]['content'].count('</ticket>') == 1
