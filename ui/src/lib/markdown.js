@@ -173,8 +173,26 @@ md.core.ruler.push("beton_heading_offset", (state) => {
  * @param {number} off  heading-offset (0 of 2)
  * @returns {string} veilige HTML zonder trailing newline
  */
-function renderWith(text, off) {
-  return md.render(String(text ?? ""), { headingOffset: off }).replace(/\n$/, "");
+function renderWith(text, off, document = null) {
+  const env = {headingOffset: off};
+  const tokens = md.parse(String(text ?? ""), env);
+  if (document) {
+    const used = new Map();
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      if (token.type !== "heading_open") continue;
+      const title = (tokens[i + 1]?.children || []).map(child =>
+        ["text", "code_inline", "image"].includes(child.type) ? child.content : "").join("");
+      const base = title.toLowerCase().normalize("NFKC").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "section";
+      const count = (used.get(base) || 0) + 1;
+      used.set(base, count);
+      const id = `wiki-section-${base}-${count}`;
+      token.attrSet("id", id);
+      token.attrSet("tabindex", "-1");
+      document.push({id, title, level: Number(token.tag.slice(1))});
+    }
+  }
+  return md.renderer.render(tokens, md.options, env).replace(/\n$/, "");
 }
 
 /**
@@ -258,10 +276,10 @@ export function renderMarkdown(text, knownHandles = [], knownProjectKeys = []) {
  * @param {string} [currentScope] scope van de huidige weergave (voor kale links)
  * @returns {string} veilige HTML (zonder trailing newline)
  */
-export function renderWikiMarkdown(text, knownRefs, knownProjectKeys = [], currentScope = "global") {
+export function renderWikiMarkdown(text, knownRefs, knownProjectKeys = [], currentScope = "global", options = {}) {
   const known = knownRefs != null ? new Set(knownRefs) : null;
   const keys = new Set([...knownProjectKeys].map((k) => String(k).toUpperCase()));
-  let html = renderWith(text, 0);
+  let html = renderWith(text, 0, options.headings);
   if (keys.size) html = linkifyTicketRefs(html, keys);
   return textOnly(html, part => part.replace(WIKILINK_RE, (_m, rawScope, slug, alias) => {
     const { scope } = resolveWikiLink(rawScope, slug, currentScope, known);
@@ -274,13 +292,22 @@ export function renderWikiMarkdown(text, knownRefs, knownProjectKeys = [], curre
     // functie matcht ná `renderWith`), dus onveilige tekens (`<`/`>`/`&`/`"`)
     // staan er al als entity — rechtstreeks in de HTML zetten is veilig,
     // zelfde aanname als de bestaande kale `label`.
-    const label = alias || (rawScope ? `${rawScope}:${slug}` : slug);
+    const pageTitle = options.titles?.get(`${scope} ${slug}`);
+    const label = alias || (pageTitle ? escapeHtml(pageTitle) : (rawScope ? `${rawScope}:${slug}` : slug));
     // Toon de bestemming in de tooltip zodra het zichtbare label 'm niet meer
     // dekt: een alias verbergt 'm altijd; een expliciete qualifier (`BETON:x`)
     // toont 'm juist al volledig in het label; een kale link laat 'm alleen
     // zien als hij niet van scope sprong.
     const showsDestination = !alias && (rawScope || scope === currentScope);
-    const titleAttr = !dead && !showsDestination ? ` title="${escapeHtml(scope)}: ${slug}"` : "";
+    const titleAttr = !dead && (!showsDestination || pageTitle) ? ` title="${escapeHtml(scope)}: ${slug}"` : "";
     return `<a class="${cls}" data-wiki="${slug}" data-wiki-scope="${escapeHtml(scope)}"${deadAttr}${titleAttr} role="link" tabindex="0">${label}</a>`;
   }));
+}
+
+
+/** Render content and its outline from the exact same parsed token stream. */
+export function renderWikiDocument(text, knownRefs, projectKeys, currentScope, titles = new Map()) {
+  const headings = [];
+  const html = renderWikiMarkdown(text, knownRefs, projectKeys, currentScope, {headings, titles});
+  return {html, headings};
 }

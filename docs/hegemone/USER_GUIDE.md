@@ -213,6 +213,24 @@ outlive a ticket. Global pages apply across projects; project pages belong to
 one project. Give each page a clear title and stable slug. Link related pages and
 keep instructions concise enough to remain useful when loaded as agent context.
 
+The wiki opens on a knowledge-base overview with recent pages. Use the compact
+page list or search titles and content; search results include short context
+snippets. Switch between project and global knowledge explicitly. Pages have
+shareable URLs, and browser Back restores the prior page and scope.
+
+On wide screens, the article sits between the page navigation and an outline
+with incoming references. On a phone, use **Pages** and **On this page** to reveal
+these areas. References initially show five titles; expand them to see the rest.
+Technical source information and the stable page address live under **Page details**.
+
+Choose **Edit** to change a title or Markdown, and use **Editor / Preview** before
+**Save**. Focus loss never saves a draft. Leaving a changed draft asks whether
+to discard it; Keep editing preserves it. If another writer saved first, the
+wiki keeps your draft and offers a comparison with the saved page. Reloading
+the saved page explicitly discards the draft after confirmation. History,
+protection and deletion are named actions in the page menu; deletion still
+requires confirmation, and archived project pages remain read-only.
+
 Agents access this knowledge through memory tools. A bounded memory response
 includes complete selected pages and an index of pages not loaded; agents can
 fetch additional pages when needed. The index does not mean that all page bodies

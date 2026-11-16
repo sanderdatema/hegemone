@@ -35,6 +35,7 @@
     ondrop,
     onblur,
     dropdown,
+    renderPreview = null,
   } = $props();
 
   // Gedeeld over reactie/omschrijving/plan (BETON-365: "onthouden per sessie,
@@ -87,7 +88,7 @@
   {#if mode === "preview"}
     <!-- eslint-disable-next-line svelte/no-at-html-tags — renderMarkdown escapet -->
     <!-- svelte-ignore a11y_no_noninteractive_tabindex — preview replaces the editable field in the same keyboard position -->
-    <div class="md-editor-preview md" bind:this={previewRef} tabindex="0" role="region" aria-label={ariaLabel || $t("editor.preview")} aria-describedby={helpId} aria-keyshortcuts="Alt+Shift+P">{@html renderMarkdown(value, knownHandles, projectKeys)}</div>
+    <div class="md-editor-preview md" bind:this={previewRef} tabindex="0" role="region" aria-label={ariaLabel || $t("editor.preview")} aria-describedby={helpId} aria-keyshortcuts="Alt+Shift+P">{@html renderPreview ? renderPreview(value) : renderMarkdown(value, knownHandles, projectKeys)}</div>
   {:else}
     <div class="mention-box">
       <!-- svelte-ignore a11y_autofocus -->

@@ -35,13 +35,13 @@ it('rendert wikinavigatie in beide talen en houdt slugs en titels letterlijk', (
   setLocale('en');
   const english = render(Wiki, {props:{project:'TEAM',projectName:'Eigen project',me:{kind:'agent'}}}).body;
   expect(english).toContain('New page');
-  expect(english).toContain('Choose a page');
+  expect(english).toContain('Knowledge base');
   expect(english).toContain('Search title or content');
   expect(english).toContain('Eigen project');
   expect(translate('en','wiki.deleteQuestion',{slug:'eigen-slug'})).toBe('Delete eigen-slug?');
   expect(translate('en','wiki.reviewNote',{slug:'eigen-slug'})).toContain('eigen-slug');
   setLocale('nl');
-  expect(render(Wiki, {props:{me:{kind:'agent'}}}).body).toContain('Kies een pagina');
+  expect(render(Wiki, {props:{me:{kind:'agent'}}}).body).toContain('Kennisbank');
 });
 
 import Activity from './Activity.svelte';

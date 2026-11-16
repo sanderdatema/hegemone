@@ -1,22 +1,26 @@
 <script>
   import { t as tr, locale } from "./lib/i18n.js";
   import WikiReview from "./WikiReview.svelte";
-  import { tick } from "svelte";
+  import { tick, onDestroy } from "svelte";
   import { api } from "./api.js";
-  import AutoTextarea from "./AutoTextarea.svelte";
+  import MarkdownEditor from "./MarkdownEditor.svelte";
+  import ErrorNote from "./ErrorNote.svelte";
+  import Select from "./Select.svelte";
   import { isSubmitChord, formatTimestamp, absoluteTime } from "./lib/board.js";
   import {
     wikiReadingBody,
+    wikiSearchSnippet,
+    sortWikiPages,
     filterWikiPages,
     wikiBacklinks,
     wikiLinkQuery,
     wikiSlugSuggestions,
   } from "./lib/wikiText.js";
-  import { renderWikiMarkdown } from "./lib/markdown.js";
+  import { renderWikiDocument } from "./lib/markdown.js";
   import ImageLightbox from "./ImageLightbox.svelte";
   import { lightboxClicks } from "./lib/lightbox.js";
   let lightboxImage = $state(null);
-  import { lineDiff, diffStat } from "./lib/diff.js";
+  import { lineDiff } from "./lib/diff.js";
   import {
     BookOpen,
     Plus,
@@ -29,7 +33,10 @@
     RotateCcw,
     X,
     Shield,
-    ShieldOff,
+    ChevronRight,
+    MoreHorizontal,
+    List,
+    FileText,
   } from "@lucide/svelte";
   import SegmentedControl from "./SegmentedControl.svelte";
   import ConfirmBar from "./ConfirmBar.svelte";
@@ -38,7 +45,7 @@
   // `onswitchproject(key)` wisselt het actieve project op app-niveau — nodig
   // om een wikilink naar een ánder project dan het geselecteerde te kunnen
   // volgen (BETON-306); zonder die callback blijft zo'n link binnen de view.
-  let { project, projectName, projectArchived = false, me, onclose, onopenref, onswitchproject, liveTick = 0 } = $props();
+  let { project, projectName, projectArchived = false, me, onclose, onopenref, onswitchproject, liveTick = 0, routePage = null, routeScope = null, onroute, onleaveguard } = $props();
 
   // Bekende project-keys, voor het klikbaar maken van ticketrefs (BETON-106).
   let projectKeys = $state([]);
@@ -48,10 +55,13 @@
     .catch(() => {});
 
   // scope: 'global' of 'project'. Zonder project altijd globaal.
-  let scope = $state(project ? "project" : "global");
+  let scope = $state(routeScope || "project");
   let projectReadOnly = $derived(scope === "project" && projectArchived);
   let pages = $state([]);
-  let selected = $state(null); // huidige slug
+  let loadedScope = $state(null);
+  let loadPending = Promise.resolve();
+  const scopedPages = $derived(loadedScope === currentScope ? pages : []);
+  let selected = $state(routePage); // huidige slug
   let editing = $state(false);
   let creating = $state(false);
   let titleDraft = $state("");
@@ -59,7 +69,8 @@
   let slugDraft = $state("");
   let confirmDelete = $state(false);
   let error = $state("");
-  let loading = $state(false);
+  let notice = $state("");
+  let loading = $state(true);
   let query = $state(""); // zoekterm boven de paginalijst
   let createPrompt = $state(""); // slug uit een dode wikilink → "aanmaken?"
   let createPromptScope = $state(""); // scope van die dode link (BETON-306)
@@ -79,58 +90,104 @@
   let acIndex = $state(0);
   let acStart = $state(0);
 
-  const scopeKey = $derived(scope === "global" ? null : project);
+  const scopeKey = $derived(scope === "global" || !project ? null : project);
   // BETON-306: de scope als string ("global" of een project-key) — voor het
   // resolven van kale interlinks en het meegeven aan de renderer/navigatie.
-  const currentScope = $derived(scope === "global" ? "global" : project);
-  const current = $derived(pages.find((p) => p.slug === selected) || null);
-  const visiblePages = $derived(filterWikiPages(pages, query));
+  const currentScope = $derived(scope === "global" || !project ? "global" : project);
+  const current = $derived(scopedPages.find((p) => p.slug === selected) || null);
+  let sort = $state("alphabetical");
+  let navOpen = $state(false);
+  let contextOpen = $state(false);
+  let showAllBacklinks = $state(false);
+  let menuOpen = $state(false);
+  let pendingLeave = $state(null);
+  let leaveFocus = null;
+  let editBase = $state(null);
+  let conflictPage = $state(null);
+  let showConflict = $state(false);
+  const dirty = $derived((editing || creating) && (creating
+    ? !!(titleDraft || bodyDraft || slugDraft)
+    : titleDraft !== editBase?.title || bodyDraft !== editBase?.body_md));
+  const visiblePages = $derived(sortWikiPages(filterWikiPages(scopedPages, query), sort, $locale));
+  const recentPages = $derived(sortWikiPages(scopedPages, "recent", $locale).slice(0, 6));
+  const scopeLabel = $derived(scope === "global" ? $tr("wiki.global") : projectName || project || $tr("wiki.global"));
   // Cross-scope index voor levend/dood-markering (BETON-306): keys "<scope> <slug>".
   let wikiIndex = $state([]);
   const knownRefs = $derived(new Set(wikiIndex.map((r) => `${r.scope} ${r.slug}`)));
   const backlinks = $derived(
-    current ? wikiBacklinks(pages, current.slug, currentScope, knownRefs) : [],
+    current ? wikiBacklinks(scopedPages, current.slug, currentScope, knownRefs) : [],
   );
+  const pageTitles = $derived(new Map([
+    ...wikiIndex.filter(p => p.title).map(p => [`${p.scope} ${p.slug}`, p.title]),
+    ...scopedPages.map(p => [`${currentScope} ${p.slug}`, p.title]),
+  ]));
+  const document = $derived(renderWikiDocument(wikiReadingBody(current?.body_md, current?.title), knownRefs, projectKeys, currentScope, pageTitles));
   // Diff van de bekeken revisie t.o.v. z'n voorganger (eerste revisie → alles add).
   const diffSegments = $derived(
     revDetail ? lineDiff(revDetail.previous?.body_md ?? "", revDetail.revision.body_md) : [],
   );
-  const diffTotals = $derived(diffStat(diffSegments));
-  // Welk paneel toont op smalle schermen: de zijbalk (lijst), het artikel/diff, of
-  // de geschiedenis-timeline. Een bekeken revisie (diff) toont in het hoofdpaneel.
-  const pane = $derived(
-    revDetail
-      ? "main"
-      : showHistory && current && !creating
-        ? "history"
-        : current || creating
-          ? "main"
-          : "nav",
-  );
-
+  let loadSequence = 0;
   async function load() {
+    const seq = ++loadSequence;
+    const target = scopeKey;
     loading = true;
     error = "";
     try {
-      pages = await api.wikiList(scopeKey);
-      // BETON-306: cross-scope index parallel ophalen voor de levend/dood-markering.
-      wikiIndex = await api.wikiIndex().catch(() => wikiIndex);
-      if (!pages.find((p) => p.slug === selected)) selected = null;
+      const [nextPages, index] = await Promise.all([api.wikiList(target), api.wikiIndex().catch(() => wikiIndex)]);
+      if (seq !== loadSequence) return;
+      pages = nextPages;
+      loadedScope = target || "global";
+      wikiIndex = index;
+      if (selected && !pages.some(p => p.slug === selected)) error = $tr("wiki.pageUnavailable");
     } catch (e) {
-      error = e.message;
+      if (seq === loadSequence) error = e.message;
     } finally {
-      loading = false;
+      if (seq === loadSequence) loading = false;
     }
   }
 
   $effect(() => {
-    // Herlaad bij scope-wissel én bij projectwissel (topbar-selector).
-    scope;
-    project;
-    query = "";
-    resetForm();
-    load();
+    void scopeKey;
+    void liveTick;
+    loadPending = load();
   });
+  $effect(() => {
+    if (routePage === selected && (!routeScope || routeScope === scope)) return;
+    requestLeave(() => {
+      scope = routeScope || "project";
+      selected = routePage;
+      resetForm(); resetHistory();
+    });
+  });
+  $effect(() => { onleaveguard?.(requestLeave); });
+  onDestroy(() => onleaveguard?.(null));
+
+  function requestLeave(action) {
+    if (dirty) { leaveFocus = window.document.activeElement; pendingLeave = action; return false; }
+    action(); return true;
+  }
+  function cancelLeave() {
+    pendingLeave = null;
+    if (leaveFocus?.isConnected) leaveFocus.focus({preventScroll:true});
+    else editorEl?.focus({preventScroll:true});
+  }
+  function discardLeave() {
+    const action = pendingLeave;
+    pendingLeave = null;
+    resetForm();
+    action?.();
+  }
+  function beforeUnload(event) {
+    if (!dirty) return;
+    event.preventDefault(); event.returnValue = "";
+  }
+  function publishRoute() { onroute?.({page:selected, scope}); }
+  function changeScope(value) {
+    requestLeave(() => {
+      scope = value; selected = null; query = ""; navOpen = false;
+      resetForm(); resetHistory(); publishRoute();
+    });
+  }
 
   function resetForm() {
     editing = false;
@@ -138,6 +195,9 @@
     confirmDelete = false;
     createPrompt = "";
     acOpen = false;
+    menuOpen = false;
+    conflictPage = null;
+    showConflict = false;
   }
 
   // Zet de geschiedenis-weergave terug (bij paginawissel/scope-wissel/edit).
@@ -148,7 +208,10 @@
     revisions = [];
   }
 
-  async function open(slug, targetScope = currentScope) {
+  function open(slug, targetScope = currentScope) {
+    requestLeave(() => openPage(slug, targetScope));
+  }
+  async function openPage(slug, targetScope = currentScope) {
     // BETON-306: cross-scope navigatie. Wissel zo nodig van scope; het
     // scope-`$effect` herlaadt dan de pagina's van de nieuwe scope. Een link
     // naar een ánder project vergt een projectwissel op app-niveau
@@ -168,17 +231,21 @@
     selected = slug;
     resetForm();
     resetHistory();
+    navOpen = false; contextOpen = false; showAllBacklinks = false;
+    publishRoute();
     // A11y: verplaats focus naar het artikel zodat toetsenbordgebruikers
     // meteen in de gekozen pagina zitten (geen focus-trap: dit is een view).
     await tick();
-    articleEl?.focus();
+    await loadPending;
+    await tick();
+    articleEl?.focus({preventScroll:true});
   }
 
   // Terug naar de paginalijst (vooral op smalle schermen).
   function backToList() {
-    selected = null;
-    resetForm();
-    resetHistory();
+    requestLeave(() => {
+      selected = null; resetForm(); resetHistory(); navOpen = false; publishRoute();
+    });
   }
 
   async function loadHistory() {
@@ -218,7 +285,8 @@
     if (projectReadOnly) return;
     if (!revDetail) return;
     try {
-      await api.wikiRestore(scopeKey, current.slug, revDetail.revision.id);
+      const restored = await api.wikiRestore(scopeKey, current.slug, revDetail.revision.id);
+      if (restored.status === "pending") notice = $tr("wiki.proposalSaved");
       await load(); // pagina-inhoud is nu teruggezet
       await loadHistory(); // de restore-revisie verschijnt bovenaan
       revDetail = null;
@@ -275,8 +343,7 @@
   function activateTicketLink(link) {
     const ref = link.getAttribute("data-ticket");
     if (!ref) return;
-    onopenref?.(ref);
-    onclose?.();
+    requestLeave(() => onopenref?.(ref));
   }
 
   function onWikiClick(e) {
@@ -316,10 +383,17 @@
     restoreConfirm = false;
     titleDraft = current.title;
     bodyDraft = current.body_md;
+    editBase = {...current};
+    conflictPage = null;
+    showHistory = false; menuOpen = false;
+    notice = "";
     editing = true;
   }
 
   function startCreate(slug = "") {
+    requestLeave(() => createPage(slug));
+  }
+  function createPage(slug = "") {
     if (projectReadOnly) return;
     creating = true;
     editing = false;
@@ -328,6 +402,10 @@
     titleDraft = slug;
     bodyDraft = "";
     slugDraft = slug;
+    notice = "";
+    navOpen = false; menuOpen = false;
+    resetHistory();
+    publishRoute();
   }
 
   // --- [[-autocomplete -------------------------------------------------------
@@ -339,7 +417,7 @@
       acOpen = false;
       return;
     }
-    const items = wikiSlugSuggestions(pages, q.query);
+    const items = wikiSlugSuggestions(scopedPages, q.query);
     if (!items.length) {
       acOpen = false;
       return;
@@ -391,21 +469,28 @@
     }
   }
 
-  let saving = false; // dubbele Cmd+Enter mag niet dubbel opslaan (BETON-462)
+  let saving = $state(false); // dubbele Cmd+Enter mag niet dubbel opslaan (BETON-462)
   async function saveEdit() {
     if (projectReadOnly) return;
+    if (!titleDraft.trim()) { error = $tr("wiki.validation"); return; }
     if (saving) return;
     saving = true;
     try {
-      await api.wikiUpdate(scopeKey, current.slug, {
-        title: titleDraft,
+      const result = await api.wikiUpdate(scopeKey, selected, {
+        title: titleDraft.trim(),
         body_md: bodyDraft,
+        expected_revision: editBase.revision,
       });
-      editing = false;
+      if (result.status === "pending") notice = $tr("wiki.proposalSaved");
+      editing = false; conflictPage = null;
       await load();
       if (showHistory) await loadHistory(); // nieuwe revisie in de timeline
     } catch (e) {
       error = e.message;
+      if (e.status === 409) {
+        conflictPage = await api.wikiGet(scopeKey, selected).catch(() => null);
+        error = $tr("wiki.editConflict");
+      }
     } finally {
       saving = false;
     }
@@ -428,7 +513,9 @@
       });
       creating = false;
       await load();
-      selected = created.slug;
+      selected = created.slug || null;
+      if (created.status === "pending") notice = $tr("wiki.proposalSaved");
+      publishRoute();
     } catch (e) {
       error = e.message;
     } finally {
@@ -442,6 +529,7 @@
       await api.wikiDelete(scopeKey, current.slug);
       confirmDelete = false;
       selected = null;
+      publishRoute();
       await load();
     } catch (e) {
       error = e.message;
@@ -453,839 +541,309 @@
   // Escape zelf af. Geen focus-trap: dit is een volwaardige view, geen modal.
   function onViewKeydown(e) {
     if (e.key !== "Escape") return;
+    if (pendingLeave) { e.preventDefault();e.stopPropagation();cancelLeave();return; }
+    if (menuOpen) { e.preventDefault();e.stopPropagation();menuOpen=false;return; }
     const t = e.target;
     const typing =
       t &&
       (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
     if (typing || acOpen || editing || creating || confirmDelete) return;
-    onclose?.();
+    requestLeave(() => onclose?.());
+  }
+  async function jumpTo(id) {
+    contextOpen = false;
+    await tick();
+    const heading = articleEl?.querySelector(`[id="${CSS.escape(id)}"]`);
+    heading?.scrollIntoView({block:"start", behavior:"auto"});
+    heading?.focus({preventScroll:true});
+  }
+  async function protectPage() {
+    if (projectReadOnly) return;
+    try { await api.wikiProtect(scopeKey, current.slug, !current.protected); menuOpen = false; await load(); }
+    catch (e) { error = e.message; }
   }
 </script>
 
-<svelte:window onkeydown={onViewKeydown} />
+<svelte:window onkeydown={onViewKeydown} onbeforeunload={beforeUnload} />
 
-<section
-  class="wiki-view"
-  class:with-history={showHistory && current && !creating}
-  aria-label="Wiki"
->
-  <!-- Navigatie-zijbalk: scope, zoeken, paginalijst, nieuwe pagina. -->
-  <aside class="wiki-nav" class:mobile-hidden={pane !== "nav"}>
-    <header class="wiki-nav-head">
-      <span class="wiki-brand"><BookOpen size={18} /> Wiki</span>
-      <button class="link wiki-back" onclick={() => onclose?.()}>
-        <ArrowLeft size={15} /> {$tr("wiki.board")}
-      </button>
-    </header>
-
+<section class="wiki-view" class:overview={!current && !editing && !creating} aria-label="Wiki">
+  <header class="wiki-mobile-bar">
+    <button class="sm" aria-expanded={navOpen} aria-controls="wiki-navigation" onclick={() => navOpen = !navOpen}><PanelLeft size={16} /> {$tr("wiki.pages")}</button>
+    <span>{scopeLabel}</span>
+    {#if current && !editing}<button class="sm" aria-expanded={contextOpen} aria-controls="wiki-context" onclick={() => contextOpen = !contextOpen}><List size={16} /> {$tr("wiki.onPage")}</button>{/if}
+  </header>
+  <aside id="wiki-navigation" class="wiki-nav" class:nav-open={navOpen} aria-label={$tr("wiki.pages")}>
+    <div class="wiki-nav-head"><BookOpen size={20} /><strong>{$tr("wiki.knowledge")}</strong></div>
     {#if project}
-      <SegmentedControl
-        variant="soft"
-        itemAria="pressed"
-        ariaLabel={$tr("wiki.scope")}
-        value={scope}
-        onchange={(v) => (scope = v)}
-        options={[
-          { value: "global", label: $tr("wiki.global") },
-          { value: "project", label: projectName || project },
-        ]}
-      />
+      <SegmentedControl variant="soft" itemAria="pressed" ariaLabel={$tr("wiki.scope")} value={scope}
+        onchange={changeScope} options={[{value:"project",label:projectName || project},{value:"global",label:$tr("wiki.global")}]} />
     {/if}
-
+    <button class="wiki-home-link" class:active={!selected && !creating} onclick={backToList}><BookOpen size={15} /> {$tr("wiki.overview")}</button>
     <div class="wiki-search">
-      <Search size={15} class="wiki-search-icon" />
-      <input
-        class="wiki-search-input"
-        type="search"
-        bind:value={query}
-        placeholder={$tr("wiki.searchHint")}
-        aria-label={$tr("wiki.search")}
-      />
+      <Search size={16} />
+      <input type="search" bind:value={query} aria-label={$tr("wiki.search")} placeholder={$tr("wiki.searchHint")} />
+      {#if query}<button class="icon-btn" aria-label={$tr("wiki.clearSearch")} onclick={() => query = ""}><X size={14} /></button>{/if}
     </div>
-
-    <button disabled={projectReadOnly} class="wiki-new" onclick={() => startCreate()}>
-      <Plus size={15} /> {$tr("wiki.new")}
-    </button>
-
+    <div class="wiki-list-tools">
+      <span>{query ? $tr("wiki.results",{count:visiblePages.length}) : $tr("wiki.pageCount",{count:scopedPages.length})}</span>
+      <Select value={sort} ariaLabel={$tr("wiki.sort")} options={[{value:"alphabetical",label:$tr("wiki.alphabetical")},{value:"recent",label:$tr("wiki.recent")}]} onchange={(value) => sort=value} />
+    </div>
     <nav class="wiki-list" aria-label={$tr("wiki.pages")}>
-      {#each visiblePages as p (p.slug)}
-        <button class="wiki-row" class:active={p.slug === selected} onclick={() => open(p.slug)}>
-          <span class="wiki-row-title" title={p.title}>{p.title}</span>
-          <span class="wiki-row-meta">
-            <span class="wiki-row-slug">{p.slug}</span>
-            {#if p.updated_at}
-              <span class="wiki-row-dot" aria-hidden="true">·</span>
-              <span class="wiki-row-time" title={$tr("wiki.changedAt", {time: absoluteTime(p.updated_at, $locale)})}>
-                {formatTimestamp(p.updated_at, Date.now(), $locale)}
-              </span>
-            {/if}
-          </span>
+      {#each visiblePages as page (page.slug)}
+        <button class="wiki-row" class:active={page.slug===selected} aria-current={page.slug===selected ? "page" : undefined} onclick={() => open(page.slug)}>
+          <FileText size={15} /><span><span class="wiki-row-title" title={page.title}>{page.title}</span>
+          {#if query}<span class="wiki-row-snippet">{wikiSearchSnippet(page,query)}</span>{/if}</span>
         </button>
       {:else}
-        {#if !loading}
-          <p class="muted wiki-empty">
-            {query.trim()
-              ? $tr("wiki.noSearch", {query: query.trim()})
-              : $tr("wiki.noPages")}
-          </p>
-        {/if}
+        {#if !loading}<p class="wiki-nav-empty">{$tr(query ? "wiki.noSearch" : "wiki.noPages",{query})}</p>{/if}
       {/each}
     </nav>
+    <button class="primary sm wiki-new" disabled={projectReadOnly} onclick={() => startCreate()}><Plus size={16} /> {$tr("wiki.new")}</button>
+    <button class="link wiki-board" onclick={() => requestLeave(() => onclose?.())}><ArrowLeft size={14} /> {$tr("wiki.board")}</button>
   </aside>
 
-  <!-- Hoofdinhoud: het geselecteerde artikel, de editor of een lege staat. -->
-  <main class="wiki-main" class:mobile-hidden={pane !== "main"}>
-    {#if projectReadOnly}<p class="project-readonly-note" role="status">{$tr("api.project_archived_readonly")}</p>{/if}
-    {#if error}<p class="error wiki-error">{error}</p>{/if}
-    {#if me?.kind === "human"}
-      <WikiReview readOnly={projectReadOnly} project={scopeKey} {liveTick} onchanged={load} />
+  <main class="wiki-main">
+    {#if pendingLeave}
+      <div class="wiki-leave"><ConfirmBar role="alertdialog" ariaLabel={$tr("wiki.unsavedTitle")} focus message={$tr("wiki.unsaved")}
+        confirmLabel={$tr("wiki.discard")} cancelLabel={$tr("wiki.keepEditing")} onconfirm={discardLeave} oncancel={cancelLeave} /></div>
     {/if}
-
-    {#if creating}
-      <div class="wiki-doc">
-        <div class="wiki-editor-head">
-          <button class="link wiki-tolist" onclick={backToList}>
-            <PanelLeft size={15} /> {$tr("wiki.pages")}
-          </button>
-          <h2 class="wiki-doc-title">
-            {$tr("wiki.newInScope", {scope: scope === "global" ? $tr("wiki.global") : projectName || project})}
-          </h2>
+    <ErrorNote message={error} onRetry={!editing && !creating ? load : undefined} />
+    {#if notice}<p class="wiki-notice" role="status">{notice}</p>{/if}
+    {#if projectReadOnly}<p class="readonly-note">{$tr("api.project_archived_readonly")}</p>{/if}
+    {#if me?.kind === "human"}<WikiReview project={scopeKey} {liveTick} readOnly={projectReadOnly} onchanged={load} />{/if}
+    {#if loading && !scopedPages.length}<p role="status">{$tr("wiki.loading")}</p>
+    {:else if creating || editing}
+      <article class="wiki-doc wiki-editor" aria-label={$tr(creating ? "wiki.new" : "wiki.edit")}>
+        <div class="wiki-breadcrumb"><button class="link" onclick={backToList}>{scopeLabel}</button><ChevronRight size={13} /><span>{$tr(creating ? "wiki.new" : "wiki.edit")}</span></div>
+        <div class="wiki-editor-head"><h1>{$tr(creating ? "wiki.new" : "wiki.edit")}</h1><span>{$tr("wiki.unsavedLabel")}</span></div>
+        <label class="wiki-field">{$tr("wiki.title")}<input class="full" bind:value={titleDraft} disabled={projectReadOnly || saving} /></label>
+        {#if creating}<details class="wiki-page-info"><summary>{$tr("wiki.pageDetails")}</summary><label class="wiki-field">{$tr("wiki.pageAddress")}<input bind:value={slugDraft} placeholder={$tr("wiki.slugHint")} /></label></details>{/if}
+        {#if conflictPage}
+          <section class="wiki-conflict" role="alert">
+            <strong>{$tr("wiki.editConflict")}</strong><p>{$tr("wiki.conflictHelp")}</p>
+            <button class="sm" onclick={() => showConflict = !showConflict}>{$tr("wiki.compareSaved")}</button>
+            {#if showConflict}<DiffView segments={lineDiff(bodyDraft, conflictPage.body_md)} variant="bordered" ariaLabel={$tr("wiki.changes")} />{/if}
+            <button class="sm" onclick={() => requestLeave(() => {editing=false; conflictPage=null; load();})}>{$tr("wiki.reloadSaved")}</button>
+          </section>
+        {/if}
+        <div class="ac-wrap" role="presentation" onclick={onWikiClick} onkeydown={onWikiKeydown}>
+          <MarkdownEditor renderPreview={(text) => renderWikiDocument(wikiReadingBody(text,titleDraft),knownRefs,projectKeys,currentScope,pageTitles).html} value={bodyDraft} oninput={(event) => {bodyDraft=event.currentTarget.value;onEditorInput();}}
+            bind:textareaRef={editorEl} rows={20} ariaLabel={$tr("wiki.content")} placeholder={$tr("wiki.markdownEdit")}
+            onsubmit={creating ? saveCreate : saveEdit} onkeydown={onEditorKeydown}>
+            {#snippet dropdown()}{@render acDropdown()}{/snippet}
+          </MarkdownEditor>
         </div>
-        <input disabled={projectReadOnly} class="full" bind:value={titleDraft} placeholder={$tr("wiki.title")} />
-        <input disabled={projectReadOnly} class="full" bind:value={slugDraft} placeholder={$tr("wiki.slugHint")} />
-        <div class="ac-wrap">
-          <AutoTextarea disabled={projectReadOnly}
-            class="full wiki-textarea"
-            bind:textareaRef={editorEl}
-            bind:value={bodyDraft}
-            rows="16"
-            placeholder={$tr("wiki.markdownCreate")}
-            oninput={onEditorInput}
-            onsubmit={saveCreate}
-            onkeydown={onEditorKeydown}
-          />
-          {@render acDropdown()}
-        </div>
-        <div class="btn-row">
-          <button class="sm" onclick={() => (creating = false)}>{$tr("common.cancel")}</button>
-          <button disabled={projectReadOnly} class="primary sm" onclick={saveCreate}>{$tr("common.create")}</button>
-        </div>
-      </div>
+        <footer class="wiki-editor-actions">
+          <span>{$tr("wiki.explicitSave")}</span>
+          <button class="sm" onclick={() => requestLeave(() => {resetForm();})}>{$tr("common.cancel")}</button>
+          <button class="primary sm" disabled={saving || projectReadOnly || !titleDraft.trim() || !!conflictPage} onclick={creating ? saveCreate : saveEdit}>{$tr(saving ? "wiki.saving" : "common.save")}</button>
+        </footer>
+      </article>
     {:else if current}
       <article class="wiki-doc" tabindex="-1" bind:this={articleEl} aria-label={current.title}>
-        <div class="wiki-doc-head">
-          <button class="link wiki-tolist" onclick={backToList}>
-            <PanelLeft size={15} /> {$tr("wiki.pages")}
-          </button>
+        <div class="wiki-doc-toolbar">
+          <div class="wiki-breadcrumb"><button class="link" onclick={backToList}>{scopeLabel}</button><ChevronRight size={13}/><span>{$tr("wiki.article")}</span></div>
           <div class="wiki-actions">
-            {#if !editing}
-              <button
-                class="icon-btn sm"
-                class:active={showHistory}
-                title={$tr("wiki.history")}
-                aria-pressed={showHistory}
-                onclick={toggleHistory}
-              >
-                <History size={16} />
-              </button>
-              <button disabled={projectReadOnly} class="icon-btn sm" title={$tr("wiki.edit")} onclick={startEdit}><Pencil size={16} /></button>
-              {#if me?.kind === "human"}
-                <button disabled={projectReadOnly} class="icon-btn sm danger-quiet" title={$tr("wiki.delete")} onclick={() => (confirmDelete = true)}>
-                  <Trash2 size={16} />
-                </button>
+            <button class="sm" disabled={projectReadOnly} onclick={startEdit}><Pencil size={14} /> {$tr("wiki.edit")}</button>
+            <div class="wiki-menu-wrap">
+              <button class="icon-btn" aria-label={$tr("wiki.pageActions")} aria-expanded={menuOpen} onclick={() => menuOpen=!menuOpen}><MoreHorizontal size={20}/></button>
+              {#if menuOpen}
+                <div class="wiki-menu" role="group" aria-label={$tr("wiki.pageActions")}>
+                  <button onclick={() => {menuOpen=false;toggleHistory();}}><History size={15}/>{$tr("wiki.history")}</button>
+                  {#if me?.kind === "human" && scopeKey}<button disabled={projectReadOnly} onclick={protectPage}><Shield size={15}/>{$tr(current.protected ? "wiki.unprotect" : "wiki.protect")}</button>{/if}
+                  {#if me?.kind === "human"}<button class="danger-quiet" disabled={projectReadOnly} onclick={() => {confirmDelete=true;menuOpen=false;}}><Trash2 size={15}/>{$tr("wiki.delete")}</button>{/if}
+                </div>
               {/if}
-            {/if}
+            </div>
           </div>
         </div>
-
-        {#if !editing}
-          <header class="wiki-doc-title-wrap">
-            <h1 class="wiki-doc-title">{current.title}</h1>
-            <div class="wiki-doc-meta">
-              <span class="wiki-protection" class:protected={current.protected}>
-                <Shield size={13} /> {$tr(current.protected ? "wiki.protected" : "wiki.ordinary")}
-              </span>
-              {#if me?.kind === "human" && scopeKey}
-                <button disabled={projectReadOnly} class="icon-btn sm wiki-protect-action"
-                  title={$tr(current.protected ? "wiki.unprotect" : "wiki.protect")}
-                  aria-label={$tr(current.protected ? "wiki.unprotect" : "wiki.protect")}
-                  onclick={async () => {
-                    try { await api.wikiProtect(scopeKey, current.slug, !current.protected); await load(); }
-                    catch (e) { error = e.message; }
-                  }}>
-                  {#if current.protected}<ShieldOff size={15} />{:else}<Shield size={15} />{/if}
-                </button>
-              {/if}
-              <span>{$tr("wiki.source")}: {current.source_kind ?? $tr("wiki.existingKnowledge")}</span>
-              <span class="wiki-doc-slug">{current.slug}</span>
-              {#if current.updated_at}
-                <span title={$tr("wiki.changedAt", {time: absoluteTime(current.updated_at, $locale)})}>
-                  · {$tr("wiki.changed", {time: formatTimestamp(current.updated_at, Date.now(), $locale)})}
-                </span>
-              {/if}
-            </div>
-          </header>
-        {/if}
-
-        {#if confirmDelete}
-          <ConfirmBar confirmDisabled={projectReadOnly}
-            cancelLabel={$tr("common.cancel")}
-            danger
-            message={$tr("wiki.deleteQuestion", {slug: current.slug})}
-            confirmLabel={$tr("wiki.yesDelete")}
-            confirmClass="danger"
-            onconfirm={doDelete}
-            oncancel={() => (confirmDelete = false)}
-          />
-        {/if}
-
-        {#if editing}
-          <input disabled={projectReadOnly} class="full" bind:value={titleDraft} placeholder={$tr("wiki.title")} />
-          <div class="ac-wrap">
-            <AutoTextarea disabled={projectReadOnly}
-              class="full wiki-textarea"
-              bind:textareaRef={editorEl}
-              bind:value={bodyDraft}
-              rows="18"
-              placeholder={$tr("wiki.markdownEdit")}
-              oninput={onEditorInput}
-              onsubmit={saveEdit}
-              onkeydown={onEditorKeydown}
-            />
-            {@render acDropdown()}
+        <header class="wiki-doc-title-wrap">
+          <h1 class="wiki-doc-title">{current.title}</h1>
+          <div class="wiki-doc-meta">
+            {#if current.updated_at}<span title={absoluteTime(current.updated_at,$locale)}>{$tr("wiki.changed",{time:formatTimestamp(current.updated_at,Date.now(),$locale)})}</span>{/if}
+            {#if current.protected}<span class="wiki-protected"><Shield size={13}/>{$tr("wiki.protected")}</span>{/if}
           </div>
-          <div class="btn-row">
-            <button class="sm" onclick={() => (editing = false)}>{$tr("common.cancel")}</button>
-            <button disabled={projectReadOnly} class="primary sm" onclick={saveEdit}>{$tr("common.save")}</button>
-          </div>
-        {:else if revDetail}
-          <div class="rev-view">
-            <div class="rev-banner">
-              <div class="rev-banner-info">
-                <span class="rev-who">
-                  {revDetail.revision.author || $tr("wiki.unknown")}
-                </span>
-                <span
-                  class="rev-when"
-                  title={absoluteTime(revDetail.revision.created_at, $locale)}
-                >
-                  {formatTimestamp(revDetail.revision.created_at, Date.now(), $locale)}
-                </span>
-                <span class="rev-stat">
-                  <span class="add">+{diffTotals.added}</span>
-                  <span class="del">−{diffTotals.removed}</span>
-                </span>
-              </div>
-              <div class="rev-banner-actions">
-                {#if restoreConfirm}
-                  <span class="rev-confirm-q">{$tr("wiki.restoreQuestion")}</span>
-                  <button disabled={projectReadOnly} class="primary sm" onclick={restoreRevision}>{$tr("wiki.yesRestore")}</button>
-                  <button disabled={projectReadOnly} class="sm" onclick={() => (restoreConfirm = false)}>{$tr("common.cancel")}</button>
-                {:else}
-                  <button disabled={projectReadOnly} class="sm" onclick={() => (restoreConfirm = true)}>
-                    <RotateCcw size={14} /> {$tr("wiki.restore")}
-                  </button>
-                  <button class="icon-btn sm" title={$tr("wiki.closeDiff")} onclick={closeRevision}>
-                    <X size={16} />
-                  </button>
-                {/if}
-              </div>
-            </div>
-            {#if diffSegments.length}
-              <DiffView
-                segments={diffSegments}
-                variant="bordered"
-                ariaLabel={$tr("wiki.changes")}
-              />
-            {:else}
-              <p class="muted">{$tr("wiki.noDifference")}</p>
-            {/if}
-          </div>
-        {:else if current.body_md}
-          <!-- eslint-disable-next-line svelte/no-at-html-tags — renderWikiMarkdown escapet -->
-          <div class="wiki-article md" use:lightboxClicks={(img) => (lightboxImage = img)} onclick={onWikiClick} onkeydown={onWikiKeydown} role="presentation">
-            {@html renderWikiMarkdown(wikiReadingBody(current.body_md, current.title), knownRefs, projectKeys, currentScope)}
-          </div>
+        </header>
+        {#if confirmDelete}<ConfirmBar role="alertdialog" focus danger message={$tr("wiki.deleteQuestion",{slug:current.slug})} confirmLabel={$tr("wiki.yesDelete")} confirmDisabled={projectReadOnly} onconfirm={doDelete} oncancel={() => confirmDelete=false} />{/if}
+        {#if revDetail}
+          <section class="rev-view">
+            <div class="rev-banner"><strong>{revDetail.revision.author || $tr("wiki.unknown")}</strong><span>{formatTimestamp(revDetail.revision.created_at,Date.now(),$locale)}</span></div>
+            <DiffView segments={diffSegments} variant="bordered" ariaLabel={$tr("wiki.changes")} />
+            {#if restoreConfirm}<ConfirmBar message={$tr("wiki.restoreQuestion")} confirmLabel={$tr("wiki.yesRestore")} confirmDisabled={projectReadOnly} onconfirm={restoreRevision} oncancel={() => restoreConfirm=false}/>
+            {:else}<div class="btn-row"><button class="sm" disabled={projectReadOnly} onclick={() => restoreConfirm=true}><RotateCcw size={14}/>{$tr("wiki.restore")}</button><button class="sm" onclick={closeRevision}>{$tr("wiki.closeDiff")}</button></div>{/if}
+          </section>
         {:else}
-          <p class="muted">{$tr("wiki.empty")}</p>
+          <div class="wiki-article md" role="presentation" use:lightboxClicks={(img) => lightboxImage=img} onclick={onWikiClick} onkeydown={onWikiKeydown}>{@html document.html}</div>
+          {#if !current.body_md}<p class="muted">{$tr("wiki.empty")}</p>{/if}
         {/if}
-
-        {#if createPrompt}
-          <ConfirmBar confirmDisabled={projectReadOnly} cancelLabel={$tr("common.cancel")} confirmLabel={$tr("common.create")} onconfirm={startCreateFromPrompt} oncancel={() => (createPrompt = "")}>
-            {#snippet message()}
-              {$tr("wiki.missing", {slug: createPromptScope && createPromptScope !== currentScope ? `${createPromptScope}:${createPrompt}` : createPrompt})}
-            {/snippet}
-          </ConfirmBar>
-        {/if}
-
-        {#if !editing && backlinks.length}
-          <div class="backlinks">
-            <div class="backlinks-head">{$tr("wiki.backlinks")}</div>
-            {#each backlinks as b (b.slug)}
-              <button class="backlink" onclick={() => open(b.slug)}>
-                <span class="wiki-row-title">{b.title}</span>
-                <span class="wiki-row-slug">{b.slug}</span>
-              </button>
-            {/each}
-          </div>
-        {/if}
+        {#if createPrompt}<ConfirmBar message={$tr("wiki.missing",{slug:createPromptScope!==currentScope ? `${createPromptScope}:${createPrompt}` : createPrompt})} confirmLabel={$tr("common.create")} confirmDisabled={projectReadOnly} onconfirm={startCreateFromPrompt} oncancel={() => createPrompt=""}/>{/if}
+        <details class="wiki-page-info"><summary>{$tr("wiki.pageDetails")}</summary><dl><dt>{$tr("wiki.pageAddress")}</dt><dd>{current.slug}</dd><dt>{$tr("wiki.source")}</dt><dd>{current.source_kind || $tr("wiki.existingKnowledge")}</dd><dt>{$tr("wiki.scope")}</dt><dd>{scopeLabel}</dd></dl></details>
       </article>
-    {:else}
-      <div class="wiki-placeholder">
-        <BookOpen size={40} strokeWidth={1.4} />
-        <p class="wiki-ph-title">{$tr("wiki.choose")}</p>
-        <p class="muted">
-          {$tr("wiki.chooseNote")}
-        </p>
-      </div>
+    {:else if !error}
+      <section class="wiki-home">
+        <div class="wiki-eyebrow"><BookOpen size={19}/>{$tr("wiki.knowledge")}</div>
+        <h1>{scopeLabel}</h1><p class="wiki-home-intro">{$tr("wiki.homeIntro",{count:scopedPages.length})}</p>
+        <div class="wiki-home-search"><Search size={19}/><input type="search" bind:value={query} aria-label={$tr("wiki.searchKnowledge")} placeholder={$tr("wiki.searchHint")}/>{#if query}<button class="icon-btn" aria-label={$tr("wiki.clearSearch")} onclick={() => query=""}><X size={16}/></button>{/if}</div>
+        <div class="wiki-home-heading"><h2>{$tr(query ? "wiki.searchResults" : "wiki.recentPages")}</h2><button class="sm" disabled={projectReadOnly} onclick={() => startCreate()}><Plus size={15}/>{$tr("wiki.new")}</button></div>
+        <div class="wiki-home-pages">
+          {#each query ? visiblePages : recentPages as page (page.slug)}
+            <button class="wiki-home-page" onclick={() => open(page.slug)}><FileText size={20}/><span><strong>{page.title}</strong><span>{wikiSearchSnippet(page,query,175)}</span><small>{formatTimestamp(page.updated_at,Date.now(),$locale)}</small></span><ChevronRight size={16}/></button>
+          {:else}<p class="wiki-empty">{$tr(query ? "wiki.noSearch" : "wiki.noPages",{query})}</p>{/each}
+        </div>
+      </section>
     {/if}
   </main>
 
-  <!-- Geschiedenis-timeline (BETON-209): rechts naast het artikel; op smalle
-       schermen een eigen paneel (pane === "history"). -->
-  {#if showHistory && current && !creating}
-    <aside class="wiki-history" class:mobile-hidden={pane !== "history"} aria-label={$tr("wiki.history")}>
-      <header class="wiki-history-head">
-        <button class="link wiki-tolist" onclick={() => (showHistory = false)}>
-          <ArrowLeft size={15} /> {$tr("wiki.article")}
-        </button>
-        <span class="wiki-history-title"><History size={15} /> {$tr("wiki.history")}</span>
-      </header>
-      {#if historyLoading}
-        <p class="muted">{$tr("wiki.loading")}</p>
-      {:else if revisions.length}
-        <ol class="rev-list">
-          {#each revisions as r (r.id)}
-            <li>
-              <button
-                class="rev-row"
-                class:active={revDetail?.revision.id === r.id}
-                onclick={() => openRevision(r.id)}
-              >
-                <span class="rev-row-who">{r.author || $tr("wiki.unknown")}</span>
-                <span class="rev-row-when" title={absoluteTime(r.created_at, $locale)}>
-                  {formatTimestamp(r.created_at, Date.now(), $locale)}
-                </span>
-              </button>
-            </li>
-          {/each}
-        </ol>
+  {#if current && !editing && !creating}
+    <aside id="wiki-context" class="wiki-context" class:context-open={contextOpen} aria-label={$tr("wiki.onPage")}>
+      {#if showHistory}
+        <section class="wiki-context-section"><div class="context-title"><h2>{$tr("wiki.history")}</h2><button class="icon-btn" aria-label={$tr("common.close")} onclick={() => showHistory=false}><X size={15}/></button></div>
+          {#if historyLoading}<p>{$tr("wiki.loading")}</p>{:else}<ol class="rev-list">{#each revisions as revision (revision.id)}<li><button class:active={revDetail?.revision.id===revision.id} onclick={() => openRevision(revision.id)}><strong>{revision.author || $tr("wiki.unknown")}</strong><span>{formatTimestamp(revision.created_at,Date.now(),$locale)}</span></button></li>{:else}<li>{$tr("wiki.noRevisions")}</li>{/each}</ol>{/if}
+        </section>
       {:else}
-        <p class="muted">{$tr("wiki.noRevisions")}</p>
+        <section class="wiki-context-section"><h2>{$tr("wiki.onPage")}</h2><nav class="wiki-toc" aria-label={$tr("wiki.onPage")}>{#each document.headings as heading (heading.id)}<button class:subheading={heading.level>2} onclick={() => jumpTo(heading.id)}>{heading.title}</button>{:else}<p class="muted">{$tr("wiki.noHeadings")}</p>{/each}</nav></section>
       {/if}
+      <section class="wiki-context-section backlinks"><h2>{$tr("wiki.backlinks")}</h2><div class="backlink-list">{#each showAllBacklinks ? backlinks : backlinks.slice(0,5) as page (page.slug)}<button class="backlink" onclick={() => open(page.slug)}>{page.title}</button>{:else}<p class="muted">{$tr("wiki.noBacklinks")}</p>{/each}</div>{#if backlinks.length>5}<button class="link" onclick={() => showAllBacklinks=!showAllBacklinks}>{$tr(showAllBacklinks ? "wiki.showFewer" : "wiki.showAllLinks",{count:backlinks.length})}</button>{/if}</section>
     </aside>
   {/if}
 </section>
 
-<ImageLightbox image={lightboxImage} onclose={() => (lightboxImage = null)} />
+<ImageLightbox image={lightboxImage} onclose={() => lightboxImage=null} />
 
 {#snippet acDropdown()}
-  {#if acOpen && acItems.length}
-    <ul class="ac-list" role="listbox" aria-label={$tr("wiki.suggestions")}>
-      {#each acItems as item, i (item.slug)}
-        <li>
-          <button
-            class="ac-item"
-            class:active={i === acIndex}
-            role="option"
-            aria-selected={i === acIndex}
-            onmousedown={(e) => {
-              e.preventDefault();
-              insertSuggestion(item.slug);
-            }}
-          >
-            <span class="ac-slug">{item.slug}</span>
-            <span class="ac-title">{item.title}</span>
-          </button>
-        </li>
-      {/each}
-    </ul>
-  {/if}
+  {#if acOpen && acItems.length}<ul class="ac-list" role="listbox" aria-label={$tr("wiki.suggestions")}>{#each acItems as item,i (item.slug)}<li><button class="ac-item" class:active={i===acIndex} role="option" aria-selected={i===acIndex} onmousedown={(event) => {event.preventDefault();insertSuggestion(item.slug);}} onclick={() => insertSuggestion(item.slug)}><span>{item.title}</span><small>{item.slug}</small></button></li>{/each}</ul>{/if}
 {/snippet}
 
 <style>
-  /* First-class wiki-view: navigatie-zijbalk + artikel-hoofdinhoud
-     (BETON-182). Geen overlay/modal meer — dit is een volwaardige view
-     naast het bord. */
-  .wiki-view {
-    display: grid;
-    grid-template-columns: minmax(220px, 300px) 1fr;
-    gap: 20px;
-    align-items: start;
-    padding: 16px clamp(12px, 4vw, 40px) 40px;
-    min-height: 0;
-  }
-
-  /* --- Zijbalk ------------------------------------------------------------ */
-  .wiki-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    position: sticky;
-    top: 12px;
-  }
-  .wiki-nav-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-  .wiki-brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 17px;
-    font-weight: 600;
-  }
-  .wiki-back,
-  .wiki-tolist {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .wiki-search {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
-  .wiki-search :global(.wiki-search-icon) {
-    position: absolute;
-    left: 10px;
-    color: var(--text-tertiary);
-    pointer-events: none;
-  }
-  /* Specificity moet minstens gelijk zijn aan de globale input-basisregel
-     zodat padding-left hier niet gereset wordt. */
-  .wiki-search input.wiki-search-input {
-    width: 100%;
-    padding-left: 32px;
-  }
-  .wiki-new {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    justify-content: center;
-    /* Gestippeld = "hier kan iets bij"; randkleur uit de globale button-regel,
-       tekst van een gewone actie (BETON-418). */
-    border-style: dashed;
-  }
-  .wiki-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    overflow-y: auto;
-    /* Op desktop scrollt de lijst mee binnen de sticky zijbalk. */
-    max-height: calc(100dvh - 220px);
-  }
-  /* BETON-204: zonder min-width:0 duwt een lange titel de flex-column-rij
-     breder dan de zijbalk in plaats van te breken/afkappen — de tekst liep
-     zichtbaar buiten de kaart. min-width:0, afbrekende titels en afgekorte metadata lossen dat op.
-     flex-shrink:0 is hier geen stijlkeuze maar een correctheidsfix: .wiki-row
-     is zelf een flex-item in de scrollbare .wiki-list-kolom. Zodra title/meta
-     overflow:hidden krijgen, wordt hun automatische min-height 0 (CSS-spec:
-     "auto" min-size is content-based, tenzij overflow != visible), waardoor
-     .wiki-list de rijen bij veel pagina's kon PLETTEN i.p.v. laten scrollen —
-     titel- en metaregel renderden dan in een paar px hoge, overlappende
-     tekstregels. flex-shrink:0 dwingt elke rij op z'n natuurlijke hoogte. */
-  .wiki-row {
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    align-items: flex-start;
-    gap: 4px;
-    min-width: 0;
-    width: 100%;
-    text-align: left;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    border-radius: var(--radius-md);
-    padding: 10px 12px;
-  }
-  .wiki-row.active {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-  }
-  .wiki-row-title {
-    display: block;
-    width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    font-weight: 500;
-  }
-  .wiki-row-meta {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    width: 100%;
-    overflow: hidden;
-    font-size: var(--text-sm);
-    color: var(--text-tertiary);
-  }
-  .wiki-row-slug {
-    flex: 1 1 auto;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-  }
-  .wiki-row-dot,
-  .wiki-row-time {
-    flex: 0 0 auto;
-    font-variant-numeric: tabular-nums;
-  }
-  .wiki-empty {
-    padding: 8px 2px;
-  }
-
-  /* --- Hoofdinhoud -------------------------------------------------------- */
-  .wiki-main {
-    min-width: 0;
-  }
-  .wiki-error {
-    margin-bottom: 12px;
-  }
-  .wiki-doc {
-    max-width: 74ch;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .wiki-doc-head,
-  .wiki-editor-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-  /* "Pagina's"-terugknop alleen op smalle schermen (op desktop staat de lijst
-     altijd links). */
-  .wiki-tolist {
-    display: none;
-  }
-  .wiki-actions {
-    display: inline-flex;
-    gap: 2px;
-    margin-left: auto;
-  }
-  .wiki-doc-title-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border);
-  }
-  h1.wiki-doc-title {
-    font-size: clamp(24px, 3vw, 30px);
-    font-weight: 700;
-    line-height: 1.2;
-    margin: 0;
-    overflow-wrap: anywhere;
-  }
-  h2.wiki-doc-title {
-    font-size: var(--text-xl);
-    font-weight: 600;
-    margin: 0;
-  }
-  .wiki-doc-meta {
-    display: inline-flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    font-size: var(--text-sm);
-    color: var(--text-tertiary);
-    align-items: center;
-    overflow-wrap: anywhere;
-  }
-  .wiki-protection {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .wiki-protection.protected {
-    color: var(--text-secondary);
-    font-weight: 500;
-  }
-  .wiki-doc-meta .wiki-protect-action {
-    flex: 0 0 auto;
-  }
-  .wiki-doc-slug {
-    font-variant-numeric: tabular-nums;
-  }
-  .wiki-article {
-    line-height: 1.65;
-  }
-  .full {
-    width: 100%;
-  }
-  :global(.wiki-textarea) {
-    font-family: var(--font-mono, ui-monospace, monospace);
-    line-height: 1.55;
-  }
-
-  /* Wiki-interlink [[slug]] (BETON-25) */
-  .wiki-article :global(.wikilink) {
-    color: var(--accent);
-    cursor: pointer;
-    text-decoration: none;
-    border-bottom: 1px dotted var(--accent);
-  }
-  .wiki-article :global(.wikilink):hover {
-    border-bottom-style: solid;
-  }
-  /* Dode wikilink → naar een nog-niet-bestaande pagina (BETON-57) */
-  .wiki-article :global(.wikilink-dead) {
-    color: var(--text-tertiary);
-    border-bottom-color: var(--text-tertiary);
-    border-bottom-style: dashed;
-  }
-  .wiki-article :global(.wikilink):focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-    border-radius: 2px;
-  }
-  /* Ticketref-link zoals BETON-91 (BETON-106) */
-  .wiki-article :global(.ticketlink) {
-    color: var(--accent);
-    cursor: pointer;
-    text-decoration: none;
-    border-bottom: 1px solid var(--accent);
-    font-variant-numeric: tabular-nums;
-  }
-  .wiki-article :global(.ticketlink):hover {
-    opacity: 0.8;
-  }
-  .wiki-article :global(.ticketlink):focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-    border-radius: 2px;
-  }
-
-  /* Lege staat (geen pagina gekozen) */
-  .wiki-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    text-align: center;
-    color: var(--text-tertiary);
-    padding: 64px 16px;
-  }
-  .wiki-ph-title {
-    font-size: var(--text-lg);
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin: 8px 0 0;
-  }
-
-  /* [[-autocomplete */
-  .ac-wrap {
-    position: relative;
-  }
-  .ac-list {
-    position: absolute;
-    z-index: var(--z-popover);
-    left: 0;
-    right: 0;
-    margin: 2px 0 0;
-    padding: 4px;
-    list-style: none;
-    max-height: 220px;
-    overflow-y: auto;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-md);
-  }
-  .ac-item {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    width: 100%;
-    text-align: left;
-    border: none;
-    background: transparent;
-    padding: 6px 10px;
-    border-radius: var(--radius-sm);
-  }
-  .ac-item.active,
-  .ac-item:hover {
-    background: var(--accent-soft);
-  }
-  .ac-slug {
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-  }
-  .ac-title {
-    font-size: var(--text-sm);
-    color: var(--text-tertiary);
-  }
-
-  /* Backlinks-sectie */
-  .backlinks {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-top: 20px;
-    padding-top: 14px;
-    border-top: 1px solid var(--border);
-  }
-  .backlinks-head {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--text-tertiary);
-    margin-bottom: 2px;
-  }
-  .backlink {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-    text-align: left;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    border-radius: var(--radius-md);
-    padding: 6px 12px;
-  }
-
-  /* --- Edit-history (BETON-209) ------------------------------------------ */
-  /* Geschiedenis komt als kolom direct TEGEN het artikel te staan (BETON-209
-     her-fix): de nav-kolom houdt exact dezelfde breedte als zonder history
-     (zelfde minmax → artikel verspringt niet bij openen), het artikel krijgt
-     zijn eigen 74ch-cap als track zodat de geschiedenis er meteen naast valt,
-     en de resterende ruimte gaat naar een lege 4e spacer-track uiterst rechts
-     i.p.v. als gat tussen artikel en geschiedenis. */
-  .wiki-view.with-history {
-    grid-template-columns: minmax(220px, 300px) minmax(0, 74ch) minmax(220px, 300px) 1fr;
-  }
-  .icon-btn.active {
-    background: var(--accent-soft);
-    color: var(--accent);
-  }
-  .wiki-history {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    position: sticky;
-    top: 12px;
-  }
-  .wiki-history-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-  .wiki-history-title {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 600;
-    font-size: var(--text-md);
-    color: var(--text-secondary);
-  }
-  .rev-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    overflow-y: auto;
-  }
-  .rev-row {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    text-align: left;
-    border: 1px solid transparent;
-    background: var(--surface-2);
-    border-radius: var(--radius-md);
-    padding: 7px 10px;
-    cursor: pointer;
-  }
-  .rev-row:hover {
-    background: var(--surface-3);
-  }
-  .rev-row.active {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-  }
-  .rev-row-who {
-    font-size: var(--text-base);
-    font-weight: 500;
-  }
-  .rev-row-when {
-    font-size: var(--text-sm);
-    color: var(--text-tertiary);
-  }
-
-  /* Diff-weergave in het hoofdpaneel. */
-  .rev-banner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 8px 12px;
-    background: var(--surface-2);
-    border-radius: var(--radius-md);
-    margin-bottom: 12px;
-  }
-  .rev-banner-info,
-  .rev-banner-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .rev-who {
-    font-weight: 600;
-  }
-  .rev-when {
-    color: var(--text-tertiary);
-    font-size: var(--text-base);
-  }
-  .rev-stat {
-    display: inline-flex;
-    gap: 6px;
-    font-size: var(--text-base);
-    font-variant-numeric: tabular-nums;
-  }
-  .rev-stat .add {
-    color: var(--success);
-  }
-  .rev-stat .del {
-    color: var(--danger);
-  }
-  .rev-confirm-q {
-    font-size: var(--text-base);
-    color: var(--text-secondary);
-  }
-  /* --- Responsive: één paneel per keer op smalle schermen ---------------- */
-  @media (max-width: 820px) {
-    .wiki-view,
-    .wiki-view.with-history {
-      grid-template-columns: 1fr;
-      gap: 0;
-      padding: 12px clamp(12px, 4vw, 20px) 32px;
-    }
-    .wiki-nav,
-    .wiki-history {
-      position: static;
-      max-height: none;
-    }
-    .wiki-list {
-      max-height: none;
-    }
-    .wiki-tolist {
-      display: inline-flex;
-    }
-    /* Toon of de zijbalk óf het artikel óf de geschiedenis, nooit meerdere. */
-    .mobile-hidden {
-      display: none;
-    }
+  .wiki-view { display:grid;grid-template-columns:260px minmax(0,780px) 220px;gap:40px;max-width:1420px;padding:28px 24px 64px;margin:0 auto;align-items:start; }
+  .wiki-nav { position:sticky;top:80px;max-height:calc(100dvh - 105px);display:flex;flex-direction:column;min-width:0;padding-right:18px;border-right:1px solid var(--border); }
+  .wiki-nav-head { display:flex;align-items:center;gap:9px;margin:0 0 20px;color:var(--text);font-size:var(--text-lg); }
+  .wiki-home-link { margin:18px 0 12px;display:flex;align-items:center;gap:8px;justify-content:flex-start;text-align:left;background:none;border:none;padding:8px 9px;font-size:var(--text-sm);color:var(--text-secondary); }
+  .wiki-home-link.active { background:var(--surface-3);color:var(--text); }
+  .wiki-search,.wiki-home-search { display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border-interactive);border-radius:var(--radius-sm);padding:0 10px;min-width:0; }
+  .wiki-search input[type="search"]:not([type="checkbox"]):not([type="radio"]):not([type="color"]),.wiki-home-search input[type="search"]:not([type="checkbox"]):not([type="radio"]):not([type="color"]) { min-width:0;width:100%;border:none;background:transparent;padding:10px 0;outline:none;font:inherit;box-shadow:none; }
+  .wiki-search:focus-within,.wiki-home-search:focus-within { outline:2px solid var(--accent);outline-offset:2px; }
+  .wiki-search :global(svg),.wiki-home-search :global(svg) { flex-shrink:0;color:var(--text-secondary); }
+  .wiki-search .icon-btn { flex:0 0 auto; }
+  .wiki-list-tools { display:flex;justify-content:space-between;align-items:center;gap:6px;margin:15px 0 8px;font-size:var(--text-xs);color:var(--text-secondary); }
+  .wiki-list-tools :global(.select-trigger) { min-height:28px;padding:3px 6px;font-size:var(--text-xs);border:none;background:transparent; }
+  .wiki-list { overflow:auto;min-height:80px;display:flex;flex-direction:column;gap:2px;flex:1; }
+  .wiki-row { display:flex;justify-content:flex-start;align-items:flex-start;gap:8px;background:none;border:1px solid transparent;border-radius:var(--radius-sm);padding:9px;text-align:left;width:100%;min-width:0;white-space:normal;min-height:38px;line-height:1.4;font-size:var(--text-sm);color:var(--text-secondary); }
+  .wiki-row>span { min-width:0; }
+  .wiki-row :global(svg) { flex:0 0 auto;margin-top:2px; }
+  .wiki-row-title { display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere; }
+  .wiki-row:hover,.wiki-home-link:hover { background:var(--surface-2);color:var(--text); }
+  .wiki-row.active { background:var(--accent-soft);color:var(--text);border-left:3px solid var(--accent);padding-left:7px;font-weight:600; }
+  .wiki-row-snippet { display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:var(--text-xs);color:var(--text-secondary);font-weight:400;margin-top:4px;overflow-wrap:anywhere; }
+  .wiki-nav-empty { color:var(--text-secondary);font-size:var(--text-sm);padding:8px; }
+  .wiki-new { margin-top:18px;justify-content:center; }
+  .wiki-board { display:flex;align-items:center;gap:5px;margin-top:12px;align-self:flex-start; }
+  .wiki-main { min-width:0;grid-column:2; }
+  .overview .wiki-main { grid-column:2 / -1;max-width:920px; }
+  .wiki-doc { min-width:0;outline:none; }
+  .wiki-doc-toolbar { display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:30px; }
+  .wiki-breadcrumb { display:flex;align-items:center;gap:7px;min-width:0;font-size:var(--text-sm);color:var(--text-secondary); }
+  .wiki-breadcrumb button { overflow:hidden;text-overflow:ellipsis;max-width:230px;white-space:nowrap; }
+  .wiki-actions { display:flex;gap:8px;align-items:center;flex-shrink:0; }
+  .wiki-doc-title { font-size:clamp(26px,2.1vw,36px);line-height:1.2;letter-spacing:-.025em;font-weight:700;margin:0;overflow-wrap:anywhere; }
+  .wiki-doc-meta { display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:var(--text-sm);color:var(--text-secondary);margin-top:16px; }
+  .wiki-protected { display:inline-flex;align-items:center;gap:5px; }
+  .wiki-doc-title-wrap { padding-bottom:28px;border-bottom:1px solid var(--border);margin-bottom:26px; }
+  .wiki-article { font-size:15px;line-height:1.8;color:var(--text);overflow-wrap:anywhere; }
+  .wiki-article :global(h1),.wiki-article :global(h2),.wiki-article :global(h3),.wiki-article :global(h4) { scroll-margin-top:84px;line-height:1.35;margin:32px 0 12px;letter-spacing:-.015em; }
+  .wiki-article :global(h2) { font-size:23px; }
+  .wiki-article :global(h3) { font-size:19px; }
+  .wiki-article :global(p) { margin:0 0 16px; }
+  .wiki-article :global(li) { margin:7px 0; }
+  .wiki-article :global(pre) { max-width:100%;overflow:auto;white-space:pre; }
+  .wiki-article :global(table) { display:block;max-width:100%;overflow:auto; }
+  .wiki-article :global(img) { max-width:100%;height:auto;border-radius:var(--radius-sm); }
+  .wiki-context { grid-column:3;position:sticky;top:80px;max-height:calc(100dvh - 105px);overflow:auto;font-size:var(--text-sm);padding-top:10px; }
+  .wiki-context-section { margin-bottom:30px; }
+  .wiki-context h2 { font-size:var(--text-xs);color:var(--text-secondary);text-transform:uppercase;letter-spacing:.07em;margin:0 0 14px;font-weight:600; }
+  .wiki-toc,.backlink-list { display:flex;flex-direction:column;align-items:stretch;gap:3px; }
+  .wiki-toc button,.backlink { justify-content:flex-start;background:none;border:none;text-align:left;white-space:normal;font-size:var(--text-sm);line-height:1.5;padding:6px 0;color:var(--text-secondary);min-height:unset;overflow-wrap:anywhere; }
+  .wiki-toc button:hover,.backlink:hover { color:var(--accent); }
+  .wiki-toc .subheading { padding-left:12px;font-size:var(--text-xs); }
+  .context-title { display:flex;align-items:center;justify-content:space-between; }
+  .wiki-page-info { border-top:1px solid var(--border);margin-top:36px;padding-top:15px;color:var(--text-secondary);font-size:var(--text-sm); }
+  .wiki-page-info summary { cursor:pointer; }
+  dl { display:grid;grid-template-columns:90px minmax(0,1fr);gap:8px;margin-bottom:0; }
+  dd { margin:0;overflow-wrap:anywhere; }
+  .wiki-menu-wrap { position:relative; }
+  .wiki-menu { position:absolute;right:0;top:100%;z-index:var(--z-dropdown,30);min-width:210px;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-md); }
+  .wiki-menu button { display:flex;gap:8px;align-items:center;width:100%;text-align:left;background:none;border:none;white-space:normal;font-size:var(--text-sm);padding:9px; }
+  .wiki-menu button:hover { background:var(--surface-2); }
+  .wiki-home { padding:35px 0; }
+  .wiki-eyebrow { display:flex;align-items:center;gap:8px;color:var(--text-secondary);font-size:var(--text-sm); }
+  .wiki-home h1 { font-size:clamp(30px,3vw,44px);line-height:1.2;letter-spacing:-.03em;margin:12px 0; }
+  .wiki-home-intro { color:var(--text-secondary);margin-bottom:25px; }
+  .wiki-home-search { max-width:650px;padding:4px 14px; }
+  .wiki-home-heading { display:flex;align-items:center;justify-content:space-between;gap:15px;margin:40px 0 12px; }
+  .wiki-home-heading h2 { font-size:var(--text-lg);margin:0; }
+  .wiki-home-pages { display:flex;flex-direction:column; }
+  .wiki-home-page { display:flex;align-items:flex-start;gap:15px;background:none;border:none;border-top:1px solid var(--border);border-radius:0;padding:20px 0;white-space:normal;text-align:left; }
+  .wiki-home-page>span { flex:1;min-width:0;display:flex;flex-direction:column;gap:7px; }
+  .wiki-home-page :global(svg) { margin-top:3px;flex:0 0 auto;color:var(--text-secondary); }
+  .wiki-home-page strong { font-weight:600;font-size:16px;overflow-wrap:anywhere; }
+  .wiki-home-page span span { color:var(--text-secondary);font-size:var(--text-sm);line-height:1.6;overflow-wrap:anywhere; }
+  .wiki-home-page small { color:var(--text-secondary);font-size:var(--text-xs); }
+  .wiki-home-page:hover strong { color:var(--accent); }
+  .wiki-editor-head { display:flex;align-items:center;justify-content:space-between;gap:12px;margin:24px 0; }
+  .wiki-editor-head h1 { font-size:28px;margin:0; }
+  .wiki-editor-head>span { font-size:var(--text-xs);color:var(--text-secondary); }
+  .wiki-field { display:flex;flex-direction:column;gap:8px;margin-bottom:20px;font-size:var(--text-sm);font-weight:600; }
+  .wiki-field input { width:100%;font-weight:400; }
+  .wiki-editor :global(.auto-ta) { min-height:420px;max-height:65dvh;font-family:ui-monospace,monospace;font-size:14px;line-height:1.7; }
+  .wiki-editor-actions { display:flex;align-items:center;justify-content:flex-end;gap:10px;position:sticky;bottom:0;padding:16px 0;background:var(--bg);border-top:1px solid var(--border);z-index:2; }
+  .wiki-editor-actions>span { margin-right:auto;font-size:var(--text-xs);color:var(--text-secondary); }
+  .wiki-editor .wiki-page-info { margin:0 0 20px;padding:0;border:0;font-weight:400; }
+  .ac-wrap { position:relative; }
+  .ac-list { position:absolute;bottom:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-md);z-index:20;list-style:none;padding:5px; }
+  .ac-item { display:flex;justify-content:space-between;gap:15px;width:100%;background:none;border:none;text-align:left;white-space:normal; }
+  .ac-item.active { background:var(--accent-soft); }
+  .wiki-leave { position:sticky;top:65px;z-index:40;margin-bottom:20px; }
+  .wiki-conflict { padding:15px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:20px; }
+  .wiki-conflict button { margin:6px 6px 0 0; }
+  .rev-list { list-style:none;padding:0;display:flex;flex-direction:column;gap:7px; }
+  .rev-list button { width:100%;display:flex;flex-direction:column;align-items:flex-start;white-space:normal;text-align:left;background:none;border:0;font-size:var(--text-sm); }
+  .rev-list button.active { background:var(--accent-soft); }
+  .rev-banner { display:flex;gap:12px;margin-bottom:14px;font-size:var(--text-sm); }
+  .wiki-notice { padding:12px 16px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:var(--text-sm); }
+  .muted,.readonly-note { color:var(--text-secondary);font-size:var(--text-sm); }
+  .wiki-mobile-bar { display:none; }
+  @media(max-width:1200px) {
+    .wiki-view { grid-template-columns:240px minmax(0,780px);gap:30px; }
+    .wiki-context { grid-column:2;position:static;max-height:none;display:grid;grid-template-columns:1fr 1fr;gap:24px;border-top:1px solid var(--border);padding-top:22px; }
+  }
+  @media(max-width:760px) {
+    .wiki-view { display:flex;flex-direction:column;padding:12px 18px 40px;gap:0; }
+    .wiki-mobile-bar { order:0;width:100%; }
+    .wiki-nav { order:1;width:100%; }
+    .wiki-main { order:3;width:100%; }
+    .wiki-context { order:4;width:100%; }
+    .wiki-context.context-open { order:2;margin-bottom:20px; }
+    .wiki-mobile-bar { display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:20px; }
+    .wiki-mobile-bar>span { overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-secondary);font-size:var(--text-xs); }
+    .wiki-mobile-bar button { flex-shrink:0; }
+    .wiki-nav { display:none;position:static;max-height:65dvh;padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:20px;background:var(--surface); }
+    .wiki-nav.nav-open { display:flex; }
+    .wiki-context { display:block;position:static;padding:0;border:0; }
+    .wiki-context-section:not(.backlinks) { display:none; }
+    .wiki-context.context-open .wiki-context-section:not(.backlinks) { display:block; }
+    .wiki-context.context-open { border:1px solid var(--border);padding:16px;border-radius:var(--radius-md); }
+    .wiki-context .backlinks { margin-top:25px;padding-top:20px;border-top:1px solid var(--border); }
+    .wiki-doc-toolbar { margin-bottom:24px;gap:8px; }
+    .wiki-breadcrumb { font-size:var(--text-xs); }
+    .wiki-breadcrumb button { max-width:120px; }
+    .wiki-actions button { white-space:normal; }
+    .wiki-home { padding:15px 0; }
+    .wiki-home-heading { margin-top:28px; }
+    .wiki-home-heading button { font-size:var(--text-xs); }
+    .wiki-editor :global(.auto-ta) { min-height:300px; }
+    .wiki-editor-actions { flex-wrap:wrap; }
+    .wiki-editor-actions>span { width:100%; }
+    .wiki-article { font-size:15px;line-height:1.75; }
+    .wiki-doc-meta { gap:8px;font-size:var(--text-xs); }
   }
 </style>

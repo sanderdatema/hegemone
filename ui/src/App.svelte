@@ -223,6 +223,7 @@
     await boot();
   }
   let projects = $state([]);
+  let projectsLoaded = $state(false);
   let users = $state([]);
   let current = $state(null); // project-key
   let states = $state([]);
@@ -302,7 +303,14 @@
     filters.state = "";
     writePersisted(LIST_SCOPE_KEY, value);
   }
-  function setActiveView(v) {
+  let wikiPage = $state(initialQuery.wikiPage || null);
+  let wikiScope = $state(initialQuery.wikiScope || "project");
+  let wikiLeaveGuard = $state(null);
+  function setActiveView(v, confirmed = false) {
+    if (!confirmed && activeView === "wiki" && v !== "wiki" && wikiLeaveGuard) {
+      wikiLeaveGuard(() => setActiveView(v, true));
+      return;
+    }
     if (!isView(v)) return;
     activeView = v;
     writePersisted(VIEW_KEY, v);
@@ -508,6 +516,7 @@
       if (onboarding?.required) setLocale(onboarding.locale);
       users = await api.users();
       projects = await api.projects(true);
+      projectsLoaded = true;
       if (projects.length) {
         // Kies het project uit de beginroute (deep-link), anders het eerste.
         current = resolveProject(projects, initialRoute.project);
@@ -808,7 +817,11 @@
     if (a.view) setActiveView(a.view);
     if (a.project) switchProject(a.project);
   }
-  async function switchProject(k) {
+  async function switchProject(k, confirmed = false) {
+    if (!confirmed && activeView === "wiki" && wikiLeaveGuard) {
+      return new Promise(resolve => wikiLeaveGuard(() => resolve(switchProject(k, true))));
+    }
+    wikiPage = null;
     current = k;
     selectedRef = null;
     filters = { ...DEFAULT_FILTERS };
@@ -1001,6 +1014,7 @@
     const q = { ...filters };
     if (activeView !== DEFAULT_VIEW) q.view = activeView;
     if (activeView === "list") q.listScope = listScope;
+    if (activeView === "wiki") { q.wikiScope = wikiScope; if (wikiPage) q.wikiPage = wikiPage; }
     if (searchScope !== "project") q.scope = searchScope;
     if (sortBy !== DEFAULT_SORT) q.sort = sortBy;
     return q;
@@ -1017,7 +1031,7 @@
   let lastNavKey = null;
   $effect(() => {
     if (!current) return; // wacht tot boot een project heeft gekozen
-    const navKey = `${current}|${selectedRef ?? ""}`;
+    const navKey = `${current}|${selectedRef ?? ""}|${activeView === "wiki" ? `${wikiScope}:${wikiPage || ""}` : ""}`;
     const path = buildPath(current, selectedRef, currentQuery());
     if (location.pathname + location.search === path) {
       routeSynced = true;
@@ -1034,12 +1048,23 @@
   // Back/forward: route opnieuw uit het pad + querystring afleiden en de
   // view/filters/scope/sort herstellen naar wat ze waren toen die entry werd
   // gepusht (ontbrekend veld = de default van dat moment, BETON-358).
-  async function onPopState() {
+  async function onPopState(confirmed = false) {
+    if (activeView === "wiki" && wikiLeaveGuard && confirmed !== true) {
+      const destination = location.pathname + location.search;
+      const allowed = wikiLeaveGuard(() => {
+        history.replaceState({}, "", destination);
+        onPopState(true);
+      });
+      if (allowed === false) history.pushState({}, "", buildPath(current, selectedRef, currentQuery()));
+      return;
+    }
     const r = parsePath(location.pathname, location.search);
     const next = resolveProject(projects, r.project);
     filters = { ...DEFAULT_FILTERS, ...filtersFromQuery(r.query) };
     activeView = isView(r.query.view) ? r.query.view : DEFAULT_VIEW;
     listScope = r.query.listScope === "open" ? "open" : "all";
+    wikiPage = r.query.wikiPage || null;
+    wikiScope = r.query.wikiScope || "project";
     searchScope = r.query.scope === "all" ? "all" : "project";
     sortBy = SORT_OPTIONS.some((o) => o.key === r.query.sort) ? r.query.sort : DEFAULT_SORT;
     if (next !== current) {
@@ -1996,16 +2021,22 @@
 
   {#if projectReadOnly && activeView !== "wiki"}<p class="project-readonly-note" role="status">{$t("api.project_archived_readonly")}</p>{/if}
   {#if activeView === "wiki"}
+    {#if !projectsLoaded}<p role="status">{$t("wiki.loading")}</p>{:else}
     <Wiki
       {liveTick}
       project={current}
       projectName={currentName}
       projectArchived={projectReadOnly}
       {me}
+      routePage={wikiPage}
+      routeScope={wikiScope}
+      onroute={(route) => {wikiPage=route.page;wikiScope=route.scope;}}
+      onleaveguard={(guard) => wikiLeaveGuard=guard}
       onclose={() => setActiveView("board")}
       onopenref={(r) => { setActiveView("board"); navigateRef(r); }}
       onswitchproject={switchProject}
     />
+    {/if}
   {:else if activeView === "overview"}
     <Overview
       {liveTick}

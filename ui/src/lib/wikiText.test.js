@@ -235,3 +235,15 @@ describe("wikiReadingBody", () => {
     expect(wikiReadingBody("# Page title", "Page title")).toBe("");
   });
 });
+
+describe('knowledge base navigation', () => {
+  it('returns a bounded context around a body-only match as plain text', async () => {
+    const {wikiSearchSnippet,sortWikiPages}=await import('./wikiText.js');
+    const page={slug:'alpha',title:'Alpha',body_md:'Unrelated '.repeat(40)+'needle <script>literal</script> '+'tail '.repeat(40)};
+    const snippet=wikiSearchSnippet(page,'needle');
+    expect(snippet).toContain('needle');expect(snippet).toContain('<script>literal</script>');
+    expect(snippet.length).toBeLessThanOrEqual(147);
+    expect(sortWikiPages([{slug:'b',title:'Beta',updated_at:'2026-01-02'},{slug:'a',title:'Alpha',updated_at:'2026-01-01'}]).map(p=>p.slug)).toEqual(['a','b']);
+    expect(sortWikiPages([{slug:'b',title:'Beta',updated_at:'2026-01-02'},{slug:'a',title:'Alpha',updated_at:'2026-01-01'}],'recent').map(p=>p.slug)).toEqual(['b','a']);
+  });
+});

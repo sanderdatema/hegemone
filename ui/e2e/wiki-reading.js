@@ -38,20 +38,20 @@ export default async function wikiReading(page, base = 'http://127.0.0.1:5192') 
       actor = {...actor, kind};
       pages = pages.map(p => ({...p, protected: p.slug === 'matching'}));
       await page.setViewportSize({width: 1440, height: 1000});
-      await page.goto(`${base}/DEMO?language=${language}`);
-      await page.getByRole('button', {name: 'Wiki', exact: true}).click();
-      await page.locator('.wiki-nav').getByRole('button', {name: 'Demo project', exact: true}).click();
+      await page.goto(`${base}/DEMO?view=wiki&language=${language}`);
       await page.locator('.wiki-row').filter({hasText: 'Reading guide'}).click();
       const article = page.locator('article.wiki-doc');
       if (await article.locator('h1').count() !== 1) throw new Error('Matching heading was repeated');
       await article.getByText(language === 'en' ? 'Protected knowledge' : 'Beschermde kennis', {exact: true}).waitFor();
-      if (await article.locator('.wiki-protect-action').count() !== (kind === 'human' ? 1 : 0)) throw new Error('Protection action permission changed');
+      await article.getByRole('button', {name: language === 'en' ? 'Page actions' : 'Pagina-acties', exact:true}).click();
+      const protect=article.getByRole('button', {name:language === 'en' ? 'Remove protection' : 'Bescherming opheffen',exact:true});
+      if (await protect.count() !== (kind === 'human' ? 1 : 0)) throw new Error('Protection action permission changed');
       if (kind === 'human') {
-        await article.locator('.wiki-protect-action').click();
-        await article.getByText(language === 'en' ? 'Regular project knowledge' : 'Gewone projectkennis', {exact: true}).waitFor();
+        await protect.click();
+        await page.waitForFunction(()=>!document.querySelector('.wiki-protected'));
         const write = writes.at(-1);
         if (write.project !== 'DEMO' || write.slug !== 'matching' || write.protected !== false) throw new Error('Protection scope or payload changed');
-      }
+      } else await article.getByRole('button', {name: language === 'en' ? 'Page actions' : 'Pagina-acties', exact:true}).click();
       await page.locator('.wiki-row').filter({hasText: 'Page title'}).click();
       if (await article.locator('h1').count() !== 2) throw new Error('Different heading was omitted');
       await page.locator('.wiki-row').filter({hasText: longTitle}).click();
@@ -63,7 +63,7 @@ export default async function wikiReading(page, base = 'http://127.0.0.1:5192') 
       await article.getByRole('button', {name: language === 'en' ? 'Cancel' : 'Annuleren', exact: true}).click();
       await page.setViewportSize({width: 390, height: 844});
       if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)) throw new Error('Narrow article overflow');
-      await article.getByRole('button', {name: language === 'en' ? 'Pages' : "Pagina's", exact: true}).click();
+      await page.locator('.wiki-mobile-bar').getByRole('button', {name: language === 'en' ? 'Pages' : "Pagina's", exact: true}).click();
       if (await page.locator('.wiki-nav').evaluate(el => el.scrollWidth > el.clientWidth)) throw new Error('Narrow navigation overflow');
     }
   }

@@ -11,7 +11,7 @@ import { FILTER_KEYS, BOOLEAN_FILTER_KEYS } from "./viewState.js";
 // (FILTER_KEYS, dan view/scope/sort) zodat buildPath een stabiele URL geeft
 // (dezelfde toestand → altijd hetzelfde querystring, goed voor deelbare links
 // en voor "is de URL al gelijk aan de state" in de sync-effect).
-const QUERY_KEYS = [...FILTER_KEYS, "view", "scope", "sort", "listScope"];
+const QUERY_KEYS = [...FILTER_KEYS, "view", "scope", "sort", "listScope", "wikiPage", "wikiScope"];
 
 /**
  * Parse een querystring naar een object met alleen bekende keys (`QUERY_KEYS`).

@@ -617,3 +617,21 @@ it("bewerkt mentions en wikilinks niet binnen bestaande attributen", () => {
   expect(renderWikiMarkdown('[tekst](https://example.com "[[demo]]")', new Set(["global demo"])))
     .toContain('title="[[demo]]"');
 });
+
+describe('wiki document outline and readable destinations',()=>{
+  it('builds unique outline targets from rendered tokens without code headings',async()=>{
+    const {renderWikiDocument}=await import('./markdown.js');
+    const doc=renderWikiDocument('## Same\n\nText\n\n## Same\n\n```\n## Not a heading\n```\n\n### **Ünicode** & `code`',[],[],'DEMO');
+    expect(doc.headings.map(h=>h.id)).toEqual(['wiki-section-same-1','wiki-section-same-2','wiki-section-ünicode-code-1']);
+    for(const h of doc.headings)expect(doc.html).toContain(`id="${h.id}"`);
+    expect(doc.headings).toHaveLength(3);
+  });
+  it('escapes known titles and retains explicit aliases and cross-scope destinations',async()=>{
+    const {renderWikiDocument}=await import('./markdown.js');
+    const known=new Set(['DEMO:unused','DEMO local','global shared']);
+    const titles=new Map([['DEMO local','Readable <script>'],['global shared','Shared guide']]);
+    const doc=renderWikiDocument('[[local]] [[local|My alias]] [[global:shared]]',known,[],'DEMO',titles);
+    expect(doc.html).toContain('Readable &lt;script&gt;');expect(doc.html).toContain('>My alias</a>');
+    expect(doc.html).toContain('>Shared guide</a>');expect(doc.html).toContain('data-wiki-scope="global"');expect(doc.html).not.toContain('<script>');
+  });
+});

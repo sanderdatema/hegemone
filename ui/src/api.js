@@ -323,6 +323,7 @@ export const api = {
   wikiIndex: () => req("GET", "/wiki/index"),
   wikiCreate: (project, body) =>
     req("POST", project ? `/projects/${project}/wiki` : "/wiki", body),
+  wikiGet: (project, slug) => req("GET", wikiBase(project, slug)),
   wikiUpdate: (project, slug, body) => req("PATCH", wikiBase(project, slug), body),
   wikiDelete: (project, slug) => req("DELETE", wikiBase(project, slug)),
   // Edit-history (BETON-209).

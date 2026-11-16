@@ -192,3 +192,28 @@ export function wikiReadingBody(body, title) {
   if (normalize(visible) !== normalize(title)) return body;
   return body.split(/\r?\n/).slice(heading.map[1]).join("\n");
 }
+
+
+/** A small plain-text context window, centered on an actual content match. */
+export function wikiSearchSnippet(page, query, limit = 145) {
+  const text = headingParser.parse(wikiReadingBody(page.body_md, page.title).replace(WIKILINK_RE, (_match,_scope,slug,alias) => alias || slug.replace(/-/g," ")), {}).map(token => {
+    if (token.type === "inline") return (token.children || []).map(child =>
+      ["text", "code_inline", "image"].includes(child.type) ? child.content : " ").join("");
+    return ["fence", "code_block"].includes(token.type) ? token.content : " ";
+  }).join(" ").replace(/\s+/g, " ").trim();
+  const needle = query.trim().toLocaleLowerCase();
+  const hit = needle ? text.toLocaleLowerCase().indexOf(needle) : -1;
+  const start = Math.max(0, hit - 42);
+  const excerpt = text.slice(start, start + limit);
+  return (start ? "…" : "") + excerpt + (start + limit < text.length ? "…" : "");
+}
+
+export function sortWikiPages(pages, mode = "alphabetical", locale = "en") {
+  return [...pages].sort((a, b) => {
+    if (mode === "recent") {
+      const order = (b.updated_at || "").localeCompare(a.updated_at || "");
+      if (order) return order;
+    }
+    return (a.title || a.slug).localeCompare(b.title || b.slug, locale) || a.slug.localeCompare(b.slug);
+  });
+}
