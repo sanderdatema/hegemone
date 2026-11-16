@@ -13,12 +13,12 @@
   // raken (mentions, toewijzingen, comments op je items) bundelen zich per ticket
   // tot één rij met samenvatting + ongelezen-telling. Uitklappen toont de losse
   // events; klik opent het ticket via het bestaande navigateRef-pad. Gelezen-
-  // markering blijft de bestaande watermark op event_id.
+  // markering gebruikt een watermark per ticket.
   import { t, locale } from "./lib/i18n.js";
   import { api } from "./api.js";
   import { formatTimestamp, absoluteTime } from "./lib/board.js";
   import {
-    openInboxGroup, groupNotifications, dueLabel, guardrailLabel, INBOX_FETCH_LIMIT,
+    markGroupUpTo, openInboxGroup, groupNotifications, dueLabel, guardrailLabel, INBOX_FETCH_LIMIT,
     isOptionQuestion, mergeAnswered, openCount, answeredLabel,
     agentAlerts, agentUnreachableLabel,
   } from "./lib/inbox.js";
@@ -111,9 +111,7 @@
     }
   }
 
-  // Watermark op event_id (repo/inbox.py:mark_seen): bumpen naar het verste
-  // event van een groep markeert die groep — en alle oudere events — gelezen.
-  // Dit hergebruikt bewust het bestaande éénwatermark-model.
+  // Only the explicit global action advances the inbox watermark.
   async function markRead(watermark) {
     if (!watermark) return;
     try {
@@ -131,7 +129,14 @@
   }
 
   async function markGroupRead(group) {
-    if (group.unread) await markRead(group.latestEventId);
+    if (!group.unread || group.latestEventId <= 0) return;
+    try {
+      await api.markItemRead(group.ref, group.latestEventId);
+      entries = markGroupUpTo(entries, group.ref, group.latestEventId);
+      onseen();
+    } catch (e) {
+      error = e.message;
+    }
   }
 
   function toggle(group) {

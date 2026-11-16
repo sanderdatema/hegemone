@@ -8,7 +8,7 @@ import json
 import re
 import sqlite3
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Query
 
 from ..deps import (
     current_human,
@@ -455,6 +455,7 @@ def unmute_subscriber(
 @router.post("/items/{ref}/read")
 def mark_item_read(
     ref: str,
+    event_id: int | None = Query(default=None, ge=0),
     conn: sqlite3.Connection = Depends(get_db),
     user: sqlite3.Row = Depends(current_user),
 ) -> dict:
@@ -468,10 +469,13 @@ def mark_item_read(
     """
     item = _require_item(conn, ref)
     with db_module.transaction(conn):
+        latest = item_reads_repo.last_event_id(conn, item["id"])
+        # Inbox callers acknowledge only the events they actually received.
         marker = item_reads_repo.mark_read(
-            conn, item["id"], user["id"], item_reads_repo.last_event_id(conn, item["id"])
+            conn, item["id"], user["id"], latest if event_id is None else min(event_id, latest)
         )
-    return {"ref": ref, "last_seen_event_id": marker, "has_unread": False}
+        unread = item_reads_repo.has_unread(conn, item["id"], user["id"])
+    return {"ref": ref, "last_seen_event_id": marker, "has_unread": unread}
 
 
 @router.post("/items/{ref}/lock")

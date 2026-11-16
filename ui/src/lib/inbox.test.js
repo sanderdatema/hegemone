@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  markGroupUpTo,
   groupNotifications,
   unreadGroupCount,
   summarizeGroup,
@@ -318,4 +319,13 @@ describe("overdrachtsnotitie in inbox (BETON-469)", () => {
     const entries = [{ ...mk(50, "BETON-469", "assigned", "claude"), handover_md: "Test de knop." }, mk(51, "BETON-469", "mention", "codex")];
     expect(groupNotifications(entries)[0].summary).not.toBe("Test de knop.");
   });
+});
+
+
+it("marks only the displayed ticket window without clearing other or newer events", () => {
+  const entries = [mk(1, "SOS-2"), mk(2, "SOS-1"), mk(3, "SOS-2"), mk(4, "SOS-1"), mk(0, "SOS-1", "due")];
+  const next = markGroupUpTo(entries, "SOS-1", 2);
+  expect(next.map((entry) => entry.read)).toEqual([false, true, false, false, false]);
+  expect(unreadGroupCount(next)).toBe(2);
+  expect(entries.every((entry) => !entry.read)).toBe(true);
 });

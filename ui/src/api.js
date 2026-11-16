@@ -264,7 +264,7 @@ export const api = {
   activity: (ref) => req("GET", `/items/${ref}/activity`),
   // Per-item read-state (BETON-294/286): "ik heb dit ticket geopend/gezien",
   // los van de globale inbox-watermark (inboxSeen).
-  markItemRead: (ref) => req("POST", `/items/${ref}/read`),
+  markItemRead: (ref, eventId) => req("POST", `/items/${ref}/read${eventId == null ? "" : `?event_id=${eventId}`}`),
   createItem: (key, body) => req("POST", `/projects/${key}/items`, body),
   updateItem: (ref, body) => req("PATCH", `/items/${ref}`, body),
   archiveItem: (ref) => req("DELETE", `/items/${ref}`),

@@ -225,3 +225,11 @@ export function openInboxGroup(group, onopen, markGroupRead) {
   onopen(group.ref);
   return markGroupRead(group);
 }
+
+/** Acknowledge only this ticket and the event window that was displayed. */
+export function markGroupUpTo(entries, ref, watermark) {
+  return (entries || []).map((entry) =>
+    entry.ref === ref && entry.event_id > 0 && entry.event_id <= watermark
+      ? { ...entry, read: true } : entry
+  );
+}

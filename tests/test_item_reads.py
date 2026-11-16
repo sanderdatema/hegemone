@@ -324,3 +324,22 @@ def test_unread_bulk_empty_and_non_empty(db_path, client, auth, other_auth, conn
 
     result = item_reads_repo.unread_bulk(conn, [item["id"]], person["id"])
     assert result == {item["id"]}
+
+
+def test_bounded_inbox_read_preserves_other_tickets_and_new_events(client, auth, other_auth, project):
+    client.post("/api/v1/projects/SOS/items", json={"title": "Other", "assignee": "person"}, headers=auth)
+    for ref in ("SOS-1", "SOS-2", "SOS-1"):
+        client.post(f"/api/v1/items/{ref}/comments", json={"body_md": "@person Update"}, headers=other_auth)
+    before = client.get("/api/v1/inbox", headers=auth).json()
+    boundary = max(e["event_id"] for e in before["items"] if e["ref"] == "SOS-1")
+    client.post("/api/v1/items/SOS-1/comments", json={"body_md": "@person Late update"}, headers=other_auth)
+    response = client.post(f"/api/v1/items/SOS-1/read?event_id={boundary}", headers=auth)
+    assert response.status_code == 200
+    assert response.json()["has_unread"] is True
+    after = client.get("/api/v1/inbox", headers=auth).json()
+    assert after["last_seen_event_id"] == before["last_seen_event_id"]
+    for entry in after["items"]:
+        assert entry["read"] == (entry["ref"] == "SOS-1" and entry["event_id"] <= boundary)
+    top = max(e["event_id"] for e in after["items"])
+    client.post("/api/v1/inbox/seen", json={"event_id": top}, headers=auth)
+    assert client.get("/api/v1/inbox", headers=auth).json()["unread_count"] == 0
