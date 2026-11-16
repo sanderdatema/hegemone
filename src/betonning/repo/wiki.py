@@ -32,12 +32,15 @@ def is_valid_slug(slug: str) -> bool:
 
 
 def serialize(row: sqlite3.Row) -> dict:
+    from .wiki_review import digest
+
     return {
         "id": row["id"],
         "project_id": row["project_id"],
         "slug": row["slug"],
         "title": row["title"],
         "body_md": row["body_md"],
+        "revision": digest(row),
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
         "protected": bool(row["protected"]),
@@ -68,11 +71,11 @@ def list_index(conn: sqlite3.Connection) -> list[dict]:
     meerdere scopes bestaan, dus een kale slug is inherent ambigu — vandaar dat
     de index de scope expliciet meedraagt."""
     rows = conn.execute(
-        "SELECT w.slug AS slug, p.key AS pkey FROM wiki_pages w "
+        "SELECT w.slug AS slug, w.title AS title, p.key AS pkey FROM wiki_pages w "
         "LEFT JOIN projects p ON p.id = w.project_id "
         "ORDER BY p.key, w.slug"
     ).fetchall()
-    return [{"scope": r["pkey"] or "global", "slug": r["slug"]} for r in rows]
+    return [{"scope": r["pkey"] or "global", "slug": r["slug"], "title": r["title"]} for r in rows]
 
 
 def list_pages(conn: sqlite3.Connection, project_id: int | None) -> list[sqlite3.Row]:

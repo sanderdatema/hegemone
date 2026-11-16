@@ -37,9 +37,9 @@ def test_list_index_covers_all_scopes(conn):
     wiki_repo.create(conn, project_id=p["id"], slug="deploy", title="D", body_md="d")
     conn.commit()
     index = wiki_repo.list_index(conn)
-    assert {"scope": "global", "slug": "stijl"} in index
-    assert {"scope": "SOS", "slug": "stijl"} in index
-    assert {"scope": "SOS", "slug": "deploy"} in index
+    assert {"scope": "global", "slug": "stijl", "title": "G"} in index
+    assert {"scope": "SOS", "slug": "stijl", "title": "P"} in index
+    assert {"scope": "SOS", "slug": "deploy", "title": "D"} in index
     assert len(index) == 3
 
 
@@ -51,8 +51,8 @@ def test_wiki_index_endpoint(client, auth, project):
     r = client.get("/api/v1/wiki/index", headers=auth)
     assert r.status_code == 200
     index = r.json()
-    assert {"scope": "global", "slug": "g"} in index
-    assert {"scope": "SOS", "slug": "p"} in index
+    assert {"scope": "global", "slug": "g", "title": "G"} in index
+    assert {"scope": "SOS", "slug": "p", "title": "P"} in index
 
 
 def test_wiki_index_requires_auth(client):
@@ -202,6 +202,39 @@ def test_global_crud(client, auth):
     assert client.get("/api/v1/wiki/stijl", headers=auth).json()["body_md"] == "nieuw"
     assert client.delete("/api/v1/wiki/stijl", headers=auth).status_code == 204
     assert client.get("/api/v1/wiki/stijl", headers=auth).status_code == 404
+
+
+def test_wiki_edit_revision_detects_stale_body_even_with_same_timestamp(client, auth, conn):
+    initial = _create_global(client, auth).json()
+    assert client.get('/api/v1/wiki', headers=auth).json()[0]['revision'] == initial['revision']
+    url = '/api/v1/wiki/stijl'
+    updated = client.patch(url, headers=auth, json={'body_md': 'new', 'expected_revision': initial['revision']})
+    assert updated.status_code == 200
+    conn.execute('UPDATE wiki_pages SET updated_at=? WHERE id=?', (initial['updated_at'], initial['id']))
+    before = client.get(url, headers=auth).json()
+    revisions = client.get(url + '/revisions', headers=auth).json()
+    conflict = client.patch(url, headers=auth, json={'body_md': 'stale', 'expected_revision': initial['revision']})
+    assert conflict.status_code == 409 and conflict.json()['error_code'] == 'wiki_edit_conflict'
+    assert client.get(url, headers=auth).json() == before
+    assert client.get(url + '/revisions', headers=auth).json() == revisions
+    assert client.patch(url, headers=auth, json={'body_md': 'legacy'}).json()['body_md'] == 'legacy'
+
+
+def test_wiki_revision_conflict_precedes_protected_proposal(client, auth, conn):
+    page = _create_global(client, auth).json()
+    agent_auth = _agent_auth(conn)
+    url = '/api/v1/wiki/stijl'
+    client.patch(url, headers=auth, json={'body_md': 'changed'})
+    conflict = client.patch(url, headers=agent_auth, json={'body_md': 'stale', 'expected_revision': page['revision']})
+    assert conflict.status_code == 409
+    assert client.get('/api/v1/wiki-proposals', headers=auth).json() == []
+    current = client.get(url, headers=auth).json()
+    proposal = client.patch(url, headers=agent_auth, json={'body_md': 'proposal', 'expected_revision': current['revision']})
+    assert proposal.status_code == 200 and proposal.json()['status'] == 'pending'
+    assert client.get(url, headers=auth).json()['body_md'] == 'changed'
+    review = client.post(f"/api/v1/wiki-proposals/{proposal.json()['proposal_id']}/review", headers=auth, json={'approve': True})
+    assert review.status_code == 200
+    assert client.get(url, headers=auth).json()['body_md'] == 'proposal'
 
 
 def test_global_duplicate_conflict_and_invalid_slug(client, auth):

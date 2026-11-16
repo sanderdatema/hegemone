@@ -129,6 +129,7 @@ class WikiPageCreate(BaseModel):
 class WikiPageUpdate(BaseModel):
     title: str | None = Field(default=None, max_length=300)
     body_md: str | None = Field(default=None, max_length=60000)
+    expected_revision: str | None = Field(default=None, max_length=64)
 
 
 class StateCreate(BaseModel):

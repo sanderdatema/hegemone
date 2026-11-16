@@ -67,11 +67,13 @@ def _update_page(
     body: WikiPageUpdate,
     author_id: int | None = None,
 ) -> dict:
-    row = wiki_repo.get_by_slug(conn, project_id, slug)
-    if row is None:
-        raise HTTPException(status_code=404, detail=f"Onbekende wiki-pagina: {slug}")
-    fields = {k: v for k, v in body.model_dump().items() if v is not None}
     with db_module.transaction(conn):
+        row = wiki_repo.get_by_slug(conn, project_id, slug)
+        if row is None:
+            raise HTTPException(status_code=404, detail=f"Onbekende wiki-pagina: {slug}")
+        if body.expected_revision is not None and body.expected_revision != wiki_review.digest(row):
+            raise HTTPException(status_code=409, detail="Pagina is intussen gewijzigd; laad de nieuwste versie")
+        fields = {k: v for k, v in body.model_dump(exclude={"expected_revision"}).items() if v is not None}
         if wiki_review.needs_review(conn, project_id, slug, author_id):
             return _submit_review(conn, project_id, slug, fields.get("title", row["title"]),
                                       fields.get("body_md", row["body_md"]), author_id)
@@ -188,10 +190,10 @@ def wiki_index(
     conn: sqlite3.Connection = Depends(get_db),
     user: sqlite3.Row = Depends(current_user),
 ) -> list[dict]:
-    """Lichte cross-scope index ``[{scope, slug}]`` over álle scopes (BETON-306).
+    """Lichte cross-scope index ``[{scope, slug, title}]`` over álle scopes (BETON-306).
 
     Voedt de levend/dood-markering van gekwalificeerde interlinks
-    (``[[BETON:slug]]``) in de UI; alleen slugs, geen bodies. Staat vóór de
+    (``[[BETON:slug]]``) in de UI; titels en slugs, geen bodies. Staat vóór de
     ``/wiki/{slug}``-route zodat "index" geen slug kaapt."""
     allowed = credential_policy.projects(user)
     return [row for row in wiki_repo.list_index(conn)

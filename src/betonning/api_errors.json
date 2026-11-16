@@ -535,6 +535,10 @@
     "nl": "Pagina is intussen gewijzigd; maak een nieuw voorstel",
     "en": "The page has changed; create a new proposal"
   },
+  "wiki_edit_conflict": {
+    "nl": "Pagina is intussen gewijzigd; laad de nieuwste versie",
+    "en": "The page has changed; load the latest version"
+  },
   "ticket_locked_queued": {
     "nl": "Dit ticket is op slot (noodstop): er wordt niet meer op gereageerd. Alleen een mens kan hem ontgrendelen. Plaats geen comment en onderneem hier verder niets. Je bericht is bewaard en wordt geplaatst zodra een mens het slot eraf haalt — stuur het niet opnieuw.",
     "en": "This ticket is locked (emergency stop). Only a person can unlock it. Do not comment or take further action. Your message has been saved and will be posted when a person unlocks the ticket; do not send it again."
