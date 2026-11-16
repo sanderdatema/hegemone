@@ -292,12 +292,16 @@
     </details>
     <p class="us-hint">{$t("preferences.saveBehavior")}</p>
 
-    <div class="us-actions">
-      <button class="primary sm" onclick={save} disabled={!dirty || busy}>
-        <Check size={14} /> {$t("common.save")}
-      </button>
-      {#if saved}<span class="us-ok">{$t("common.saved")}</span>{/if}
-    </div>
+    {#if dirty || saved}
+      <div class="us-actions">
+        {#if dirty}
+          <button class="primary sm" onclick={save} disabled={busy}>
+            <Check size={14} /> {$t("common.save")}
+          </button>
+        {/if}
+        {#if saved}<span class="us-ok">{$t("common.saved")}</span>{/if}
+      </div>
+    {/if}
   {:else if !error}
     <div class="us-loading"><Skeleton preset="lines" count={5} /></div>
   {/if}

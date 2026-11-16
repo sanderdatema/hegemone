@@ -2,7 +2,7 @@
 export const adminMessages = {
   "en": {
     "preferences.advanced": "Profile and integrations",
-    "preferences.saveBehavior": "Browser notifications and quick assignment apply immediately. Save applies profile, subscription and integration fields. Model mappings have their own Save button.",
+    "preferences.saveBehavior": "Save applies changes to your profile description, follow-all subscription, webhook, webhook secret, and Telegram chat ID. Browser notifications and quick assignment apply immediately. Model mappings have their own Save button.",
     "agents.actions": "Actions",
     "agents.webhookDetails": "Webhook connection and test",
     "agents.showInactive": "Show inactive ({count})",
@@ -280,7 +280,7 @@ export const adminMessages = {
   },
   "nl": {
     "preferences.advanced": "Profiel en koppelingen",
-    "preferences.saveBehavior": "Browsermeldingen en sneltoewijzing gelden direct. Opslaan geldt voor profiel, volgen en koppelingen. Modelkeuzes hebben een eigen opslagknop.",
+    "preferences.saveBehavior": "Opslaan bewaart wijzigingen aan je profielomschrijving, alle tickets volgen, webhook, webhookgeheim en Telegram-chat-ID. Browsermeldingen en sneltoewijzing gelden direct. Modelkeuzes hebben een eigen opslagknop.",
     "agents.actions": "Acties",
     "agents.webhookDetails": "Webhookverbinding en test",
     "agents.showInactive": "Toon inactieve ({count})",

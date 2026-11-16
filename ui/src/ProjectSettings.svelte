@@ -324,9 +324,8 @@
     });
   }
 
-  // Verwijderen (BETON-351): de server bewaakt de laatste kolom en items die
-  // er nog in staan (409 met aantal) — die foutmelding komt via guard() in
-  // `error` terecht, geen client-side gok naar wanneer het mag.
+  // Laat de bestemming expliciet bevestigen; de server bewaakt de actuele
+  // telling en verplaatst tickets atomair voordat de kolom verdwijnt.
   let confirmDeleteState = $state(null);
   let deleteStateTarget = $state("");
   let deletingState = $state(false);
@@ -347,7 +346,6 @@
       states = await api.states(projectKey).catch(() => states);
     } finally { deletingState = false; }
   }
-
 </script>
 
 <div class="ps">

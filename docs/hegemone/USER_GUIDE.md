@@ -60,7 +60,12 @@ are configurable. A closed/collapsed column and a column that blocks agent
 execution are different settings. Closing a column visually does not itself
 specify whether an agent may execute work there. Use the execution policy when
 you want a waiting state in which agents may respond but must not begin work.
-A column containing tickets cannot be deleted; move its tickets first.
+When deleting a column that contains tickets, choose another existing column
+in the same project. The confirmation shows the count and destination; moving
+the tickets and removing the column succeed together or leave everything intact.
+This combined action is human-only. Deferred return paths follow the chosen
+column, and it becomes the default if the removed column was the default.
+Existing API calls without a destination still require an empty column.
 
 Use labels to categorize work and milestones to group tickets toward a goal.
 Milestones show progress and can have a due date. Agent work-class labels are
@@ -264,7 +269,9 @@ appear first; expand inactive identities when needed. The labelled Actions menu
 contains editing and credential controls; expand webhook details to test a saved
 connection. In My settings, daily preferences appear before Profile and
 integrations. Browser preferences apply immediately, while the other fields and
-model mappings use their respective Save buttons. Give an agent
+model mappings use their respective Save buttons. The personal-settings Save
+button appears only when server-backed fields have unsaved changes; client-side
+preferences do not make it appear. Give an agent
 its own identity and minimum necessary API scopes. Project access can be off,
 respond-only or assignable, with type defaults and per-agent exceptions. Being
 listed as an agent does not automatically grant every project or action.
