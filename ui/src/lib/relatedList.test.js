@@ -17,6 +17,12 @@ describe("subtaskGroups", () => {
 });
 
 describe("relationGroups", () => {
+  it("preserves a related ticket's own workflow group", () => {
+    const groups = relationGroups({ relations_detail: {
+      relates_to: [{ ref: 'OTHER-1', title: 'Released elsewhere', state: 'Released', state_group: 'completed' }],
+    } }, label);
+    expect(groups[0].items[0].state_group).toBe('completed');
+  });
   it("behoudt de backend-volgorde, laat lege groepen weg, alles verbreekbaar", () => {
     const g = relationGroups(
       {

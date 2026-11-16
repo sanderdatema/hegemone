@@ -104,14 +104,14 @@ _GROUPS = ("blocks", "blocked_by", "duplicate_of", "duplicated_by", "relates_to"
 # kant (BETON-471): geen lookup per rij. `outgoing` = dit item is de bron.
 _DETAIL_SQL = """
     SELECT 1 AS outgoing, r.type AS type, p.key AS key, o.seq AS seq,
-           o.title AS title, st.name AS state
+           o.title AS title, st.name AS state, st.grp AS state_group
       FROM relations r
       JOIN items o ON o.id = r.related_item_id
       JOIN projects p ON p.id = o.project_id
       LEFT JOIN states st ON st.id = o.state_id
      WHERE r.item_id = ?
     UNION ALL
-    SELECT 0, r.type, p.key, o.seq, o.title, st.name
+    SELECT 0, r.type, p.key, o.seq, o.title, st.name, st.grp
       FROM relations r
       JOIN items o ON o.id = r.item_id
       JOIN projects p ON p.id = o.project_id
@@ -132,12 +132,13 @@ class RelationDetail(TypedDict):
     ref: str
     title: str
     state: str | None
+    state_group: str | None
 
 
 def for_item_detail(
     conn: sqlite3.Connection, item_id: int
 ) -> dict[str, list[RelationDetail]]:
-    """Als `for_item`, maar per relatie `{ref, title, state}` (BETON-471).
+    """Relation details include the target's own workflow group.
 
     Dedupe en sortering op ref, identiek aan `for_item`."""
     result: dict[str, dict[str, RelationDetail]] = {g: {} for g in _GROUPS}
@@ -145,7 +146,7 @@ def for_item_detail(
         ref = f"{row['key']}-{row['seq']}"
         group = _group_of(row["outgoing"], row["type"])
         result[group].setdefault(
-            ref, {"ref": ref, "title": row["title"], "state": row["state"]}
+            ref, {"ref": ref, "title": row["title"], "state": row["state"], "state_group": row["state_group"]}
         )
     return {g: [result[g][r] for r in sorted(result[g])] for g in _GROUPS}
 

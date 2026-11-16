@@ -368,6 +368,22 @@ def test_relations_detail_has_title_and_state(client, auth, project):
     assert [x["ref"] for x in other["relations_detail"]["blocked_by"]] == ["SOS-1"]
 
 
+def test_related_ticket_uses_its_own_project_state_group(client, auth, project):
+    assert client.post('/api/v1/projects', headers=auth,
+                       json={'key': 'OTHER', 'name': 'Other project'}).status_code == 201
+    states = client.get('/api/v1/projects/OTHER/states', headers=auth).json()
+    completed = next(state for state in states if state['group'] == 'completed')
+    assert client.patch('/api/v1/projects/OTHER/states/' + completed['name'], headers=auth,
+                        json={'name': 'Released'}).status_code == 200
+    target = client.post('/api/v1/projects/OTHER/items', headers=auth,
+                         json={'title': 'Completed elsewhere', 'state': 'Released'}).json()['ref']
+    assert client.post('/api/v1/items/SOS-1/relations', headers=auth,
+                       json={'type': 'relates_to', 'target': target}).status_code == 201
+    detail = client.get('/api/v1/items/SOS-1', headers=auth).json()['relations_detail']['relates_to']
+    assert detail[0]['state'] == 'Released'
+    assert detail[0]['state_group'] == 'completed'
+
+
 def test_children_detail_has_title(client, auth, project):
     client.post(
         "/api/v1/projects/SOS/items",

@@ -4,7 +4,7 @@
 // parent staat in de drawer-kop.
 
 /**
- * @typedef {{ref: string, title: string, state: string|null}} RelatedItem
+ * @typedef {{ref: string, title: string, state: string|null, state_group?: string}} RelatedItem
  * @typedef {{type: string, label: string, items: RelatedItem[], removable: boolean}} RelatedGroup
  */
 
@@ -48,7 +48,7 @@ export function relationGroups(item, labelOf) {
       label: labelOf(type),
       removable: true,
       items: v.map((x) =>
-        typeof x === "string" ? { ref: x, title: "", state: null } : { ref: x.ref, title: x.title ?? "", state: x.state ?? null },
+        typeof x === "string" ? { ref: x, title: "", state: null } : { ref: x.ref, title: x.title ?? "", state: x.state ?? null, ...(x.state_group ? { state_group: x.state_group } : {}) },
       ),
     }));
 }
