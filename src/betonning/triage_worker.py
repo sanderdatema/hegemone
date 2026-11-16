@@ -278,15 +278,19 @@ def evaluate_answer_once(
 
 # --- Stale-detectie (BETON-375) ---------------------------------------------
 #
-# `last_activity_at` is een AFGELEIDE waarde (BETON-68): geen kolom, maar het
-# maximum van `items.updated_at` en de laatste comment-mutatie. De finder moet
-# hem dus zelf uitrekenen — vandaar dit fragment i.p.v. `i.last_activity_at`.
-
-_LAST_ACTIVITY_SQL = (
-    "MAX(i.updated_at, COALESCE("
-    "(SELECT MAX(c2.updated_at) FROM comments c2 WHERE c2.item_id = i.id), "
-    "i.updated_at))"
-)
+# Comments are message activity, not evidence that work advanced. Use task
+# changes, actual execution milestones and human answers to restart the clock.
+# Claims, heartbeats, transport retries and ready notifications do not qualify.
+_LAST_PROGRESS_SQL = """MAX(
+    i.updated_at,
+    COALESCE((SELECT MAX(e.created_at) FROM events e WHERE e.item_id=i.id
+              AND e.type IN ('execution.started','execution.completed','execution.resumed')),
+             i.updated_at),
+    COALESCE((SELECT MAX(c.answered_at) FROM comments c
+              JOIN users u ON u.id=c.answered_by
+              WHERE c.item_id=i.id AND c.kind='question' AND u.kind='human'),
+             i.updated_at)
+)"""
 
 
 def find_stale(
@@ -305,10 +309,12 @@ def find_stale(
     daarmee élk lopend item als stil aanmerken.
 
     Idempotentie: `stale_asked_at` is gezet ná het plaatsen van de vraag, dus
-    direct erna is `last_activity <= stale_asked_at` en komt het item niet terug.
+    direct erna is `last_progress <= stale_asked_at` en komt het item niet terug.
     Opnieuw vragen mag pas als er echte activiteit ná de vraag was (strikt `>`)
     én het daarna weer `days` stil is. De `NOT EXISTS` sluit bovendien uit dat er
-    een tweede vraag komt terwijl de eerste nog open staat.
+    een tweede vraag komt terwijl een mensvraag open staat. Bekende blokkades
+    hebben al een verantwoordelijke/hervattingsvoorwaarde en krijgen geen extra
+    stale-vraag; de bestaande execution- en relatiesignalen blijven leidend.
 
     Poorten: dezelfde `_eligibility_where` als de andere finders (niet
     gearchiveerd, niet op slot, project doet triage) plus quarantaine."""
@@ -321,23 +327,32 @@ def find_stale(
            WHERE s.grp = 'started'
              AND {_eligibility_where()}
              AND i.triage_attempts < ?
-             AND {_LAST_ACTIVITY_SQL}
+             AND {_LAST_PROGRESS_SQL}
                  < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ?)
              AND (i.stale_asked_at IS NULL
-                  OR {_LAST_ACTIVITY_SQL} > i.stale_asked_at)
+                  OR {_LAST_PROGRESS_SQL} > i.stale_asked_at)
              AND NOT EXISTS (
                  SELECT 1 FROM comments c3
                  WHERE c3.item_id = i.id
                    AND {comments_repo.question_open_sql('c3')}
-                   AND c3.author_id = ?
-                   AND c3.body_md LIKE ?
+             )
+             AND NOT EXISTS (
+                 SELECT 1 FROM execution_requests er WHERE er.item_id=i.id
+                   AND er.status IN ('blocked','stopping')
+             )
+             AND NOT EXISTS (
+                 SELECT 1 FROM relations r
+                 JOIN items b ON b.id=r.item_id
+                 JOIN projects bp ON bp.id=b.project_id
+                 LEFT JOIN states bs ON bs.id=b.state_id
+                 WHERE r.related_item_id=i.id AND r.type='blocks'
+                   AND b.archived_at IS NULL AND bp.archived_at IS NULL
+                   AND (bs.grp IS NULL OR bs.grp NOT IN ('completed','cancelled'))
              )
            ORDER BY i.id LIMIT ?""",
         (
             int(max_attempts),
             f"-{int(days)} days",
-            triage_user_id,
-            f"{triage_mod.STALE_QUESTION_MARKER}%",
             limit,
         ),
     ).fetchall()
@@ -369,8 +384,8 @@ def ask_stale_once(
 
     Géén LLM: de vraag is elke ronde dezelfde en de drie antwoorden zijn een vaste,
     discrete keuze. Vraag + marker in één transactie, en de marker NA de vraag —
-    de vraag is zelf een comment en telt dus mee in `last_activity_at`; andersom
-    zou de her-vraag-conditie meteen weer waar zijn."""
+    zo vallen eventuele toewijzingswijzigingen door de vraag ook vóór de marker.
+    Gewone comments tellen niet als voortgang voor een volgende stale-vraag."""
     item = items_repo.get(conn, item_id)
     if item is None or projects_repo.is_archived(conn, item["project_id"]):
         return
@@ -400,7 +415,7 @@ def ask_stale_once(
 # --- Guardrail-review (BETON-420) ------------------------------------------
 #
 # Zesde poll-query, gespiegeld op het stale-paar hierboven. Trigger is de
-# VERSTREKEN reviewdatum, niet stilte — `_LAST_ACTIVITY_SQL` speelt hier dus
+# VERSTREKEN reviewdatum, niet stilte — `_LAST_PROGRESS_SQL` speelt hier dus
 # geen rol. Géén LLM-call (vraag en opties liggen vast), dus deze finder telt
 # niet mee tegen `DailyBudget` en valt buiten het rondebudget.
 

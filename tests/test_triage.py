@@ -3825,3 +3825,76 @@ def test_werkklassen_volgen_rol_en_configuratie(conn, seeded, handle, kind, agen
 def legacy_dutch_system_text(monkeypatch):
     """Bestaande Nederlandse tekst-/optiecontracten worden expliciet getest."""
     monkeypatch.setenv('HEGEMONE_LANGUAGE', 'nl')
+
+
+def test_stale_comments_neither_hide_silence_nor_rearm_the_marker(conn, seeded):
+    project_id, triage_id = seeded
+    item = _started_item(conn, project_id)
+    for _ in range(2):
+        comments_repo.create(conn, item_id=item['id'], author_id=triage_id,
+                             body_md='Waiting for the same capability.')
+    assert triage_worker.find_stale(conn, triage_user_id=triage_id, days=3, limit=5) == [item['id']]
+    conn.execute("UPDATE items SET stale_asked_at='2020-02-01T00:00:00.000Z' WHERE id=?", (item['id'],))
+    comments_repo.create(conn, item_id=item['id'], author_id=triage_id,
+                         body_md='Waiting for the same capability.')
+    assert triage_worker.find_stale(conn, triage_user_id=triage_id, days=3, limit=5) == []
+
+
+@pytest.mark.parametrize('event_type,progress', [
+    ('execution.started', True), ('execution.completed', True), ('execution.resumed', True),
+    ('execution.claimed', False), ('execution.ready', False), ('execution.blocked', False),
+])
+def test_stale_uses_execution_milestones_not_transport_activity(conn, seeded, event_type, progress):
+    project_id, triage_id = seeded
+    item = _started_item(conn, project_id)
+    conn.execute('INSERT INTO events(type,item_id) VALUES(?,?)', (event_type, item['id']))
+    assert triage_worker.find_stale(conn, triage_user_id=triage_id, days=3, limit=5) == (
+        [] if progress else [item['id']])
+    conn.execute("UPDATE events SET created_at='2021-01-01T00:00:00.000Z' WHERE item_id=?", (item['id'],))
+    assert triage_worker.find_stale(conn, triage_user_id=triage_id, days=3, limit=5) == [item['id']]
+
+
+@pytest.mark.parametrize('answer_kind', ['human', 'agent'])
+def test_stale_waits_for_open_questions_and_recognizes_human_answers(conn, seeded, answer_kind):
+    project_id, triage_id = seeded
+    person, _ = users_repo.create(conn, handle='person', display_name='Person', kind=answer_kind)
+    item = _started_item(conn, project_id)
+    question = comments_repo.create(conn, item_id=item['id'], author_id=triage_id,
+                                    body_md='Which prerequisite should be used?', kind='question')
+    assert triage_worker.find_stale(conn, triage_user_id=triage_id, days=3, limit=5) == []
+    comments_repo.mark_answered(conn, question['id'], answered_by=person['id'], answer_text='Use the fixture.')
+    assert triage_worker.find_stale(conn, triage_user_id=triage_id, days=3, limit=5) == (
+        [] if answer_kind == 'human' else [item['id']])
+    conn.execute("UPDATE comments SET answered_at='2021-01-01T00:00:00.000Z' WHERE id=?", (question['id'],))
+    assert triage_worker.find_stale(conn, triage_user_id=triage_id, days=3, limit=5) == [item['id']]
+
+
+@pytest.mark.parametrize('block_kind', ['capability', 'transport', 'human', 'task', 'recovery', 'policy'])
+def test_stale_does_not_repeat_known_execution_blockers(conn, seeded, block_kind):
+    project_id, triage_id = seeded
+    item = _started_item(conn, project_id)
+    conn.execute(
+        "INSERT INTO execution_requests(id,item_id,user_id,profile,binding_generation,intent_event_id,revision,"
+        "status,block_kind,reason,responsible,resume_condition) VALUES(?,?,?,?,?,?,?,'blocked',?,?,?,?)",
+        ('fixture-request', item['id'], triage_id, 'fixture', 1, 0, 'fixture', block_kind,
+         'Missing prerequisite', 'person', 'Supply prerequisite'),
+    )
+    comments_repo.create(conn, item_id=item['id'], author_id=triage_id, body_md='Still waiting.')
+    for _ in range(2):
+        assert triage_worker.find_stale(conn, triage_user_id=triage_id, days=3, limit=5) == []
+    conn.execute("UPDATE execution_requests SET status='pending',block_kind=NULL")
+    conn.execute("INSERT INTO events(type,item_id) VALUES('execution.resumed',?)", (item['id'],))
+    assert triage_worker.find_stale(conn, triage_user_id=triage_id, days=3, limit=5) == []
+    conn.execute("UPDATE events SET created_at='2021-01-01T00:00:00.000Z' WHERE item_id=?", (item['id'],))
+    assert triage_worker.find_stale(conn, triage_user_id=triage_id, days=3, limit=5) == [item['id']]
+
+
+def test_stale_waits_for_known_dependency(conn, seeded):
+    project_id, triage_id = seeded
+    item = _started_item(conn, project_id)
+    prerequisite = _make_item(conn, project_id, 'Prerequisite')
+    relations_repo.create(conn, item_id=prerequisite['id'], related_item_id=item['id'], stored_type='blocks')
+    assert triage_worker.find_stale(conn, triage_user_id=triage_id, days=3, limit=5) == []
+    done = states_repo.get_by_name(conn, project_id, 'done')
+    items_repo.update(conn, prerequisite['id'], {'state_id': done['id']})
+    assert triage_worker.find_stale(conn, triage_user_id=triage_id, days=3, limit=5) == [item['id']]
