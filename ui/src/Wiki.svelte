@@ -6,6 +6,7 @@
   import AutoTextarea from "./AutoTextarea.svelte";
   import { isSubmitChord, formatTimestamp, absoluteTime } from "./lib/board.js";
   import {
+    wikiReadingBody,
     filterWikiPages,
     wikiBacklinks,
     wikiLinkQuery,
@@ -27,6 +28,8 @@
     History,
     RotateCcw,
     X,
+    Shield,
+    ShieldOff,
   } from "@lucide/svelte";
   import SegmentedControl from "./SegmentedControl.svelte";
   import ConfirmBar from "./ConfirmBar.svelte";
@@ -507,7 +510,7 @@
     <nav class="wiki-list" aria-label={$tr("wiki.pages")}>
       {#each visiblePages as p (p.slug)}
         <button class="wiki-row" class:active={p.slug === selected} onclick={() => open(p.slug)}>
-          <span class="wiki-row-title">{p.title}</span>
+          <span class="wiki-row-title" title={p.title}>{p.title}</span>
           <span class="wiki-row-meta">
             <span class="wiki-row-slug">{p.slug}</span>
             {#if p.updated_at}
@@ -598,21 +601,29 @@
         {#if !editing}
           <header class="wiki-doc-title-wrap">
             <h1 class="wiki-doc-title">{current.title}</h1>
-            <p class="muted">{$tr("wiki.source")}: {current.source_kind ?? $tr("wiki.existingKnowledge")} · {$tr(current.protected ? "wiki.protected" : "wiki.ordinary")}</p>
-            {#if me?.kind === "human" && scopeKey}
-              <button disabled={projectReadOnly} class="sm" onclick={async () => {
-                try { await api.wikiProtect(scopeKey, current.slug, !current.protected); await load(); }
-                catch (e) { error = e.message; }
-              }}>{$tr(current.protected ? "wiki.unprotect" : "wiki.protect")}</button>
-            {/if}
-            <span class="wiki-doc-meta">
+            <div class="wiki-doc-meta">
+              <span class="wiki-protection" class:protected={current.protected}>
+                <Shield size={13} /> {$tr(current.protected ? "wiki.protected" : "wiki.ordinary")}
+              </span>
+              {#if me?.kind === "human" && scopeKey}
+                <button disabled={projectReadOnly} class="icon-btn sm wiki-protect-action"
+                  title={$tr(current.protected ? "wiki.unprotect" : "wiki.protect")}
+                  aria-label={$tr(current.protected ? "wiki.unprotect" : "wiki.protect")}
+                  onclick={async () => {
+                    try { await api.wikiProtect(scopeKey, current.slug, !current.protected); await load(); }
+                    catch (e) { error = e.message; }
+                  }}>
+                  {#if current.protected}<ShieldOff size={15} />{:else}<Shield size={15} />{/if}
+                </button>
+              {/if}
+              <span>{$tr("wiki.source")}: {current.source_kind ?? $tr("wiki.existingKnowledge")}</span>
               <span class="wiki-doc-slug">{current.slug}</span>
               {#if current.updated_at}
                 <span title={$tr("wiki.changedAt", {time: absoluteTime(current.updated_at, $locale)})}>
                   · {$tr("wiki.changed", {time: formatTimestamp(current.updated_at, Date.now(), $locale)})}
                 </span>
               {/if}
-            </span>
+            </div>
           </header>
         {/if}
 
@@ -693,7 +704,7 @@
         {:else if current.body_md}
           <!-- eslint-disable-next-line svelte/no-at-html-tags — renderWikiMarkdown escapet -->
           <div class="wiki-article md" use:lightboxClicks={(img) => (lightboxImage = img)} onclick={onWikiClick} onkeydown={onWikiKeydown} role="presentation">
-            {@html renderWikiMarkdown(current.body_md, knownRefs, projectKeys, currentScope)}
+            {@html renderWikiMarkdown(wikiReadingBody(current.body_md, current.title), knownRefs, projectKeys, currentScope)}
           </div>
         {:else}
           <p class="muted">{$tr("wiki.empty")}</p>
@@ -868,7 +879,7 @@
   }
   /* BETON-204: zonder min-width:0 duwt een lange titel de flex-column-rij
      breder dan de zijbalk in plaats van te breken/afkappen — de tekst liep
-     zichtbaar buiten de kaart. min-width:0 + ellipsis op titel/meta lost dat op.
+     zichtbaar buiten de kaart. min-width:0, afbrekende titels en afgekorte metadata lossen dat op.
      flex-shrink:0 is hier geen stijlkeuze maar een correctheidsfix: .wiki-row
      is zelf een flex-item in de scrollbare .wiki-list-kolom. Zodra title/meta
      overflow:hidden krijgen, wordt hun automatische min-height 0 (CSS-spec:
@@ -899,7 +910,8 @@
     width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
     font-weight: 500;
   }
   .wiki-row-meta {
@@ -969,6 +981,7 @@
     font-weight: 700;
     line-height: 1.2;
     margin: 0;
+    overflow-wrap: anywhere;
   }
   h2.wiki-doc-title {
     font-size: var(--text-xl);
@@ -981,6 +994,20 @@
     gap: 6px;
     font-size: var(--text-sm);
     color: var(--text-tertiary);
+    align-items: center;
+    overflow-wrap: anywhere;
+  }
+  .wiki-protection {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .wiki-protection.protected {
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+  .wiki-doc-meta .wiki-protect-action {
+    flex: 0 0 auto;
   }
   .wiki-doc-slug {
     font-variant-numeric: tabular-nums;

@@ -1,3 +1,5 @@
+import MarkdownIt from "markdown-it";
+
 // Pure tekst-helpers voor de wiki: `[[..]]`-interlinks parsen/resolveren,
 // backlinks, zoeken en `[[`-autocomplete. Losgetrokken uit board.js
 // (BETON-334).
@@ -173,4 +175,20 @@ export function wikiSlugSuggestions(pages, query, limit = 8) {
         p.slug.toLowerCase().includes(q) || (p.title || "").toLowerCase().includes(q)
     )
     .slice(0, limit);
+}
+
+// Only omit an opening heading that repeats the title in the reading view.
+// Editors and revision history continue to use the original Markdown.
+const headingParser = new MarkdownIt();
+export function wikiReadingBody(body, title) {
+  if (!body || !title) return body || "";
+  const tokens = headingParser.parse(body, {});
+  const heading = tokens[0];
+  if (heading?.type !== "heading_open" || heading.tag !== "h1" || heading.level !== 0) return body;
+  const visible = (tokens[1]?.children || []).map(token =>
+    ["text", "code_inline", "image"].includes(token.type) ? token.content : ""
+  ).join("");
+  const normalize = text => text.trim().replace(/\s+/g, " ");
+  if (normalize(visible) !== normalize(title)) return body;
+  return body.split(/\r?\n/).slice(heading.map[1]).join("\n");
 }

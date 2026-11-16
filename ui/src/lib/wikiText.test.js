@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  wikiReadingBody,
   extractWikiLinks,
   resolveWikiLink,
   wikiBacklinks,
@@ -215,5 +216,22 @@ describe("wikiSlugSuggestions", () => {
 
   it("leeg fragment geeft alle (gecapt)", () => {
     expect(wikiSlugSuggestions(pages, "", 2)).toHaveLength(2);
+  });
+});
+
+describe("wikiReadingBody", () => {
+  it("omits matching initial ATX and setext H1 headings for reading only", () => {
+    expect(wikiReadingBody("\n# Page **title** #\n\nBody", "Page title")).toBe("\nBody");
+    expect(wikiReadingBody("Page title\n==========\n\nBody", "Page title")).toBe("\nBody");
+    expect(wikiReadingBody("# Page `title`\r\nBody", "Page title")).toBe("Body");
+  });
+  it("keeps different, later, nested and code headings intact", () => {
+    for (const body of ["# Other title\nBody", "Intro\n\n# Page title", "## Page title", "```\n# Page title\n```", "> # Page title"]) {
+      expect(wikiReadingBody(body, "Page title")).toBe(body);
+    }
+  });
+  it("handles empty and title-only pages", () => {
+    expect(wikiReadingBody(null, "Page title")).toBe("");
+    expect(wikiReadingBody("# Page title", "Page title")).toBe("");
   });
 });
