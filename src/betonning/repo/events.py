@@ -154,9 +154,25 @@ def serialize_bulk(conn: sqlite3.Connection, rows: list[sqlite3.Row]) -> list[di
         ):
             items[row["item_id"]] = {"ref": row["ref"], "title": row["title"]}
 
+    payloads = {r["id"]: json.loads(r["payload"]) for r in rows}
+    comment_ids = {payloads[r["id"]].get("comment_id") for r in rows
+                   if r["type"] == "comment.created"}
+    comment_ids = {cid for cid in comment_ids if isinstance(cid, int)}
+    previews = {}
+    if comment_ids:
+        marks = ",".join("?" for _ in comment_ids)
+        for comment in conn.execute(
+            f"SELECT id,item_id,substr(body_md,1,1000) AS body FROM comments WHERE id IN ({marks})",
+            list(comment_ids),
+        ):
+            text = " ".join(comment["body"].split())
+            previews[comment["id"]] = (comment["item_id"], text[:240] + ("…" if len(text) > 240 else ""))
+
     out = []
     for r in rows:
-        payload = json.loads(r["payload"])
+        payload = payloads[r["id"]]
+        preview = previews.get(payload.get("comment_id")) if r["type"] == "comment.created" else None
+        comment_preview = preview[1] if preview and preview[0] == r["item_id"] else None
         info = items.get(r["item_id"]) if r["item_id"] is not None else None
         if info is not None:
             ref, title = info["ref"], info["title"]
@@ -171,6 +187,7 @@ def serialize_bulk(conn: sqlite3.Connection, rows: list[sqlite3.Row]) -> list[di
                 "actor": actors.get(r["actor_id"]),
                 "ref": ref,
                 "title": title,
+                "comment_preview": comment_preview,
                 "payload": payload,
                 "created_at": r["created_at"],
             }

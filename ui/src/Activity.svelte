@@ -204,12 +204,17 @@
               <li class="activity-row">
                 <Avatar handle={e.actor ?? "?"} avatarUrl={avatarMap.get(e.actor)} size={20} />
                 <button class="activity-line" onclick={() => e.ref && onopenref(e.ref)} disabled={!e.ref}>
-                  <span class="activity-actor">@{e.actor ?? $t("activity.system")}</span>
-                  {describeEvent(e, $locale)}{#if e.count > 1}<span class="activity-count"> ({e.count}×)</span>{/if}
-                  {#if e.ref}<span class="activity-ref">{e.ref}</span>{/if}
-                  <span class="activity-time" title={absoluteTime(e.created_at, $locale)}>
-                    · {formatTimestamp(e.created_at, Date.now(), $locale)}
+                  {#if e.ref}
+                    <span class="activity-ticket"><span class="activity-ref">{e.ref}</span>{#if e.title} — {e.title}{/if}</span>
+                  {/if}
+                  <span class="activity-detail">
+                    <span class="activity-actor">@{e.actor ?? $t("activity.system")}</span>
+                    {describeEvent(e, $locale)}{#if e.count > 1}<span class="activity-count"> ({e.count}×)</span>{/if}
+                    <span class="activity-time" title={absoluteTime(e.created_at, $locale)}>
+                      · {formatTimestamp(e.created_at, Date.now(), $locale)}
+                    </span>
                   </span>
+                  {#if e.comment_preview}<span class="activity-preview">{e.comment_preview}</span>{/if}
                 </button>
               </li>
             {/each}
@@ -251,6 +256,8 @@
   }
   .activity-filters {
     display: flex;
+    flex-wrap: wrap;
+    max-width: 100%;
     align-items: center;
     gap: var(--space-2);
   }
@@ -298,10 +305,11 @@
     gap: var(--space-2);
   }
   .activity-line {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-1);
-    flex-wrap: wrap;
+    display: block;
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
     background: none;
     border: none;
     padding: 0;
@@ -310,6 +318,10 @@
     font-size: 0.88rem;
     cursor: pointer;
   }
+  .activity-ticket { display: block; font-weight: 600; margin-bottom: 3px; }
+  .activity-detail { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1); color: var(--text-secondary); }
+  .activity-preview { display: block; margin-top: 4px; color: var(--text-secondary); }
+  .activity-row + .activity-row { padding-top: var(--space-3); border-top: 1px solid var(--border); }
   .activity-line:disabled {
     cursor: default;
   }

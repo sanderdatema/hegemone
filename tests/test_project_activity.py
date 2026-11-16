@@ -150,3 +150,33 @@ def test_project_activity_does_not_scale_with_item_count(client, auth, project, 
     _add_items(9)  # totaal 11 items — het aantal query's mag niet meeschalen
     large = _query_count(11)
     assert small == large
+
+
+def test_comment_preview_is_bounded_current_and_not_resurrected(client, auth, project, conn):
+    item = _create(client, auth, project, title='Readable title').json()
+    body = 'Visible text\n' * 60
+    comment = client.post(f"/api/v1/items/{item['ref']}/comments", headers=auth, json={'body_md':body}).json()
+    def feed():
+        return client.get('/api/v1/projects/SOS/activity',headers=auth).json()
+    event = next(e for e in feed() if e['type']=='comment.created')
+    assert event['title'] == 'Readable title'
+    assert event['comment_preview'].startswith('Visible text Visible text')
+    assert len(event['comment_preview']) <= 241
+    assert '\n' not in event['comment_preview']
+    assert client.patch(f"/api/v1/items/{item['ref']}/comments/{comment['id']}",headers=auth,json={'body_md':'Updated content'}).status_code == 200
+    assert next(e for e in feed() if e['type']=='comment.created')['comment_preview'] == 'Updated content'
+    assert client.delete(f"/api/v1/items/{item['ref']}/comments/{comment['id']}",headers=auth).status_code == 204
+    assert next(e for e in feed() if e['type']=='comment.created')['comment_preview'] is None
+
+
+def test_comment_preview_requires_matching_event_item(client, auth, project, conn):
+    first = _create(client, auth, project, title='First').json()
+    second = _create(client, auth, project, title='Second').json()
+    comment = client.post(f"/api/v1/items/{second['ref']}/comments",headers=auth,json={'body_md':'Other content'}).json()
+    from betonning.repo import items
+    item = items.get_by_ref(conn, first['ref'])
+    events_repo.record(conn,type='comment.created',item_id=item['id'],actor_id=None,payload={'comment_id':comment['id']})
+    conn.commit()
+    feed = client.get('/api/v1/projects/SOS/activity',headers=auth).json()
+    assert feed[0]['ref'] == first['ref']
+    assert feed[0]['comment_preview'] is None
