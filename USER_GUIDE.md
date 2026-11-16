@@ -123,7 +123,10 @@ closed columns initially load a limited number of tickets; **Show more** retriev
 the next page. The remaining count concerns unloaded tickets, not cards hidden
 by a quick filter. With a filter active, the column heading counts visible cards.
 
-List view presents ticket fields as rows and sortable columns. Use selection
+List view presents ticket fields as rows and sortable columns. Choose **Open**
+to hide completed and cancelled states, or **All** to include them. This choice
+is remembered in the browser and included in shared list URLs. Selecting a
+specific state switches to All so that the state remains visible. Use selection
 mode for operations on several tickets. Review the selected set before applying
 bulk changes. Shift-selection can select a range; selection controls can also
 select a column's visible tickets.

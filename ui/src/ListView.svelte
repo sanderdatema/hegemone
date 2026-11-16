@@ -9,6 +9,7 @@
   import { OPTIONAL_COLUMNS, readHiddenColumns, toggleColumn } from "./lib/listColumns.js";
   import { readPersisted, writePersisted } from "./lib/viewState.js";
   import Select from "./Select.svelte";
+  import SegmentedControl from "./SegmentedControl.svelte";
   import DueBadge from "./DueBadge.svelte";
   import Avatar from "./Avatar.svelte";
   import Chip from "./Chip.svelte";
@@ -20,6 +21,8 @@
 
   let {
     items = [],
+    listScope = "all",
+    onscopechange = null,
     preferenceKey = "betonning-list-columns",
     selectMode = false,
     selectedRefs = [],
@@ -109,6 +112,11 @@
 </script>
 
 <div class="list-toolbar">
+  {#if onscopechange}
+    <SegmentedControl ariaLabel={$t("list.scope")} variant="soft"
+      options={[{value:"open", label:$t("list.open")}, {value:"all", label:$t("list.all")}]}
+      value={listScope} onchange={onscopechange} />
+  {/if}
   <details class="column-picker">
     <summary>{$t("list.columns")}</summary>
     <div class="column-options">
@@ -291,7 +299,7 @@
 </div>
 
 <style>
-  .list-toolbar { display: flex; justify-content: flex-end; margin: var(--space-3) clamp(12px, 3vw, 28px) 0; }
+  .list-toolbar { display: flex; gap: var(--space-3); justify-content: space-between; margin: var(--space-3) clamp(12px, 3vw, 28px) 0; }
   .column-picker { position: relative; font-size: var(--text-sm); }
   .column-picker summary { cursor: pointer; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
   .column-options { position: absolute; right: 0; z-index: var(--z-overlay); min-width: 200px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow-lg); }
@@ -421,7 +429,8 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    max-width: 18ch;
+    max-width: 30ch;
+    min-width: 20ch;
     font-size: var(--text-sm);
     color: var(--text-secondary);
   }

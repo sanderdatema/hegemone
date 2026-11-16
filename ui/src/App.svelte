@@ -293,6 +293,14 @@
   let activeView = $state(
     isView(initialQuery.view) ? initialQuery.view : readView(readPersisted(VIEW_KEY, isView, DEFAULT_VIEW))
   );
+  const LIST_SCOPE_KEY = "betonning-list-scope";
+  let listScope = $state(initialQuery.listScope === "all" || initialQuery.listScope === "open"
+    ? initialQuery.listScope : readPersisted(LIST_SCOPE_KEY, v => v === "all" || v === "open", "all"));
+  function setListScope(value) {
+    listScope = value;
+    filters.state = "";
+    writePersisted(LIST_SCOPE_KEY, value);
+  }
   function setActiveView(v) {
     if (!isView(v)) return;
     activeView = v;
@@ -456,6 +464,9 @@
   // de client-side snelfilters (mine/unread/question/due/unassigned/state,
   // BETON-357) — hun velden staan al in de compacte item-rij, geen extra fetch.
   let filteredItems = $derived(filterItems(items, filters, { me: me?.handle }));
+  let listItems = $derived(listScope === "open"
+    ? filteredItems.filter(item => !states.some(state => state.name === item.state && ["completed", "cancelled"].includes(state.group)))
+    : filteredItems);
   // BETON-224: vaste horizontale state-volgorde — werk-kolommen eerst, dan de
   // rust-rail (done/cancelled/deferred), Archief altijd absoluut laatste.
   let columns = $derived(
@@ -988,6 +999,7 @@
   function currentQuery() {
     const q = { ...filters };
     if (activeView !== DEFAULT_VIEW) q.view = activeView;
+    if (activeView === "list") q.listScope = listScope;
     if (searchScope !== "project") q.scope = searchScope;
     if (sortBy !== DEFAULT_SORT) q.sort = sortBy;
     return q;
@@ -1026,6 +1038,7 @@
     const next = resolveProject(projects, r.project);
     filters = { ...DEFAULT_FILTERS, ...filtersFromQuery(r.query) };
     activeView = isView(r.query.view) ? r.query.view : DEFAULT_VIEW;
+    listScope = r.query.listScope === "open" ? "open" : "all";
     searchScope = r.query.scope === "all" ? "all" : "project";
     sortBy = SORT_OPTIONS.some((o) => o.key === r.query.sort) ? r.query.sort : DEFAULT_SORT;
     if (next !== current) {
@@ -1807,7 +1820,7 @@
         <Select
           value={filters.state}
           options={[{ value: "", label: $t("filter.allStates") }, ...states.map((s) => ({ value: s.name, label: s.name }))]}
-          onchange={(v) => { filters.state = v; }}
+          onchange={(v) => { filters.state = v; if (v) { listScope = "all"; writePersisted(LIST_SCOPE_KEY, "all"); } }}
         />
       </label>
     {/if}
@@ -2072,7 +2085,9 @@
     </section>
   {:else if activeView === "list"}
     <ListView
-      items={filteredItems}
+      items={listItems}
+      {listScope}
+      onscopechange={setListScope}
       preferenceKey={`betonning-list-columns:${me?.handle ?? ""}`}
       stateOptions={states.map((s) => ({ value: s.name, label: s.name }))}
       onstatechange={projectReadOnly ? undefined : move}

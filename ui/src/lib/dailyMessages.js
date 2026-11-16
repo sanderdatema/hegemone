@@ -1,6 +1,7 @@
 // Teksten voor de dagelijkse ticket- en bordflow.
 export const dailyMessages = {
   "en": {
+    "list.scope": "Tickets shown", "list.open": "Open", "list.all": "All",
     "ticket.new": "New ticket",
     "common.close": "Close",
     "ticket.title": "Title",
@@ -130,6 +131,7 @@ export const dailyMessages = {
     "drawer.emptyActivity": "No activity yet."
   },
   "nl": {
+    "list.scope": "Getoonde tickets", "list.open": "Open", "list.all": "Alles",
     "ticket.new": "Nieuw ticket",
     "common.close": "Sluiten",
     "ticket.title": "Titel",
