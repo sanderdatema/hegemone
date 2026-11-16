@@ -64,6 +64,7 @@
   import Drawer from "./Drawer.svelte";
   import DrawerDialog from "./DrawerDialog.svelte";
   import ListView from "./ListView.svelte";
+  import ItemAction from "./ItemAction.svelte";
   import Inbox from "./Inbox.svelte";
   import CommandPalette from "./CommandPalette.svelte";
   import NewItem from "./NewItem.svelte";
@@ -2264,6 +2265,7 @@
                 {/if}
               </div>
               <div class="card-title">{item.title}</div>
+              <ItemAction {item} {virtualHandles} />
               {#if item.children_total}
                 <div
                   class="card-progress"
@@ -2285,6 +2287,7 @@
                 </div>
               {/if}
               {#if cardRelationPills(item).length}
+                  {@const otherRelations = cardRelationPills(item).filter(rel => !(rel.type === "blocked_by" && item.work_signals?.blocked_by?.includes(rel.ref)))}
                 <!-- BETON-344: relaties (+ "subtaak van") onderaan de kaart als
                      gekleurde icoon+nummer-pill — géén projectslug (ruis binnen
                      hetzelfde board; het type staat in de tooltip), en bewust
@@ -2295,7 +2298,7 @@
                      opent het gerelateerde ticket zonder de eigen kaart te
                      openen (stopPropagation). -->
                 <div class="card-relations">
-                  {#each cardRelationPills(item) as rel (rel.type + rel.ref)}
+                  {#each cardRelationPills(item).filter(rel => rel.type === "blocked_by" && item.work_signals?.blocked_by?.includes(rel.ref)) as rel (rel.type + rel.ref)}
                     {@const meta = relationMeta(rel.type)}
                     {#if meta}
                       {@const Icon = meta.icon}
@@ -2310,10 +2313,17 @@
                         }}
                       >
                         <Icon size={11} strokeWidth={2.25} />
-                        {rel.ref.slice(rel.ref.lastIndexOf("-") + 1)}
+                        {meta.label}: {rel.ref}
                       </button>
                     {/if}
                   {/each}
+                  {#if otherRelations.length}
+                    <button class="card-rel" style:--label-h={210}
+                      title={otherRelations.map(rel => `${relationMeta(rel.type)?.label || rel.type}: ${rel.ref}`).join("; ")}
+                      onclick={(e) => { e.stopPropagation(); selectedRef = item.ref; }}>
+                      {$t("action.relations", {count:otherRelations.length})}
+                    </button>
+                  {/if}
                 </div>
               {/if}
               {#if (item.labels && item.labels.length) || item.assignee || item.last_activity_at || item.created_at}

@@ -201,6 +201,7 @@
 !ui/src/ImageLightbox.svelte
 !ui/src/Inbox.svelte
 !ui/src/InstallationSettings.svelte
+!ui/src/ItemAction.svelte
 !ui/src/LanguagePicker.svelte
 !ui/src/ListView.svelte
 !ui/src/MarkdownEditor.svelte
@@ -258,6 +259,7 @@
 !ui/src/lib/inbox.js
 !ui/src/lib/inputPickers.js
 !ui/src/lib/installationSettings.js
+!ui/src/lib/itemAction.js
 !ui/src/lib/labelPalette.svelte.js
 !ui/src/lib/labels.js
 !ui/src/lib/latestTask.js

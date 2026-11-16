@@ -87,6 +87,7 @@
   import { lightboxClicks } from "./lib/lightbox.js";
   import ErrorNote from "./ErrorNote.svelte";
   import ExecutionStatus from "./ExecutionStatus.svelte";
+  import ItemAction from "./ItemAction.svelte";
   import Skeleton from "./Skeleton.svelte";
   import EmptyState from "./EmptyState.svelte";
   import { workloadOptions, stateOptions } from "./lib/segmentedOptions.js";
@@ -1904,6 +1905,7 @@
               >{item.title}</h2>
             {/if}
           {/if}
+          <ItemAction {item} virtualHandles={new Set(users.filter(u => u.is_virtual).map(u => u.handle))} />
         </div>
 
         <aside class="dw-rail">

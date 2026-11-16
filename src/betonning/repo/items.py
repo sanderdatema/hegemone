@@ -17,6 +17,7 @@ from . import projects as projects_repo
 from . import states as states_repo
 from .users import handle_of
 from .relations import NORMALIZE as _RELATION_NORMALIZE
+from ..mentions import parse as parse_mentions
 from ..models import PRIORITIES, WORKLOADS  # noqa: F401 — BETON-327: één bron
 
 
@@ -177,6 +178,7 @@ def serialize(
     ).fetchone() if assignee else None
 
     done, total = children_counts(conn, row["id"])
+    work_signals = work_signals_bulk(conn, [row["id"]], viewer_id)[row["id"]]
     return {
         "id": row["id"],
         "ref": ref,
@@ -191,6 +193,7 @@ def serialize(
         "workload": row["workload"],
         "assignee": assignee,
         "previous_assignee": previous["handle"] if previous else None,
+        "work_signals": work_signals,
         "created_by": _handle(row["created_by"]),
         "parent": parent_ref,
         "milestone": milestone,
@@ -301,6 +304,7 @@ def _to_compact(m: dict) -> dict:
         "created_at": m["created_at"],
         "last_activity_at": m.get("last_activity_at", m["created_at"]),
         "has_open_question": m.get("has_open_question", False),
+        "work_signals": m.get("work_signals"),
         "has_unread": m.get("has_unread", False),
         # BETON-344: relaties op de kaart, zelfde vorm als de volledige
         # `relations.for_item` (verb → refs). Ontbreekt de sleutel (een
@@ -458,6 +462,44 @@ def _labels_bulk(conn: sqlite3.Connection, item_ids: list[int]) -> dict[int, lis
     return out
 
 
+def work_signals_bulk(conn, item_ids, viewer_id=None):
+    """Small factual next-action signals, batched for boards and live snapshots."""
+    signals = {i: {"blocked_by": [], "question_for_viewer": False, "execution": None} for i in item_ids}
+    viewer = handle_of(conn, viewer_id) if viewer_id is not None else None
+    for start in range(0, len(item_ids), 500):
+        ids = item_ids[start:start + 500]
+        marks = ",".join("?" for _ in ids)
+        for row in conn.execute(
+            f"SELECT r.related_item_id, p.key || '-' || b.seq AS ref FROM relations r "
+            "JOIN items b ON b.id=r.item_id JOIN projects p ON p.id=b.project_id "
+            "LEFT JOIN states s ON s.id=b.state_id "
+            f"WHERE r.related_item_id IN ({marks}) AND r.type='blocks' "
+            "AND b.archived_at IS NULL AND p.archived_at IS NULL "
+            "AND (s.grp IS NULL OR s.grp NOT IN ('completed','cancelled')) ORDER BY b.id", ids,
+        ):
+            signals[row['related_item_id']]['blocked_by'].append(row['ref'])
+        if viewer_id is not None:
+            for row in conn.execute(
+                "SELECT c.item_id,c.body_md,i.assignee_id,i.created_by FROM comments c "
+                "JOIN items i ON i.id=c.item_id "
+                f"WHERE c.item_id IN ({marks}) AND {comments_repo.question_open_sql('c')}", ids,
+            ):
+                if viewer_id in (row['assignee_id'], row['created_by']) or viewer in parse_mentions(row['body_md'] or ''):
+                    signals[row['item_id']]['question_for_viewer'] = True
+        for row in conn.execute(
+            "SELECT i.id AS item_id,s.grp,e.status,e.reason,e.responsible,e.resume_condition "
+            "FROM items i LEFT JOIN states s ON s.id=i.state_id "
+            "LEFT JOIN execution_requests e ON e.rowid=(SELECT MAX(latest.rowid) "
+            "FROM execution_requests latest WHERE latest.item_id=i.id) "
+            f"WHERE i.id IN ({marks})", ids,
+        ):
+            signals[row['item_id']]['closed'] = row['grp'] in ('completed', 'cancelled')
+            if row['status']:
+                signals[row['item_id']]['execution'] = {key: row[key] for key in
+                    ('status', 'reason', 'responsible', 'resume_condition')}
+    return signals
+
+
 def _compact_rows(
     conn: sqlite3.Connection, rows: list[sqlite3.Row], viewer_id: int | None = None
 ) -> list[dict]:
@@ -478,6 +520,7 @@ def _compact_rows(
     open_q_items = _open_questions_bulk(conn, ids)
     unread_items = item_reads_repo.unread_bulk(conn, ids, viewer_id)
     relations_by_item = _relations_bulk(conn, ids)
+    signals = work_signals_bulk(conn, ids, viewer_id)
     return [
         _to_compact(
             {
@@ -504,6 +547,7 @@ def _compact_rows(
                 "has_open_question": r["id"] in open_q_items,
                 "has_unread": r["id"] in unread_items,
                 "relations": relations_by_item.get(r["id"]),
+                "work_signals": signals.get(r["id"]),
                 "parent": f"{r['pkey']}-{r['parent_seq']}" if r["parent_seq"] is not None else None,
             }
         )

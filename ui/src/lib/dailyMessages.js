@@ -1,6 +1,16 @@
 // Teksten voor de dagelijkse ticket- en bordflow.
 export const dailyMessages = {
   "en": {
+    "action.yourAnswer": "Waiting for your answer",
+    "action.answer": "Waiting for an answer",
+    "action.blockedBy": "Blocked by {refs}",
+    "action.blocked": "Execution blocked",
+    "action.stopping": "Stopping execution",
+    "action.pending": "Waiting for an executor",
+    "action.claimed": "Executor is preparing the task",
+    "action.running": "Agent is working on this ticket",
+    "action.queue": "Assigned to queue @{queue}",
+    "action.relations": "{count} other relations",
     "list.scope": "Tickets shown", "list.open": "Open", "list.all": "All",
     "ticket.new": "New ticket",
     "common.close": "Close",
@@ -131,6 +141,16 @@ export const dailyMessages = {
     "drawer.emptyActivity": "No activity yet."
   },
   "nl": {
+    "action.yourAnswer": "Wacht op jouw antwoord",
+    "action.answer": "Wacht op een antwoord",
+    "action.blockedBy": "Geblokkeerd door {refs}",
+    "action.blocked": "Uitvoering geblokkeerd",
+    "action.stopping": "Uitvoering wordt gestopt",
+    "action.pending": "Wacht op een uitvoerder",
+    "action.claimed": "Uitvoerder bereidt de taak voor",
+    "action.running": "Agent werkt aan dit ticket",
+    "action.queue": "Toegewezen aan wachtrij @{queue}",
+    "action.relations": "{count} overige relaties",
     "list.scope": "Getoonde tickets", "list.open": "Open", "list.all": "Alles",
     "ticket.new": "Nieuw ticket",
     "common.close": "Sluiten",
