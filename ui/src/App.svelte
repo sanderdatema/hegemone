@@ -2299,7 +2299,7 @@
                      openen (stopPropagation). -->
                 <div class="card-relations">
                   {#each cardRelationPills(item).filter(rel => rel.type === "blocked_by" && item.work_signals?.blocked_by?.includes(rel.ref)) as rel (rel.type + rel.ref)}
-                    {@const meta = relationMeta(rel.type)}
+                    {@const meta = relationMeta(rel.type, $locale)}
                     {#if meta}
                       {@const Icon = meta.icon}
                       <button
@@ -2319,7 +2319,7 @@
                   {/each}
                   {#if otherRelations.length}
                     <button class="card-rel" style:--label-h={210}
-                      title={otherRelations.map(rel => `${relationMeta(rel.type)?.label || rel.type}: ${rel.ref}`).join("; ")}
+                      title={otherRelations.map(rel => `${relationMeta(rel.type, $locale)?.label || rel.type}: ${rel.ref}`).join("; ")}
                       onclick={(e) => { e.stopPropagation(); selectedRef = item.ref; }}>
                       {$t("action.relations", {count:otherRelations.length})}
                     </button>

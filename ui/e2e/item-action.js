@@ -30,6 +30,7 @@ export default async function itemActions(page,base='http://127.0.0.1:5192') {
     assert((await decision.innerText()).includes(lang==='en'?'Waiting for your answer':'Wacht op jouw antwoord'),'Directed question absent');
     const blocked=page.locator('.card[data-ref="DEMO-2"]');
     assert((await blocked.innerText()).includes(lang==='en'?'Blocked by DEMO-3':'Geblokkeerd door DEMO-3'),'Blocker absent');
+    assert((await blocked.locator('.card-rel').first().innerText()).includes(lang==='en'?'blocked by':'geblokkeerd door'),'Relation label not localized');
     assert((await page.locator('.card[data-ref="DEMO-3"]').innerText()).includes('@coding-agent'),'Queue absent');
     assert(await page.locator('.card[data-ref="DEMO-4"] .item-action').count()===0,'Delivery falsely implies execution');
     await blocked.getByRole('button',{name:lang==='en'?'1 other relations':'1 overige relaties',exact:true}).click();

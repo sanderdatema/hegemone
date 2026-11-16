@@ -128,9 +128,9 @@ const RELATION_META = {
 };
 
 /** Geef `{icon, label}` voor een relatietype, of `null` voor een onbekend type. */
-export function relationMeta(type) {
+export function relationMeta(type, locale = "nl") {
   const m = RELATION_META[type];
-  return m ? { ...m, label: relationLabel(type) } : null;
+  return m ? { ...m, label: relationLabel(type, locale) } : null;
 }
 
 // Vaste hue per relatietype (0–360, zelfde `--label-h`-mechanisme als de
